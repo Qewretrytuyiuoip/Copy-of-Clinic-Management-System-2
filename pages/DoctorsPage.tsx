@@ -1,0 +1,1606 @@
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { User, Patient, Session, SessionTreatment, Treatment, UserRole, Gender, PatientPhoto, ActivityLog, ActivityLogActionType } from '../types';
+import { api } from '../services/api';
+import { PlusIcon, PencilIcon, TrashIcon, UserGroupIcon, XIcon, ClipboardListIcon, BeakerIcon, ArrowBackIcon, EyeIcon, CheckIcon, SearchIcon, PhotographIcon, ListBulletIcon } from '../components/Icons';
+import LoadingSpinner, { CenteredLoadingSpinner } from '../components/LoadingSpinner';
+
+// ===================================================================
+// NOTE: Many of the following components are duplicates from PatientsPage.tsx
+// This is to allow the Doctor's patient list to be a self-contained feature.
+// In a real-world application, these would be shared components.
+// ===================================================================
+
+// ===================================================================
+// AddEditPhotoModal Component
+// ===================================================================
+interface AddEditPhotoModalProps {
+    photo?: PatientPhoto;
+    patientId: string;
+    onSave: (data: Omit<PatientPhoto, 'id'> | PatientPhoto) => Promise<void>;
+    onClose: () => void;
+}
+
+const AddEditPhotoModal: React.FC<AddEditPhotoModalProps> = ({ photo, patientId, onSave, onClose }) => {
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(photo?.imageUrl || null);
+    const [caption, setCaption] = useState(photo?.caption || '');
+    const [isSaving, setIsSaving] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const isEditMode = !!photo;
+    const inputStyle = "w-full px-3 py-2 bg-white border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black";
+
+    const fileToBase64 = (file: File): Promise<string> =>
+        new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = (error) => reject(error);
+        });
+
+    const handleFileSelect = (file: File) => {
+        if (file && file.type.startsWith('image/')) {
+            setImageFile(file);
+            const previewUrl = URL.createObjectURL(file);
+            setImagePreview(previewUrl);
+        } else {
+            alert('الرجاء اختيار ملف صورة صالح.');
+        }
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            handleFileSelect(e.target.files[0]);
+        }
+    };
+    
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleFileSelect(e.dataTransfer.files[0]);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!imageFile && !isEditMode) {
+            alert('يرجى رفع صورة.');
+            return;
+        }
+        setIsSaving(true);
+        
+        let imageUrl = photo?.imageUrl || '';
+        if (imageFile) {
+            imageUrl = await fileToBase64(imageFile);
+        }
+
+        const dataToSave = {
+            patientId: patientId,
+            imageUrl: imageUrl,
+            caption: caption,
+            date: new Date().toISOString().split('T')[0],
+        };
+
+        if (isEditMode) {
+            await onSave({ ...photo, ...dataToSave });
+        } else {
+            await onSave(dataToSave);
+        }
+        setIsSaving(false);
+    };
+    
+    const dropzoneClasses = `w-full h-48 border-2 border-dashed rounded-lg flex flex-col justify-center items-center cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary-50' : 'border-gray-300 hover:border-primary'}`;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-xl font-bold text-gray-800">{isEditMode ? 'تعديل الصورة' : 'إضافة صورة جديدة'}</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600" /></button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="p-6 space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">الصورة</label>
+                            <div 
+                                className={dropzoneClasses}
+                                onClick={() => fileInputRef.current?.click()}
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleDrop}
+                            >
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileChange}
+                                    accept="image/*"
+                                    className="hidden"
+                                />
+                                {imagePreview ? (
+                                    <img src={imagePreview} alt="معاينة الصورة" className="max-h-full max-w-full object-contain rounded-md" />
+                                ) : (
+                                    <div className="text-center text-gray-500">
+                                        <PhotographIcon className="h-12 w-12 mx-auto" />
+                                        <p>اسحب وأفلت الصورة هنا، أو انقر للاختيار</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div>
+                            <label htmlFor="caption" className="block text-sm font-medium text-gray-700 mb-1">تعليق</label>
+                            <textarea id="caption" name="caption" value={caption} onChange={(e) => setCaption(e.target.value)} rows={3} className={inputStyle} placeholder="أضف تعليقًا وصفيًا..."></textarea>
+                        </div>
+                    </div>
+                    <div className="flex justify-end items-center p-4 bg-gray-50 border-t">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">إلغاء</button>
+                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+// ===================================================================
+// ImageViewerModal Component
+// ===================================================================
+interface ImageViewerModalProps {
+    imageUrl: string;
+    onClose: () => void;
+}
+
+const ImageViewerModal: React.FC<ImageViewerModalProps> = ({ imageUrl, onClose }) => {
+    const [scale, setScale] = useState(1);
+    const [position, setPosition] = useState({ x: 0, y: 0 });
+    const [isDragging, setIsDragging] = useState(false);
+    const [startDrag, setStartDrag] = useState({ x: 0, y: 0 });
+    const imageRef = useRef<HTMLImageElement>(null);
+
+    const handleWheel = (e: React.WheelEvent) => {
+        e.preventDefault();
+        const newScale = e.deltaY > 0 ? scale / 1.1 : scale * 1.1;
+        setScale(Math.min(Math.max(0.5, newScale), 5));
+    };
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        setIsDragging(true);
+        setStartDrag({
+            x: e.clientX - position.x,
+            y: e.clientY - position.y,
+        });
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        setPosition({
+            x: e.clientX - startDrag.x,
+            y: e.clientY - startDrag.y,
+        });
+    };
+
+    const handleMouseUp = () => {
+        setIsDragging(false);
+    };
+
+    const reset = () => {
+        setScale(1);
+        setPosition({ x: 0, y: 0 });
+    };
+    
+    const zoomIn = () => setScale(s => Math.min(s * 1.2, 5));
+    const zoomOut = () => setScale(s => Math.max(s / 1.2, 0.5));
+    
+    const PlusIconComponent = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>;
+    const MinusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M18 12H6" /></svg>;
+    const ResetIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.664 0l3.181-3.183m-11.664 0l-3.181-3.183a8.25 8.25 0 0111.664 0l3.181 3.183" /></svg>;
+    const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>;
+
+    return (
+        <div 
+            className="fixed inset-0 bg-black bg-opacity-80 z-[100] flex justify-center items-center" 
+            onClick={onClose}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+        >
+            <div 
+                className="relative w-full h-full flex justify-center items-center overflow-hidden"
+                onWheel={handleWheel}
+                onClick={e => e.stopPropagation()}
+            >
+                <img
+                    ref={imageRef}
+                    src={imageUrl}
+                    alt="Full screen view"
+                    className="max-w-none max-h-none transition-transform duration-100"
+                    style={{
+                        transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+                        cursor: isDragging ? 'grabbing' : 'grab',
+                    }}
+                    onMouseDown={handleMouseDown}
+                    onMouseLeave={handleMouseUp}
+                />
+            </div>
+            
+            <div className="absolute top-4 right-4 flex flex-col gap-2">
+                 <button onClick={onClose} className="p-2 bg-gray-800 bg-opacity-50 text-white rounded-full hover:bg-opacity-75 focus:outline-none">
+                    <CloseIcon />
+                </button>
+            </div>
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 bg-gray-800 bg-opacity-50 text-white rounded-full">
+                <button onClick={zoomOut} className="p-2 hover:bg-gray-700 rounded-full focus:outline-none"><MinusIcon /></button>
+                <button onClick={reset} className="p-2 hover:bg-gray-700 rounded-full focus:outline-none"><ResetIcon /></button>
+                <button onClick={zoomIn} className="p-2 hover:bg-gray-700 rounded-full focus:outline-none"><PlusIconComponent /></button>
+            </div>
+        </div>
+    );
+};
+
+// ===================================================================
+// PatientGalleryPage Component
+// ===================================================================
+interface PatientGalleryPageProps {
+    patient: Patient;
+    onBack: () => void;
+}
+
+const PatientGalleryPage: React.FC<PatientGalleryPageProps> = ({ patient, onBack }) => {
+    const [photos, setPhotos] = useState<PatientPhoto[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [isAdding, setIsAdding] = useState(false);
+    const [editingPhoto, setEditingPhoto] = useState<PatientPhoto | null>(null);
+    const [deletingPhoto, setDeletingPhoto] = useState<PatientPhoto | null>(null);
+    const [viewingPhotoUrl, setViewingPhotoUrl] = useState<string | null>(null);
+
+    const fetchPhotos = useCallback(async () => {
+        setLoading(true);
+        const allPhotos = await api.patientPhotos.getAll();
+        setPhotos(allPhotos.filter(p => p.patientId === patient.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+        setLoading(false);
+    }, [patient.id]);
+
+    useEffect(() => {
+        fetchPhotos();
+    }, [fetchPhotos]);
+
+    const handleSavePhoto = async (data: Omit<PatientPhoto, 'id'> | PatientPhoto) => {
+        if ('id' in data) {
+            await api.patientPhotos.update(data.id, data);
+        } else {
+            await api.patientPhotos.create(data);
+        }
+        setIsAdding(false);
+        setEditingPhoto(null);
+        await fetchPhotos();
+    };
+
+    const confirmDeletePhoto = async () => {
+        if (deletingPhoto) {
+            await api.patientPhotos.delete(deletingPhoto.id);
+            setDeletingPhoto(null);
+            await fetchPhotos();
+        }
+    };
+
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+                <div className="flex items-center gap-4">
+                    <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                        <ArrowBackIcon className="h-5 w-5" />
+                        <span>العودة</span>
+                    </button>
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">معرض صور المريض</h1>
+                        <p className="text-gray-500">{patient.name}</p>
+                    </div>
+                </div>
+                <button onClick={() => setIsAdding(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
+                    <PlusIcon className="h-5 w-5 ml-2" />
+                    إضافة صورة
+                </button>
+            </div>
+            
+            <div className="bg-white p-6 rounded-xl shadow-md min-h-[200px]">
+                {loading ? <CenteredLoadingSpinner /> : photos.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        {photos.map(photo => (
+                            <div key={photo.id} className="border bg-gray-50 rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-shadow">
+                                <img src={photo.imageUrl} alt={photo.caption} className="w-full h-48 object-cover cursor-pointer" onClick={() => setViewingPhotoUrl(photo.imageUrl)} />
+                                <div className="p-4">
+                                    <p className="font-semibold text-gray-800">{photo.caption || "بدون تعليق"}</p>
+                                    <p className="text-sm text-gray-500">{new Date(photo.date).toLocaleDateString()}</p>
+                                    <div className="mt-4 flex justify-end gap-2">
+                                        <button onClick={() => setEditingPhoto(photo)} className="p-2 rounded-full hover:bg-blue-100 text-blue-600" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
+                                        <button onClick={() => setDeletingPhoto(photo)} className="p-2 rounded-full hover:bg-red-100 text-red-600" title="حذف"><TrashIcon className="h-5 w-5" /></button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-16">
+                        <PhotographIcon className="mx-auto h-12 w-12 text-gray-400" />
+                        <h3 className="mt-2 text-lg font-medium text-gray-900">لا توجد صور</h3>
+                        <p className="mt-1 text-sm text-gray-500">ابدأ بإضافة أول صورة لهذا المريض.</p>
+                    </div>
+                )}
+            </div>
+
+            {(isAdding || editingPhoto) && (
+                <AddEditPhotoModal 
+                    key={editingPhoto?.id || 'add'}
+                    photo={editingPhoto || undefined}
+                    patientId={patient.id}
+                    onClose={() => { setIsAdding(false); setEditingPhoto(null); }} 
+                    onSave={handleSavePhoto}
+                />
+            )}
+
+            {deletingPhoto && (
+                <ConfirmDeleteModal
+                    title="حذف الصورة"
+                    message="هل أنت متأكد من رغبتك في حذف هذه الصورة؟ لا يمكن التراجع عن هذا الإجراء."
+                    onConfirm={confirmDeletePhoto}
+                    onCancel={() => setDeletingPhoto(null)}
+                />
+            )}
+            
+            {viewingPhotoUrl && (
+                <ImageViewerModal 
+                    imageUrl={viewingPhotoUrl}
+                    onClose={() => setViewingPhotoUrl(null)}
+                />
+            )}
+        </div>
+    );
+};
+
+
+// ===================================================================
+// PatientDetailsPage Component
+// ===================================================================
+interface PatientDetailsPageProps {
+    patient: Patient;
+    onBack: () => void;
+}
+
+const DetailItem: React.FC<{ label: string; value?: string | number | null; children?: React.ReactNode }> = ({ label, value, children }) => (
+    <div className="py-3 sm:py-4">
+        <dt className="text-sm font-medium text-gray-500">{label}</dt>
+        <dd className="mt-1 text-lg text-gray-900 sm:mt-0">{children || value || <span className="text-gray-400">لا يوجد</span>}</dd>
+    </div>
+);
+
+const PatientDetailsPage: React.FC<PatientDetailsPageProps> = ({ patient, onBack }) => {
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-4">
+                    <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                        <ArrowBackIcon className="h-5 w-5" />
+                        <span>العودة</span>
+                    </button>
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">تفاصيل المريض</h1>
+                        <p className="text-gray-500">{patient.name}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-white shadow-md rounded-xl overflow-hidden">
+                <div className="px-4 py-5 sm:px-6">
+                    <h3 className="text-xl leading-6 font-bold text-gray-900">
+                        {patient.name}
+                        <span className="ml-3 inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-primary-100 text-primary-800">{patient.code}</span>
+                    </h3>
+                </div>
+                <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
+                    <dl className="sm:divide-y sm:divide-gray-200">
+                        <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6"> <DetailItem label="العمر" value={patient.age} /> </div>
+                        <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6"> <DetailItem label="الهاتف" value={patient.phone} /> </div>
+                        <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6"> <DetailItem label="الجنس" value={patient.gender === Gender.Female ? 'أنثى' : 'ذكر'} /> </div>
+                        <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                            <DetailItem label="الحالة الاجتماعية/الصحية">
+                                <div className="flex items-center space-x-4">
+                                    {patient.isSmoker && <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">مدخن</span>}
+                                    {patient.isPregnant && <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800">حامل</span>}
+                                    {!patient.isSmoker && !patient.isPregnant && <span className="text-gray-400">لا يوجد</span>}
+                                </div>
+                            </DetailItem>
+                        </div>
+                        <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6"> <DetailItem label="الحساسية الدوائية" value={patient.drugAllergy} /> </div>
+                        <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6"> <DetailItem label="الأمراض المزمنة" value={patient.chronicDiseases} /> </div>
+                        <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6"> <DetailItem label="ملاحظات عامة" value={patient.notes} /> </div>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ===================================================================
+// ConfirmDeleteModal Component
+// ===================================================================
+interface ConfirmDeleteModalProps {
+    onConfirm: () => void;
+    onCancel: () => void;
+    title: string;
+    message: string;
+}
+
+const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCancel, title, message }) => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 transition-opacity" onClick={onCancel}>
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+                <div className="text-center">
+                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                        <TrashIcon className="h-6 w-6 text-red-600" aria-hidden="true" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800 mt-4">{title}</h3>
+                    <p className="text-sm text-gray-500 mt-2 px-4">{message}</p>
+                </div>
+            </div>
+            <div className="bg-gray-50 px-6 py-4 rounded-b-2xl flex justify-center gap-4">
+                <button type="button" onClick={onConfirm} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                    نعم، قم بالحذف
+                </button>
+                <button type="button" onClick={onCancel} className="w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                    إلغاء
+                </button>
+            </div>
+        </div>
+    </div>
+);
+
+// ===================================================================
+// EditSessionModal Component
+// ===================================================================
+interface EditSessionModalProps {
+    session: Session;
+    onSave: (updatedSession: Session) => Promise<void>;
+    onClose: () => void;
+}
+
+const EditSessionModal: React.FC<EditSessionModalProps> = ({ session, onSave, onClose }) => {
+    const [formData, setFormData] = useState({
+        date: new Date(session.date).toISOString().split('T')[0],
+        notes: session.notes,
+    });
+    const [isSaving, setIsSaving] = useState(false);
+    const inputStyle = "w-full px-3 py-2 border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary text-black";
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        const updatedSessionData = {
+            ...session,
+            date: new Date(formData.date).toISOString(),
+            notes: formData.notes,
+        };
+        await onSave(updatedSessionData);
+        setIsSaving(false);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-xl font-bold text-gray-800">تعديل الجلسة</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600" /></button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="p-6 space-y-4">
+                        <div>
+                            <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">تاريخ الجلسة</label>
+                            <input type="date" id="date" name="date" value={formData.date} onChange={handleChange} required className={inputStyle} />
+                        </div>
+                        <div>
+                            <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label>
+                            <textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={4} className={inputStyle}></textarea>
+                        </div>
+                    </div>
+                    <div className="flex justify-end items-center p-4 bg-gray-50 border-t">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">إلغاء</button>
+                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+// ===================================================================
+// ViewTreatmentDetailsModal Component
+// ===================================================================
+interface ViewTreatmentDetailsModalProps {
+    treatment: SessionTreatment;
+    onClose: () => void;
+}
+
+const ViewTreatmentDetailsModal: React.FC<ViewTreatmentDetailsModalProps> = ({ treatment, onClose }) => {
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-xl font-bold text-gray-800">تفاصيل العلاج</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600" /></button>
+                </div>
+                <div className="p-6 space-y-3 divide-y divide-gray-200">
+                    <div>
+                        <p className="text-sm font-medium text-gray-500">اسم العلاج</p>
+                        <p className="text-lg font-semibold text-gray-800">{treatment.name}</p>
+                    </div>
+                    {treatment.treatmentDate && (
+                        <div className="pt-3">
+                            <p className="text-sm font-medium text-gray-500">تاريخ العلاج</p>
+                            <p className="text-lg font-semibold text-gray-800">{new Date(treatment.treatmentDate).toLocaleDateString()}</p>
+                        </div>
+                    )}
+                    <div className="pt-3 grid grid-cols-2 gap-4">
+                        <div>
+                            <p className="text-sm font-medium text-gray-500">السعر</p>
+                            <p className="text-lg font-semibold text-green-600">${treatment.sessionPrice.toFixed(2)}</p>
+                        </div>
+                         {treatment.additionalCosts && treatment.additionalCosts > 0 && (
+                            <div>
+                                <p className="text-sm font-medium text-gray-500">تكاليف إضافية</p>
+                                <p className="text-lg font-semibold text-green-600">${treatment.additionalCosts.toFixed(2)}</p>
+                            </div>
+                         )}
+                    </div>
+                    {treatment.sessionNotes && (
+                         <div className="pt-3">
+                            <p className="text-sm font-medium text-gray-500">ملاحظات الجلسة</p>
+                            <p className="text-md text-gray-700 whitespace-pre-wrap">{treatment.sessionNotes}</p>
+                        </div>
+                    )}
+                     {treatment.notes && (
+                         <div className="pt-3">
+                            <p className="text-sm font-medium text-gray-500">ملاحظات عامة</p>
+                            <p className="text-md text-gray-700 whitespace-pre-wrap">{treatment.notes}</p>
+                        </div>
+                    )}
+                </div>
+                <div className="flex justify-end items-center p-4 bg-gray-50 border-t">
+                    <button type="button" onClick={onClose} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700">إغلاق</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+// ===================================================================
+// AddSessionModal Component
+// ===================================================================
+interface AddSessionModalProps {
+    onSave: (newSession: Omit<Session, 'id' | 'treatments'>) => Promise<void>;
+    onClose: () => void;
+    patientId: string;
+    doctorId: string;
+}
+
+const AddSessionModal: React.FC<AddSessionModalProps> = ({ onSave, onClose, patientId, doctorId }) => {
+    const [formData, setFormData] = useState({ date: new Date().toISOString().split('T')[0], notes: '' });
+    const [isSaving, setIsSaving] = useState(false);
+    const inputStyle = "w-full px-3 py-2 border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary text-black";
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!formData.date) { alert('يرجى تحديد تاريخ الجلسة.'); return; }
+        setIsSaving(true);
+        await onSave({ date: new Date(formData.date).toISOString(), notes: formData.notes, patientId, doctorId });
+        setIsSaving(false);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b"><h2 className="text-xl font-bold text-gray-800">إضافة جلسة جديدة</h2><button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600" /></button></div>
+                <form onSubmit={handleSubmit}>
+                    <div className="p-6 space-y-4">
+                        <div><label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">تاريخ الجلسة</label><input type="date" id="date" name="date" value={formData.date} onChange={handleChange} required className={inputStyle} /></div>
+                        <div><label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={4} className={inputStyle}></textarea></div>
+                    </div>
+                    <div className="flex justify-end items-center p-4 bg-gray-50 border-t"><button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">إلغاء</button><button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button></div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+
+// ===================================================================
+// AddTreatmentToSessionModal Component
+// ===================================================================
+interface AddTreatmentToSessionModalProps {
+    session: Session;
+    onSave: (treatmentToAdd: SessionTreatment, keepOpen?: boolean) => Promise<void>;
+    onClose: () => void;
+}
+
+const AddTreatmentToSessionModal: React.FC<AddTreatmentToSessionModalProps> = ({ session, onSave, onClose }) => {
+    const [allTreatments, setAllTreatments] = useState<Treatment[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [selectedTreatmentId, setSelectedTreatmentId] = useState('');
+    const [sessionPrice, setSessionPrice] = useState('');
+    const [sessionNotes, setSessionNotes] = useState('');
+    const [treatmentDate, setTreatmentDate] = useState(new Date().toISOString().split('T')[0]);
+    const [additionalCosts, setAdditionalCosts] = useState('');
+    const [isSaving, setIsSaving] = useState(false); // For "save and close"
+    const [isSavingAndAdding, setIsSavingAndAdding] = useState(false); // For "save and add"
+    const inputStyle = "w-full px-3 py-2 bg-white border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black";
+
+    useEffect(() => {
+        const fetchTreatments = async () => {
+            setLoading(true);
+            const availableTreatments = await api.treatments.getAll();
+            const sessionTreatmentIds = new Set(session.treatments.map(t => t.id));
+            setAllTreatments(availableTreatments.filter(t => !sessionTreatmentIds.has(t.id)));
+            setLoading(false);
+        };
+        fetchTreatments();
+    }, [session.treatments]);
+    
+    useEffect(() => {
+        const numbers = sessionNotes.match(/\d+(\.\d+)?/g);
+        if (numbers) {
+            const sum = numbers.reduce((total, num) => total + parseFloat(num), 0);
+            setAdditionalCosts(sum > 0 ? sum.toFixed(2) : '');
+        } else {
+            setAdditionalCosts('');
+        }
+    }, [sessionNotes]);
+
+    const handleTreatmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const id = e.target.value;
+        setSelectedTreatmentId(id);
+        const treatment = allTreatments.find(t => t.id === id);
+        if (treatment) { setSessionPrice(treatment.price.toString()); } else { setSessionPrice(''); }
+    };
+
+    const resetForm = useCallback(() => {
+        setSelectedTreatmentId('');
+        setSessionPrice('');
+        setSessionNotes('');
+        setTreatmentDate(new Date().toISOString().split('T')[0]);
+        setAdditionalCosts('');
+        document.getElementById('treatment')?.focus();
+    }, []);
+
+    const handleSave = async (closeAfterSave: boolean) => {
+        const treatment = allTreatments.find(t => t.id === selectedTreatmentId);
+        if (!treatment) {
+            alert("الرجاء اختيار علاج.");
+            return;
+        }
+        
+        const spinnerStateSetter = closeAfterSave ? setIsSaving : setIsSavingAndAdding;
+        spinnerStateSetter(true);
+        
+        try {
+            await onSave({
+                ...treatment,
+                sessionPrice: parseFloat(sessionPrice) || 0,
+                sessionNotes,
+                completed: false,
+                treatmentDate,
+                additionalCosts: parseFloat(additionalCosts) || undefined,
+            }, !closeAfterSave);
+
+            if (!closeAfterSave) {
+                resetForm();
+            } else {
+                onClose();
+            }
+        } catch (error) {
+            console.error("Failed to save treatment:", error);
+        } finally {
+            spinnerStateSetter(false);
+        }
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        handleSave(true);
+    };
+
+    const handleSaveAndAddAnother = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+        handleSave(false);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b"><h2 className="text-xl font-bold text-gray-800">إضافة علاج للجلسة</h2><button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600" /></button></div>
+                {loading ? <div className="p-6 flex justify-center items-center h-48"><LoadingSpinner/></div> : (
+                <form onSubmit={handleSubmit}>
+                    <div className="p-6 space-y-4">
+                        <div>
+                            <label htmlFor="treatment" className="block text-sm font-medium text-gray-700 mb-1">اختر علاج</label>
+                            <select id="treatment" value={selectedTreatmentId} onChange={handleTreatmentChange} required className={inputStyle}>
+                                <option value="">-- اختر علاج --</option>
+                                {allTreatments.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                            </select>
+                        </div>
+                        {selectedTreatmentId && (
+                            <>
+                                <div>
+                                    <label htmlFor="treatmentDate" className="block text-sm font-medium text-gray-700 mb-1">تاريخ العلاج</label>
+                                    <input type="date" id="treatmentDate" value={treatmentDate} onChange={e => setTreatmentDate(e.target.value)} required className={inputStyle} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label htmlFor="sessionPrice" className="block text-sm font-medium text-gray-700 mb-1">السعر</label>
+                                        <input type="number" step="0.01" id="sessionPrice" value={sessionPrice} onChange={e => setSessionPrice(e.target.value)} required className={inputStyle} />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="additionalCosts" className="block text-sm font-medium text-gray-700 mb-1">تكاليف اضافية</label>
+                                        <input type="number" step="0.01" id="additionalCosts" value={additionalCosts} readOnly className={`${inputStyle} bg-gray-100 cursor-not-allowed`} placeholder="يتم حسابه من الملاحظات" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label htmlFor="sessionNotes" className="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label>
+                                    <textarea id="sessionNotes" value={sessionNotes} onChange={e => setSessionNotes(e.target.value)} rows={3} className={inputStyle} placeholder="ملاحظات حول العلاج... سيتم استخلاص الأرقام للتكاليف الإضافية (مثال: 'مادة خاصة 150 ومادة أخرى 50.5')"></textarea>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                     <div className="flex justify-end items-center p-4 bg-gray-50 border-t space-x-2 space-x-reverse">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">إلغاء</button>
+                        <button
+                            type="button"
+                            onClick={handleSaveAndAddAnother}
+                            disabled={isSaving || isSavingAndAdding || !selectedTreatmentId}
+                            className="px-4 py-2 bg-green-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-green-700 disabled:bg-green-300"
+                        >
+                            {isSavingAndAdding ? 'جاري الحفظ...' : 'حفظ واضافة علاج'}
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isSaving || isSavingAndAdding || !selectedTreatmentId}
+                            className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300"
+                        >
+                            {isSaving ? 'جاري الحفظ...' : 'حفظ وإغلاق'}
+                        </button>
+                    </div>
+                </form>
+                )}
+            </div>
+        </div>
+    );
+};
+
+
+// ===================================================================
+// EditPatientModal Component
+// ===================================================================
+interface EditPatientModalProps {
+    patient: Patient;
+    onSave: (updatedPatient: Patient) => Promise<void>;
+    onClose: () => void;
+}
+
+const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, onClose }) => {
+    const [formData, setFormData] = useState({
+        name: patient.name,
+        age: patient.age.toString(),
+        phone: patient.phone,
+        notes: patient.notes,
+        gender: patient.gender || Gender.Male,
+        isSmoker: patient.isSmoker || false,
+        isPregnant: patient.isPregnant || false,
+        drugAllergy: patient.drugAllergy || '',
+        chronicDiseases: patient.chronicDiseases || '',
+    });
+    const [isSaving, setIsSaving] = useState(false);
+    const inputStyle = "w-full px-3 py-2 bg-white border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black";
+
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value, type } = e.target;
+        if (type === 'checkbox') {
+            const { checked } = e.target as HTMLInputElement;
+            setFormData(prev => ({ ...prev, [name]: checked }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+             if (name === 'gender' && value === Gender.Male) {
+                setFormData(prev => ({ ...prev, isPregnant: false }));
+            }
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        const updatedPatientData = {
+            ...patient,
+            name: formData.name,
+            age: parseInt(formData.age, 10) || 0,
+            phone: formData.phone,
+            notes: formData.notes,
+            gender: formData.gender,
+            isSmoker: formData.isSmoker,
+            isPregnant: formData.gender === Gender.Female ? formData.isPregnant : false,
+            drugAllergy: formData.drugAllergy,
+            chronicDiseases: formData.chronicDiseases,
+        };
+        await onSave(updatedPatientData);
+        setIsSaving(false);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-xl font-bold text-gray-800">تعديل بيانات المريض</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600" /></button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="p-6 max-h-[70vh] overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">كود المريض</label>
+                            <p className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-600">{patient.code}</p>
+                        </div>
+                         <div><label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">الاسم</label><input type="text" id="name" name="name" value={formData.name} onChange={handleChange} required className={inputStyle} /></div>
+                         <div><label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-1">العمر</label><input type="number" id="age" name="age" value={formData.age} onChange={handleChange} required className={inputStyle} /></div>
+                         <div><label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">الهاتف</label><input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleChange} required className={inputStyle} /></div>
+                         <div>
+                            <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-1">الجنس</label>
+                            <select id="gender" name="gender" value={formData.gender} onChange={handleChange} className={inputStyle}>
+                                <option value={Gender.Male}>ذكر</option>
+                                <option value={Gender.Female}>أنثى</option>
+                            </select>
+                        </div>
+                        <div className="md:col-span-2"><label htmlFor="drugAllergyEdit" className="block text-sm font-medium text-gray-700 mb-1">الحساسية الدوائية</label><textarea id="drugAllergyEdit" name="drugAllergy" value={formData.drugAllergy} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                        <div className="md:col-span-2"><label htmlFor="chronicDiseasesEdit" className="block text-sm font-medium text-gray-700 mb-1">الأمراض المزمنة</label><textarea id="chronicDiseasesEdit" name="chronicDiseases" value={formData.chronicDiseases} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                        <div className="md:col-span-2"><label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">ملاحظات عامة</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                        <div className="md:col-span-2 flex items-center space-x-4 pt-2">
+                           <label className="flex items-center cursor-pointer">
+                                <input type="checkbox" name="isSmoker" checked={formData.isSmoker} onChange={handleChange} className="h-4 w-4 text-primary rounded border-gray-300 focus:ring-primary" />
+                                <span className="mr-2 text-sm text-gray-700">مدخن</span>
+                            </label>
+                            {formData.gender === Gender.Female && (
+                                <label className="flex items-center cursor-pointer">
+                                    <input type="checkbox" name="isPregnant" checked={formData.isPregnant} onChange={handleChange} className="h-4 w-4 text-primary rounded border-gray-300 focus:ring-primary" />
+                                    <span className="mr-2 text-sm text-gray-700">حامل</span>
+                                </label>
+                            )}
+                        </div>
+                    </div>
+                    <div className="flex justify-end items-center p-4 bg-gray-50 border-t rounded-b-lg space-x-2">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">إلغاء</button>
+                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+// ===================================================================
+// EditSessionTreatmentModal Component
+// ===================================================================
+interface EditSessionTreatmentModalProps {
+    treatment: SessionTreatment;
+    onSave: (updatedTreatment: SessionTreatment) => Promise<void>;
+    onClose: () => void;
+}
+
+const EditSessionTreatmentModal: React.FC<EditSessionTreatmentModalProps> = ({ treatment, onSave, onClose }) => {
+    const [sessionPrice, setSessionPrice] = useState(treatment.sessionPrice.toString());
+    const [sessionNotes, setSessionNotes] = useState(treatment.sessionNotes || '');
+    const [treatmentDate, setTreatmentDate] = useState(treatment.treatmentDate || new Date().toISOString().split('T')[0]);
+    const [additionalCosts, setAdditionalCosts] = useState(treatment.additionalCosts?.toString() || '');
+    const [isSaving, setIsSaving] = useState(false);
+    const inputStyle = "w-full px-3 py-2 bg-white border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black";
+
+    useEffect(() => {
+        const numbers = sessionNotes.match(/\d+(\.\d+)?/g);
+        if (numbers) {
+            const sum = numbers.reduce((total, num) => total + parseFloat(num), 0);
+            setAdditionalCosts(sum > 0 ? sum.toFixed(2) : '');
+        } else {
+            setAdditionalCosts('');
+        }
+    }, [sessionNotes]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        await onSave({ 
+            ...treatment, 
+            sessionPrice: parseFloat(sessionPrice) || 0, 
+            sessionNotes: sessionNotes,
+            treatmentDate: treatmentDate,
+            additionalCosts: parseFloat(additionalCosts) || undefined,
+        });
+        setIsSaving(false);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-xl font-bold text-gray-800">تعديل علاج الجلسة</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600" /></button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="p-6 space-y-4">
+                        <p className="text-gray-700"><span className="font-semibold">العلاج:</span> {treatment.name}</p>
+                        <div>
+                            <label htmlFor="treatmentDate" className="block text-sm font-medium text-gray-700 mb-1">تاريخ العلاج</label>
+                            <input type="date" id="treatmentDate" value={treatmentDate} onChange={e => setTreatmentDate(e.target.value)} required className={inputStyle} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label htmlFor="sessionPrice" className="block text-sm font-medium text-gray-700 mb-1">السعر</label>
+                                <input type="number" step="0.01" id="sessionPrice" value={sessionPrice} onChange={e => setSessionPrice(e.target.value)} required className={inputStyle} />
+                            </div>
+                            <div>
+                                <label htmlFor="additionalCosts" className="block text-sm font-medium text-gray-700 mb-1">تكاليف اضافية</label>
+                                <input type="number" step="0.01" id="additionalCosts" value={additionalCosts} readOnly className={`${inputStyle} bg-gray-100 cursor-not-allowed`} placeholder="يتم حسابه من الملاحظات" />
+                            </div>
+                        </div>
+                         <div>
+                            <label htmlFor="sessionNotes" className="block text-sm font-medium text-gray-700 mb-1">ملاحظات خاصة بالجلسة</label>
+                            <textarea id="sessionNotes" name="sessionNotes" value={sessionNotes} onChange={(e) => setSessionNotes(e.target.value)} rows={3} className={inputStyle} placeholder="ملاحظات حول العلاج... سيتم استخلاص الأرقام للتكاليف الإضافية." />
+                        </div>
+                    </div>
+                    <div className="flex justify-end items-center p-4 bg-gray-50 border-t rounded-b-lg space-x-2">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">إلغاء</button>
+                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+// ===================================================================
+// SessionTreatmentsPage Component
+// ===================================================================
+interface SessionTreatmentsPageProps {
+    session: Session;
+    onBack: () => void;
+}
+const SessionTreatmentsPage: React.FC<SessionTreatmentsPageProps> = ({ session: initialSession, onBack }) => {
+    const [session, setSession] = useState<Session>(initialSession);
+    const [loading, setLoading] = useState(false);
+    const [editingTreatment, setEditingTreatment] = useState<SessionTreatment | null>(null);
+    const [viewingTreatment, setViewingTreatment] = useState<SessionTreatment | null>(null);
+    const [isAddingTreatment, setIsAddingTreatment] = useState(false);
+    const [deletingTreatment, setDeletingTreatment] = useState<SessionTreatment | null>(null);
+
+    const refreshSession = useCallback(async () => {
+        setLoading(true);
+        const freshSession = await api.sessions.getById(session.id);
+        if (freshSession) { setSession(freshSession); }
+        setLoading(false);
+    }, [session.id]);
+    
+    useEffect(() => { refreshSession(); }, [refreshSession]);
+
+    const handleAddTreatment = async (treatmentToAdd: SessionTreatment, keepOpen: boolean = false) => {
+        const updatedTreatments = [...session.treatments, treatmentToAdd];
+        await api.sessions.update(session.id, { treatments: updatedTreatments });
+        if (!keepOpen) {
+            setIsAddingTreatment(false);
+        }
+        await refreshSession();
+    };
+
+    const handleUpdateTreatment = async (updatedTreatment: SessionTreatment) => {
+        const newTreatments = session.treatments.map(t => t.id === updatedTreatment.id ? updatedTreatment : t);
+        await api.sessions.update(session.id, { treatments: newTreatments });
+        await refreshSession();
+        setEditingTreatment(null);
+    };
+
+    const confirmDeleteTreatment = async () => {
+        if (deletingTreatment) {
+            const newTreatments = session.treatments.filter(t => t.id !== deletingTreatment.id);
+            await api.sessions.update(session.id, { treatments: newTreatments });
+            setDeletingTreatment(null);
+            await refreshSession();
+        }
+    };
+    
+    const handleToggleCompletion = async (treatmentId: string) => {
+        const newTreatments = session.treatments.map(t =>
+            t.id === treatmentId ? { ...t, completed: !t.completed } : t
+        );
+        setSession(prev => ({ ...prev!, treatments: newTreatments }));
+        await api.sessions.update(session.id, { treatments: newTreatments });
+    };
+
+    return (
+        <div>
+             <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-4">
+                    <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                        <ArrowBackIcon className="h-5 w-5" />
+                        <span>العودة</span>
+                    </button>
+                    <div><h1 className="text-2xl md:text-3xl font-bold text-gray-800">علاجات جلسة</h1><p className="text-gray-500">{new Date(session.date).toLocaleDateString()}</p></div>
+                </div>
+                <div>
+                    <button onClick={() => setIsAddingTreatment(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors"><PlusIcon className="h-5 w-5 ml-2" />إضافة علاج</button>
+                </div>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-md min-h-[200px]">
+                 {loading ? <CenteredLoadingSpinner /> : ( session.treatments.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{session.treatments.map(t => (
+                            <div key={t.id} className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-col justify-between hover:shadow-lg">
+                                <div>
+                                    <h3 className="text-xl font-bold text-gray-800">{t.name}</h3>
+                                    <p className="text-green-600 font-semibold text-lg mt-2">${t.sessionPrice.toFixed(2)}</p>
+                                    {t.sessionNotes && <p className="text-sm text-gray-600 mt-2 bg-gray-100 p-2 rounded-md">{t.sessionNotes}</p>}
+                                    <div className="mt-4">
+                                        <label className="flex items-center space-x-2 cursor-pointer">
+                                            <input type="checkbox" checked={t.completed} onChange={() => handleToggleCompletion(t.id)} className="h-5 w-5 rounded text-primary focus:ring-primary-500 border-gray-300"/>
+                                            <span className="text-sm font-medium text-gray-700">مكتمل</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div className="mt-4 pt-4 border-t flex items-center justify-end space-x-2">
+                                    <button onClick={() => setViewingTreatment(t)} className="text-gray-600 hover:text-primary p-2 rounded-full hover:bg-gray-200" title="عرض التفاصيل"><EyeIcon className="h-5 w-5" /></button>
+                                    <button onClick={() => setEditingTreatment(t)} className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-100" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
+                                    <button onClick={() => setDeletingTreatment(t)} className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-100" title="حذف"><TrashIcon className="h-5 w-5" /></button>
+                                </div>
+                            </div>))}
+                        </div>) : <p className="text-center text-gray-500 py-8">لا توجد علاجات مسجلة لهذه الجلسة.</p>
+                )}
+            </div>
+            {editingTreatment && <EditSessionTreatmentModal treatment={editingTreatment} onClose={() => setEditingTreatment(null)} onSave={handleUpdateTreatment} />}
+            {viewingTreatment && <ViewTreatmentDetailsModal treatment={viewingTreatment} onClose={() => setViewingTreatment(null)} />}
+            {isAddingTreatment && <AddTreatmentToSessionModal session={session} onClose={() => setIsAddingTreatment(false)} onSave={handleAddTreatment} />}
+            {deletingTreatment && (
+                <ConfirmDeleteModal
+                    title="حذف العلاج"
+                    message={`هل أنت متأكد من حذف علاج "${deletingTreatment.name}" من هذه الجلسة؟`}
+                    onConfirm={confirmDeleteTreatment}
+                    onCancel={() => setDeletingTreatment(null)}
+                />
+            )}
+        </div>
+    );
+};
+
+// ===================================================================
+// PatientSessionsPage Component
+// ===================================================================
+const PatientSessionsPage: React.FC<{ patient: Patient; onBack: () => void; }> = ({ patient, onBack }) => {
+    const [sessions, setSessions] = useState<Session[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [viewingTreatmentsFor, setViewingTreatmentsFor] = useState<Session | null>(null);
+    const [editingSession, setEditingSession] = useState<Session | null>(null);
+    const [isAddingSession, setIsAddingSession] = useState(false);
+    const [deletingSession, setDeletingSession] = useState<Session | null>(null);
+
+    const fetchSessions = useCallback(async () => {
+        setLoading(true);
+        const allSessions = await api.sessions.getAll();
+        setSessions(allSessions.filter(s => s.patientId === patient.id));
+        setLoading(false);
+    }, [patient.id]);
+
+    useEffect(() => { fetchSessions(); }, [fetchSessions]);
+
+    const handleCreateSession = async (newSessionData: Omit<Session, 'id' | 'treatments'>) => {
+        await api.sessions.create({ ...newSessionData, treatments: [] } as Omit<Session, 'id'>);
+        setIsAddingSession(false);
+        await fetchSessions();
+    };
+
+    const handleUpdateSession = async (updatedSession: Session) => {
+        await api.sessions.update(updatedSession.id, updatedSession);
+        setEditingSession(null);
+        await fetchSessions();
+    };
+
+    const confirmDeleteSession = async () => {
+        if (deletingSession) {
+            await api.sessions.delete(deletingSession.id);
+            setDeletingSession(null);
+            await fetchSessions();
+        }
+    };
+
+    if (viewingTreatmentsFor) {
+        return <SessionTreatmentsPage session={viewingTreatmentsFor} onBack={() => { setViewingTreatmentsFor(null); fetchSessions(); }} />;
+    }
+
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-4">
+                    <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                        <ArrowBackIcon className="h-5 w-5" />
+                        <span>العودة</span>
+                    </button>
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-800">جلسات: {patient.name}</h1>
+                </div>
+                 <div>
+                    <button onClick={() => setIsAddingSession(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors"><PlusIcon className="h-5 w-5 ml-2" />إضافة جلسة</button>
+                </div>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-md min-h-[200px]">
+                {loading ? <CenteredLoadingSpinner /> : sessions.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{sessions.map(s => {
+                        const allTreatmentsCompleted = s.treatments.length > 0 && s.treatments.every(t => t.completed);
+                        return (
+                        <div key={s.id} className="relative bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-col justify-between hover:shadow-lg">
+                             {allTreatmentsCompleted && (
+                                <div className="absolute top-3 left-3 text-green-500 bg-white rounded-full" title="الجلسة مكتملة">
+                                    <CheckIcon className="h-6 w-6" />
+                                </div>
+                            )}
+                            <div><p className="font-bold text-lg text-gray-800">{new Date(s.date).toLocaleDateString()}</p><p className="text-gray-600 mt-2 text-sm h-12 overflow-hidden">{s.notes || 'لا توجد ملاحظات.'}</p></div>
+                            <div className="mt-4 pt-4 border-t flex items-center justify-end space-x-2">
+                                <button onClick={() => setViewingTreatmentsFor(s)} className="flex items-center text-purple-600 hover:text-purple-800 p-1 rounded hover:bg-purple-100 text-sm"><BeakerIcon className="h-4 w-4" /><span className="mr-1">العلاجات ({s.treatments.length})</span></button>
+                                <button onClick={() => setEditingSession(s)} className="flex items-center text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-100 text-sm"><PencilIcon className="h-4 w-4" /><span className="mr-1">تعديل</span></button>
+                                <button onClick={() => setDeletingSession(s)} className="flex items-center text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-100 text-sm"><TrashIcon className="h-4 w-4" /><span className="mr-1">حذف</span></button>
+                            </div>
+                        </div>
+                        )
+                    })}
+                    </div>) : <p className="text-center text-gray-500 py-8">لا توجد جلسات مسجلة.</p>}
+            </div>
+            {isAddingSession && <AddSessionModal onClose={() => setIsAddingSession(false)} onSave={handleCreateSession} patientId={patient.id} doctorId={patient.doctorId} />}
+            {editingSession && <EditSessionModal session={editingSession} onClose={() => setEditingSession(null)} onSave={handleUpdateSession} />}
+            {deletingSession && (
+                <ConfirmDeleteModal
+                    title="حذف الجلسة"
+                    message={`هل أنت متأكد من حذف جلسة تاريخ ${new Date(deletingSession.date).toLocaleDateString()}؟`}
+                    onConfirm={confirmDeleteSession}
+                    onCancel={() => setDeletingSession(null)}
+                />
+            )}
+        </div>
+    );
+};
+
+// ===================================================================
+// DoctorPatientsList Component (Specific to this page)
+// ===================================================================
+interface DoctorPatientsListProps {
+    doctor: User;
+    onBack: () => void;
+}
+
+const DoctorPatientsList: React.FC<DoctorPatientsListProps> = ({ doctor, onBack }) => {
+    const [patients, setPatients] = useState<Patient[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [viewingSessionsFor, setViewingSessionsFor] = useState<Patient | null>(null);
+    const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+    const [deletingPatient, setDeletingPatient] = useState<Patient | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [viewingPatient, setViewingPatient] = useState<Patient | null>(null);
+    const [viewingPhotosFor, setViewingPhotosFor] = useState<Patient | null>(null);
+
+    const fetchPatients = useCallback(async () => {
+        setLoading(true);
+        const allPatients = await api.patients.getAll();
+        setPatients(allPatients.filter(p => p.doctorId === doctor.id));
+        setLoading(false);
+    }, [doctor.id]);
+
+    useEffect(() => {
+        fetchPatients();
+    }, [fetchPatients]);
+
+    const handleUpdatePatient = async (updatedPatient: Patient) => {
+        await api.patients.update(updatedPatient.id, updatedPatient);
+        setEditingPatient(null);
+        await fetchPatients();
+    };
+
+    const confirmDeletePatient = async () => {
+        if (deletingPatient) {
+            await api.patients.delete(deletingPatient.id);
+            setDeletingPatient(null);
+            await fetchPatients();
+        }
+    };
+    
+    const filteredPatients = patients.filter(patient =>
+        patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        patient.code.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
+    if (viewingPatient) {
+        return <PatientDetailsPage patient={viewingPatient} onBack={() => setViewingPatient(null)} />;
+    }
+    
+    if (viewingPhotosFor) {
+        return <PatientGalleryPage patient={viewingPhotosFor} onBack={() => setViewingPhotosFor(null)} />;
+    }
+
+    if (viewingSessionsFor) {
+        return <PatientSessionsPage patient={viewingSessionsFor} onBack={() => setViewingSessionsFor(null)} />;
+    }
+
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+                 <div className="flex items-center gap-4">
+                    <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                        <ArrowBackIcon className="h-5 w-5" />
+                        <span>كل الأطباء</span>
+                    </button>
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">مرضى الدكتور {doctor.name}</h1>
+                    </div>
+                </div>
+                 <div className="relative w-full max-w-sm">
+                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"><SearchIcon className="w-5 h-5 text-gray-400" /></div>
+                   <input
+                       type="text"
+                       value={searchTerm}
+                       onChange={(e) => setSearchTerm(e.target.value)}
+                       placeholder="ابحث بالاسم أو الكود..."
+                       className="w-full pl-3 pr-10 py-2 bg-white border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black"
+                   />
+                </div>
+            </div>
+            
+            <div className="bg-white p-6 rounded-xl shadow-md min-h-[200px]">
+                {loading ? <CenteredLoadingSpinner /> : (
+                    filteredPatients.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {filteredPatients.map(patient => (
+                                <div key={patient.id} className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-col justify-between hover:shadow-lg">
+                                    <div>
+                                        <div className="flex justify-between items-start">
+                                            <h3 className="text-xl font-bold text-gray-800">{patient.name}</h3>
+                                            <span className="text-xs font-semibold text-gray-500 bg-gray-200 px-2 py-1 rounded-full">{patient.code}</span>
+                                        </div>
+                                        <p className="mt-2 text-sm text-gray-600"><span className="font-semibold">العمر:</span> {patient.age}</p>
+                                    </div>
+                                    <div className="mt-4 pt-4 border-t flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+                                         <button onClick={() => setViewingPatient(patient)} className="flex items-center text-gray-600 hover:text-gray-800 p-1 rounded hover:bg-gray-200 text-sm" title="عرض التفاصيل"><EyeIcon className="h-4 w-4" /><span className="mr-1">عرض</span></button>
+                                         <button onClick={() => setViewingPhotosFor(patient)} className="flex items-center text-indigo-600 hover:text-indigo-800 p-1 rounded hover:bg-indigo-100 text-sm" title="عرض الصور"><PhotographIcon className="h-4 w-4" /><span className="mr-1">الصور</span></button>
+                                         <button onClick={() => setViewingSessionsFor(patient)} className="flex items-center text-teal-600 hover:text-teal-800 p-1 rounded hover:bg-teal-100 text-sm"><ClipboardListIcon className="h-4 w-4" /><span className="mr-1">الجلسات</span></button>
+                                         <button onClick={() => setEditingPatient(patient)} className="flex items-center text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-100 text-sm"><PencilIcon className="h-4 w-4" /><span className="mr-1">تعديل</span></button>
+                                         <button onClick={() => setDeletingPatient(patient)} className="flex items-center text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-100 text-sm"><TrashIcon className="h-4 w-4" /><span className="mr-1">حذف</span></button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : ( <p className="text-center text-gray-500 py-8">لا يوجد مرضى مسجلون لهذا الطبيب.</p> )
+                )}
+            </div>
+            {editingPatient && <EditPatientModal patient={editingPatient} onClose={() => setEditingPatient(null)} onSave={handleUpdatePatient} />}
+            {deletingPatient && (
+                <ConfirmDeleteModal
+                    title="حذف المريض"
+                    message={`هل أنت متأكد من رغبتك في حذف ${deletingPatient.name}؟`}
+                    onConfirm={confirmDeletePatient}
+                    onCancel={() => setDeletingPatient(null)}
+                />
+            )}
+        </div>
+    );
+};
+
+// ===================================================================
+// DoctorActivityLogPage Component
+// ===================================================================
+interface DoctorActivityLogPageProps {
+    doctor: User;
+    onBack: () => void;
+}
+
+const DoctorActivityLogPage: React.FC<DoctorActivityLogPageProps> = ({ doctor, onBack }) => {
+    const [logs, setLogs] = useState<ActivityLog[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [dateFilter, setDateFilter] = useState('');
+
+    useEffect(() => {
+        const fetchLogs = async () => {
+            setLoading(true);
+            const doctorLogs = await api.activityLogs.getByUserId(doctor.id);
+            setLogs(doctorLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+            setLoading(false);
+        };
+        fetchLogs();
+    }, [doctor.id]);
+
+    const filteredLogs = logs.filter(log => {
+        const matchesSearch = log.description.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesDate = !dateFilter || log.timestamp.startsWith(dateFilter);
+        return matchesSearch && matchesDate;
+    });
+
+    const ActionIcon: React.FC<{ type: ActivityLogActionType }> = ({ type }) => {
+        switch (type) {
+            case ActivityLogActionType.Create:
+                return <PlusIcon className="h-5 w-5 text-green-500" />;
+            case ActivityLogActionType.Update:
+                return <PencilIcon className="h-5 w-5 text-blue-500" />;
+            case ActivityLogActionType.Delete:
+                return <TrashIcon className="h-5 w-5 text-red-500" />;
+            default:
+                return null;
+        }
+    };
+
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+                <div className="flex items-center gap-4">
+                     <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                        <ArrowBackIcon className="h-5 w-5" />
+                        <span>العودة</span>
+                    </button>
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">سجل أعمال الطبيب</h1>
+                        <p className="text-gray-500">{doctor.name}</p>
+                    </div>
+                </div>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-md">
+                 <div className="flex flex-col md:flex-row gap-4 mb-6">
+                    <div className="relative flex-grow">
+                       <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"><SearchIcon className="w-5 h-5 text-gray-400" /></div>
+                       <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="ابحث في السجل..." className="w-full pl-3 pr-10 py-2 bg-white border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black" />
+                    </div>
+                    <input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="w-full md:w-auto px-3 py-2 bg-white border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black" />
+                </div>
+                {loading ? <CenteredLoadingSpinner /> : (
+                    filteredLogs.length > 0 ? (
+                        <div className="space-y-4">
+                            {filteredLogs.map(log => (
+                                <div key={log.id} className="flex items-start p-4 bg-gray-50 rounded-lg border">
+                                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-white flex items-center justify-center border mr-4"><ActionIcon type={log.actionType} /></div>
+                                    <div className="flex-grow">
+                                        <p className="font-semibold text-gray-800">{log.description}</p>
+                                        <p className="text-sm text-gray-500">في {new Date(log.timestamp).toLocaleString()}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-16"><h3 className="text-lg font-medium text-gray-900">لا توجد سجلات</h3><p className="mt-1 text-sm text-gray-500">لم يتم العثور على سجلات تطابق بحثك.</p></div>
+                    )
+                )}
+            </div>
+        </div>
+    );
+};
+
+
+// ===================================================================
+// AddDoctorModal Component
+// ===================================================================
+interface AddDoctorModalProps {
+    onSave: (newUser: Omit<User, 'id' | 'role'>) => Promise<void>;
+    onClose: () => void;
+}
+
+const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ onSave, onClose }) => {
+    const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+    const [isSaving, setIsSaving] = useState(false);
+    const inputStyle = "w-full px-3 py-2 bg-white border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black";
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        await onSave(formData);
+        setIsSaving(false);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-xl font-bold text-gray-800">إضافة طبيب جديد</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600" /></button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="p-6 space-y-4">
+                        <div><label htmlFor="nameAdd" className="block text-sm font-medium text-gray-700 mb-1">الاسم</label><input type="text" id="nameAdd" name="name" value={formData.name} onChange={handleChange} required className={inputStyle} /></div>
+                        <div><label htmlFor="emailAdd" className="block text-sm font-medium text-gray-700 mb-1">البريد الإلكتروني</label><input type="email" id="emailAdd" name="email" value={formData.email} onChange={handleChange} required className={inputStyle} /></div>
+                        <div><label htmlFor="passwordAdd" className="block text-sm font-medium text-gray-700 mb-1">كلمة المرور</label><input type="password" id="passwordAdd" name="password" value={formData.password} onChange={handleChange} required className={inputStyle} /></div>
+                    </div>
+                    <div className="flex justify-end items-center p-4 bg-gray-50 border-t">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">إلغاء</button>
+                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+// ===================================================================
+// EditDoctorModal Component
+// ===================================================================
+interface EditDoctorModalProps {
+    doctor: User;
+    onSave: (updatedDoctor: User) => Promise<void>;
+    onClose: () => void;
+}
+
+const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ doctor, onSave, onClose }) => {
+    const [formData, setFormData] = useState({ name: doctor.name, email: doctor.email, password: '' });
+    const [isSaving, setIsSaving] = useState(false);
+    const inputStyle = "w-full px-3 py-2 bg-white border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black";
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        const updates: Partial<User> = { name: formData.name, email: formData.email };
+        if (formData.password) updates.password = formData.password;
+        await onSave({ ...doctor, ...updates });
+        setIsSaving(false);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-xl font-bold text-gray-800">تعديل بيانات الطبيب</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600" /></button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="p-6 space-y-4">
+                        <div><label htmlFor="nameEdit" className="block text-sm font-medium text-gray-700 mb-1">الاسم</label><input type="text" id="nameEdit" name="name" value={formData.name} onChange={handleChange} required className={inputStyle} /></div>
+                        <div><label htmlFor="emailEdit" className="block text-sm font-medium text-gray-700 mb-1">البريد الإلكتروني</label><input type="email" id="emailEdit" name="email" value={formData.email} onChange={handleChange} required className={inputStyle} /></div>
+                        <div><label htmlFor="passwordEdit" className="block text-sm font-medium text-gray-700 mb-1">كلمة المرور (اتركها فارغة لعدم التغيير)</label><input type="password" id="passwordEdit" name="password" value={formData.password} onChange={handleChange} className={inputStyle} /></div>
+                    </div>
+                    <div className="flex justify-end items-center p-4 bg-gray-50 border-t">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">إلغاء</button>
+                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+// ===================================================================
+// Main DoctorsPage Component
+// ===================================================================
+const DoctorsPage: React.FC = () => {
+    const [doctors, setDoctors] = useState<User[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [viewingPatientsFor, setViewingPatientsFor] = useState<User | null>(null);
+    const [isAddingDoctor, setIsAddingDoctor] = useState(false);
+    const [editingDoctor, setEditingDoctor] = useState<User | null>(null);
+    const [deletingDoctor, setDeletingDoctor] = useState<User | null>(null);
+    const [viewingActivityLogForDoctor, setViewingActivityLogForDoctor] = useState<User | null>(null);
+
+    const fetchDoctors = useCallback(async () => {
+        setLoading(true);
+        setDoctors(await api.doctors.getAll());
+        setLoading(false);
+    }, []);
+
+    useEffect(() => {
+        fetchDoctors();
+    }, [fetchDoctors]);
+
+    const handleCreateDoctor = async (newDoctorData: Omit<User, 'id' | 'role'>) => {
+        await api.doctors.create({ ...newDoctorData, role: UserRole.Doctor });
+        setIsAddingDoctor(false);
+        await fetchDoctors();
+    };
+
+    const handleUpdateDoctor = async (updatedDoctor: User) => {
+        await api.doctors.update(updatedDoctor.id, updatedDoctor);
+        setEditingDoctor(null);
+        await fetchDoctors();
+    };
+
+    const confirmDeleteDoctor = async () => {
+        if (deletingDoctor) {
+            await api.doctors.delete(deletingDoctor.id);
+            setDeletingDoctor(null);
+            await fetchDoctors();
+        }
+    };
+
+    if (viewingActivityLogForDoctor) {
+        return <DoctorActivityLogPage doctor={viewingActivityLogForDoctor} onBack={() => setViewingActivityLogForDoctor(null)} />;
+    }
+
+    if (viewingPatientsFor) {
+        return <DoctorPatientsList doctor={viewingPatientsFor} onBack={() => setViewingPatientsFor(null)} />;
+    }
+
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-800">إدارة الأطباء</h1>
+                <button onClick={() => setIsAddingDoctor(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
+                    <PlusIcon className="h-5 w-5 ml-2" />
+                    إضافة طبيب
+                </button>
+            </div>
+            
+            <div className="bg-white p-6 rounded-xl shadow-md min-h-[200px]">
+                {loading ? <CenteredLoadingSpinner /> : (
+                    doctors.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {doctors.map(doc => (
+                                <div key={doc.id} className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-col justify-between transition-shadow hover:shadow-lg">
+                                    <div>
+                                        <h3 className="text-xl font-bold text-gray-800">{doc.name}</h3>
+                                        <p className="text-gray-600 mt-1 text-sm">{doc.email}</p>
+                                    </div>
+                                    <div className="mt-4 pt-4 border-t border-gray-200 flex flex-wrap items-center justify-end gap-2">
+                                        <button onClick={() => setViewingActivityLogForDoctor(doc)} className="flex items-center text-gray-600 hover:text-gray-800 p-1 rounded hover:bg-gray-200 text-sm">
+                                            <ListBulletIcon className="h-4 w-4" />
+                                            <span className="mr-1">الأعمال</span>
+                                        </button>
+                                        <button onClick={() => setViewingPatientsFor(doc)} className="flex items-center text-teal-600 hover:text-teal-800 p-1 rounded hover:bg-teal-100 text-sm">
+                                            <UserGroupIcon className="h-4 w-4" />
+                                            <span className="mr-1">عرض المرضى</span>
+                                        </button>
+                                        <button onClick={() => setEditingDoctor(doc)} className="flex items-center text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-100 text-sm">
+                                            <PencilIcon className="h-4 w-4" />
+                                            <span className="mr-1">تعديل</span>
+                                        </button>
+                                        <button onClick={() => setDeletingDoctor(doc)} className="flex items-center text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-100 text-sm">
+                                            <TrashIcon className="h-4 w-4" />
+                                            <span className="mr-1">حذف</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : ( <p className="text-center text-gray-500 py-8">لم يتم العثور على أطباء.</p> )
+                )}
+            </div>
+
+            {isAddingDoctor && <AddDoctorModal onClose={() => setIsAddingDoctor(false)} onSave={handleCreateDoctor} />}
+            {editingDoctor && <EditDoctorModal doctor={editingDoctor} onClose={() => setEditingDoctor(null)} onSave={handleUpdateDoctor} />}
+            {deletingDoctor && (
+                <ConfirmDeleteModal
+                    title="حذف الطبيب"
+                    message={`هل أنت متأكد من رغبتك في حذف ${deletingDoctor.name}؟ لا يمكن التراجع عن هذا الإجراء.`}
+                    onConfirm={confirmDeleteDoctor}
+                    onCancel={() => setDeletingDoctor(null)}
+                />
+            )}
+        </div>
+    );
+};
+
+export default DoctorsPage;
