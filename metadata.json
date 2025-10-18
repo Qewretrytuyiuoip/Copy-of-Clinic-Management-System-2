@@ -1,5 +1,5 @@
 {
-  "name": "Copy of Clinic Management System 2",
+  "name": "Copy of Clinic Management System",
   "description": "A comprehensive web application for managing clinic operations, including patients, appointments, treatments, and staff roles (Admin, Doctor, Secretary). It features a responsive, mobile-first design and is ready to be connected to a backend API.",
   "requestFramePermissions": []
 }

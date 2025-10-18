@@ -1,5 +1,5 @@
-// FIX: Added PatientPhoto, ActivityLog and ActivityLogActionType to the import list.
 import { User, UserRole, Patient, Treatment, Session, Appointment, Payment, DoctorAvailability, SessionTreatment, Gender, DaySchedule, PatientPhoto, ActivityLog, ActivityLogActionType } from '../types';
+import { API_BASE_URL } from '../config';
 
 // --- MOCK DATABASE ---
 
@@ -104,15 +104,150 @@ let MOCK_AVAILABILITY: DoctorAvailability[] = [
 ];
 
 
-// --- MOCK API FUNCTIONS ---
+// --- API FUNCTIONS ---
 
 const simulateDelay = <T,>(data: T): Promise<T> => new Promise(res => setTimeout(() => res(data), 500));
 
-// Auth
-export const login = (email: string, pass: string): Promise<User | null> => {
-    const user = MOCK_USERS.find(u => u.email === email && u.password === pass);
-    return simulateDelay(user || null);
+// Helper for authenticated API calls
+const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+        console.error('No auth token found for API request');
+        throw new Error('Authentication token not found.');
+    }
+
+    const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+        ...options.headers,
+    };
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers,
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`API call to ${endpoint} failed:`, response.status, errorText);
+        throw new Error(`API call failed: ${response.statusText}`);
+    }
+
+    return response.json();
 };
+
+// Auth
+export const login = async (email: string, password: string): Promise<User | null> => {
+    try {
+        // Using FormData to send login credentials as per backend requirements.
+        // The browser will automatically set the 'Content-Type' header to 'multipart/form-data',
+        // which helps avoid CORS preflight issues and is compatible with many server configurations (e.g., PHP).
+        const formData = new FormData();
+        formData.append('email', email);
+        formData.append('password', password);
+
+        const response = await fetch(`${API_BASE_URL}login`, {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            try {
+                const errorData = await response.json();
+                console.error('Login failed:', response.status, response.statusText, errorData);
+            } catch (e) {
+                const errorText = await response.text();
+                console.error('Login failed with non-JSON response:', response.status, response.statusText, errorText);
+            }
+            return null;
+        }
+
+        const data = await response.json();
+        
+        const userFromApi = data.user;
+
+        if (userFromApi && userFromApi.id && userFromApi.name && userFromApi.role) {
+            const user: User = {
+                id: String(userFromApi.id), // Convert numeric ID to string
+                name: userFromApi.name,
+                email: userFromApi.email,
+                role: userFromApi.role, // Assuming API role string matches UserRole enum
+            };
+
+            if (data.token) {
+                // Store the token for future authenticated requests
+                localStorage.setItem('authToken', data.token);
+            }
+            
+            return user;
+        }
+
+        console.error('Invalid user data received from API:', data);
+        return null;
+
+    } catch (error) {
+        console.error('An error occurred during the login API call:', error);
+        return null;
+    }
+};
+
+export const logout = async (): Promise<void> => {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+        // If there's no token, we can't make an authenticated request.
+        // The user is already logged out locally.
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}logout`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            // Log the error but don't prevent client-side logout.
+            console.error('Logout API call failed:', response.status, response.statusText);
+        }
+    } catch (error) {
+        // This could be a network error. Log it.
+        console.error('An error occurred during the logout API call:', error);
+    }
+};
+
+// A single source of truth for fetching all users from the API
+// Includes a simple cache to avoid redundant network calls.
+let allUsersCache: User[] | null = null;
+const getAllUsers = async (forceRefresh: boolean = false): Promise<User[]> => {
+    if (allUsersCache && !forceRefresh) {
+        return allUsersCache;
+    }
+
+    try {
+        const usersFromApi = await apiFetch('users/all', { method: 'POST' });
+        
+        if (!Array.isArray(usersFromApi)) {
+            console.error('Expected an array of users from API, but got:', usersFromApi);
+            allUsersCache = []; // Reset cache to an empty array
+            return [];
+        }
+        
+        allUsersCache = usersFromApi.map((apiUser: any) => ({
+            id: String(apiUser.id),
+            name: apiUser.name,
+            email: apiUser.email,
+            role: apiUser.role as UserRole,
+        }));
+        return allUsersCache;
+    } catch (error) {
+        console.error("Failed to fetch all users:", error);
+        return []; // Return empty array on failure to prevent app crash
+    }
+};
+
 
 // Generic CRUD for non-user data
 const createCRUD = <T extends { id: string }>(mockData: T[]) => ({
@@ -137,26 +272,148 @@ const createCRUD = <T extends { id: string }>(mockData: T[]) => ({
     },
 });
 
-// Specific CRUD for users (Doctors, Secretaries) to ensure MOCK_USERS is always the source of truth
+// Specific CRUD for users (Doctors, Secretaries) to fetch from the API
 const createUserCRUD = (role: UserRole) => ({
-    getAll: () => simulateDelay(MOCK_USERS.filter(u => u.role === role)),
+    getAll: async (): Promise<User[]> => {
+        const allUsers = await getAllUsers();
+        return allUsers.filter(u => u.role === role);
+    },
     getById: (id: string) => simulateDelay(MOCK_USERS.find(item => item.id === id && item.role === role) || null),
-    create: (item: Omit<User, 'id'>) => {
-        const newUser = { ...item, id: `new${Date.now()}` } as User;
-        MOCK_USERS.push(newUser);
-        return simulateDelay(newUser);
+    create: async (item: Omit<User, 'id'>): Promise<User> => {
+        try {
+            const formData = new FormData();
+            formData.append('name', item.name);
+            formData.append('email', item.email);
+            if (!item.password) {
+                throw new Error("Password is required to create a new user.");
+            }
+            formData.append('password', item.password);
+            formData.append('role', item.role);
+
+            const token = localStorage.getItem('authToken');
+            if (!token) throw new Error("Authentication token not found.");
+
+            const response = await fetch(`${API_BASE_URL}users/add`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to create user: ${errorText}`);
+            }
+
+            const responseData = await response.json();
+            const createdApiUser = responseData.data;
+
+            if (!createdApiUser || !createdApiUser.id) {
+                console.error("Invalid API response after creating user. Full response:", responseData);
+                const errorMessage = responseData.message || "Invalid API response after creating user.";
+                throw new Error(errorMessage);
+            }
+
+            const newUser: User = {
+                id: String(createdApiUser.id),
+                name: createdApiUser.name,
+                email: createdApiUser.email,
+                role: createdApiUser.role as UserRole,
+            };
+
+            allUsersCache = null; // Invalidate cache after creation
+            return newUser;
+        } catch (error) {
+            console.error("Failed to create user via API:", error);
+            throw error;
+        }
     },
-    update: (id: string, updates: Partial<User>) => {
-        const index = MOCK_USERS.findIndex(item => item.id === id && item.role === role);
-        if (index === -1) return simulateDelay(null);
-        MOCK_USERS[index] = { ...MOCK_USERS[index], ...updates };
-        return simulateDelay(MOCK_USERS[index]);
+    update: async (id: string, updates: Partial<User>): Promise<User | null> => {
+        try {
+            const formData = new FormData();
+            formData.append('id', id);
+
+            // Only append fields that are being updated
+            if (updates.name) {
+                formData.append('name', updates.name);
+            }
+            if (updates.email) {
+                formData.append('email', updates.email);
+            }
+            // Only send password if a new one is provided and is not empty
+            if (updates.password && updates.password.length > 0) {
+                formData.append('password', updates.password);
+            }
+
+            const token = localStorage.getItem('authToken');
+            if (!token) throw new Error("Authentication token not found.");
+
+            const response = await fetch(`${API_BASE_URL}users/edit`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to update user: ${errorText}`);
+            }
+
+            const responseData = await response.json();
+            const updatedApiUser = responseData.data;
+
+            if (!updatedApiUser || !updatedApiUser.id) {
+                console.error("Invalid API response after updating user. Full response:", responseData);
+                throw new Error(responseData.message || "Invalid API response after updating user.");
+            }
+
+            const updatedUser: User = {
+                id: String(updatedApiUser.id),
+                name: updatedApiUser.name,
+                email: updatedApiUser.email,
+                role: updatedApiUser.role as UserRole,
+            };
+            
+            allUsersCache = null; // Invalidate cache after update
+            return updatedUser;
+
+        } catch (error) {
+            console.error(`Failed to update user with ID ${id} via API:`, error);
+            throw error;
+        }
     },
-    delete: (id: string) => {
-        const index = MOCK_USERS.findIndex(item => item.id === id && item.role === role);
-        if (index === -1) return simulateDelay(false);
-        MOCK_USERS.splice(index, 1);
-        return simulateDelay(true);
+    delete: async (id: string): Promise<boolean> => {
+        try {
+            const formData = new FormData();
+            formData.append('id', id);
+
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                throw new Error("Authentication token not found.");
+            }
+
+            const response = await fetch(`${API_BASE_URL}users/delete`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to delete user: ${errorText}`);
+            }
+
+            allUsersCache = null; // Invalidate cache on successful deletion
+            return true;
+        } catch (error) {
+            console.error(`Failed to delete user with ID ${id} via API:`, error);
+            throw error; // Re-throw to be handled by the UI
+        }
     },
 });
 
