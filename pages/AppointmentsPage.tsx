@@ -92,7 +92,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
         notes: appointment?.notes || '',
     });
     const [isSaving, setIsSaving] = useState(false);
-    const [isNewPatient, setIsNewPatient] = useState(false);
+    const [showNewPatientForm, setShowNewPatientForm] = useState(false);
     const [newPatientData, setNewPatientData] = useState({ name: '', phone: '' });
 
 
@@ -111,7 +111,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
         setIsSaving(true);
         let patientIdForAppointment = formData.patientId;
     
-        if (isNewPatient) {
+        if (showNewPatientForm) {
             if (!newPatientData.name || !newPatientData.phone || !formData.doctorId) {
                 alert('يرجى ملء اسم المريض الجديد ورقم هاتفه واختيار طبيب.');
                 setIsSaving(false);
@@ -166,33 +166,42 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="md:col-span-2">
-                            <div className="flex items-center mb-2">
-                                <input 
-                                    type="checkbox" 
-                                    id="isNewPatient" 
-                                    checked={isNewPatient} 
-                                    onChange={(e) => {
-                                        setIsNewPatient(e.target.checked);
-                                        setFormData(prev => ({ ...prev, patientId: '' }));
-                                    }}
-                                    className="h-4 w-4 text-primary rounded focus:ring-primary border-gray-300"
-                                />
-                                <label htmlFor="isNewPatient" className="mr-2 text-sm font-medium text-gray-700">إضافة موعد لمريض جديد</label>
-                            </div>
-                            {isNewPatient ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-md bg-gray-50">
-                                    <div>
-                                        <label htmlFor="newPatientName" className="block text-sm font-medium text-gray-700 mb-1">اسم المريض الجديد</label>
-                                        <input type="text" id="newPatientName" name="name" value={newPatientData.name} onChange={handleNewPatientChange} required className={inputStyle} placeholder="الاسم الكامل" />
+                           {showNewPatientForm ? (
+                                <div className="p-4 border rounded-md bg-gray-50">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h3 className="text-md font-semibold text-gray-800">إضافة مريض جديد</h3>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setShowNewPatientForm(false)} 
+                                            className="text-sm text-primary hover:underline font-medium"
+                                        >
+                                            العودة لاختيار مريض
+                                        </button>
                                     </div>
-                                    <div>
-                                        <label htmlFor="newPatientPhone" className="block text-sm font-medium text-gray-700 mb-1">هاتف المريض الجديد</label>
-                                        <input type="tel" id="newPatientPhone" name="phone" value={newPatientData.phone} onChange={handleNewPatientChange} required className={inputStyle} placeholder="رقم الهاتف" />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label htmlFor="newPatientName" className="block text-sm font-medium text-gray-700 mb-1">اسم المريض</label>
+                                            <input type="text" id="newPatientName" name="name" value={newPatientData.name} onChange={handleNewPatientChange} required className={inputStyle} placeholder="الاسم الكامل" />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="newPatientPhone" className="block text-sm font-medium text-gray-700 mb-1">هاتف المريض</label>
+                                            <input type="tel" id="newPatientPhone" name="phone" value={newPatientData.phone} onChange={handleNewPatientChange} required className={inputStyle} placeholder="رقم الهاتف" />
+                                        </div>
                                     </div>
                                 </div>
                             ) : (
                                 <div>
-                                    <label htmlFor="patientId" className="block text-sm font-medium text-gray-700 mb-1">المريض</label>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label htmlFor="patientId" className="block text-sm font-medium text-gray-700">المريض</label>
+                                        <button 
+                                            type="button"
+                                            onClick={() => setShowNewPatientForm(true)}
+                                            className="flex items-center text-sm font-medium text-primary hover:text-primary-700 transition-colors"
+                                        >
+                                            <PlusIcon className="h-4 w-4 ml-1" />
+                                            مريض جديد
+                                        </button>
+                                    </div>
                                     <select id="patientId" name="patientId" value={formData.patientId} onChange={handleChange} required className={inputStyle}>
                                         <option value="">اختر مريض...</option>
                                         {patients.map(p => <option key={p.id} value={p.id}>{p.name} ({p.code})</option>)}

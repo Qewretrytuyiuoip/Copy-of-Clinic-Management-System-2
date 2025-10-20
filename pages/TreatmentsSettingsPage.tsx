@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { Treatment } from '../types';
 import { api } from '../services/api';
@@ -126,7 +125,7 @@ const TreatmentsSettingsPage: React.FC = () => {
 
     const fetchTreatments = useCallback(async () => {
         setLoading(true);
-        const data = await api.treatments.getAll();
+        const data = await api.treatmentSettings.getAll();
         setTreatments(data);
         setLoading(false);
     }, []);
@@ -135,23 +134,34 @@ const TreatmentsSettingsPage: React.FC = () => {
         fetchTreatments();
     }, [fetchTreatments]);
 
-    const handleCreate = async (data: Omit<Treatment, 'id'>) => {
-        await api.treatments.create(data);
-        setIsAdding(false);
-        await fetchTreatments();
-    };
-    
-    const handleUpdate = async (data: Treatment) => {
-        await api.treatments.update(data.id, data);
-        setEditingTreatment(null);
-        await fetchTreatments();
+    const handleSave = async (data: Omit<Treatment, 'id'> | Treatment) => {
+        try {
+            if ('id' in data) {
+                await api.treatmentSettings.update(data.id, data);
+                setEditingTreatment(null);
+            } else {
+                await api.treatmentSettings.create(data);
+                setIsAdding(false);
+            }
+            await fetchTreatments();
+        } catch (error) {
+            const action = 'id' in data ? 'تحديث' : 'إنشاء';
+            console.error(`Failed to ${action} treatment:`, error);
+            alert(`فشل ${action} العلاج: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+        }
     };
 
     const confirmDelete = async () => {
         if (deletingTreatment) {
-            await api.treatments.delete(deletingTreatment.id);
-            setDeletingTreatment(null);
-            await fetchTreatments();
+            try {
+                await api.treatmentSettings.delete(deletingTreatment.id);
+            } catch (error) {
+                console.error("Failed to delete treatment:", error);
+                alert(`فشل حذف العلاج: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+            } finally {
+                setDeletingTreatment(null);
+                await fetchTreatments();
+            }
         }
     };
     
@@ -185,33 +195,39 @@ const TreatmentsSettingsPage: React.FC = () => {
                 {loading ? <CenteredLoadingSpinner /> : (
                      filteredTreatments.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {filteredTreatments.map(treatment => (
-                                <div key={treatment.id} className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-col justify-between transition-shadow hover:shadow-lg">
+                            {filteredTreatments.map(t => (
+                                <div key={t.id} className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-col justify-between transition-shadow hover:shadow-lg">
                                     <div>
-                                        <h3 className="text-xl font-bold text-gray-800">{treatment.name}</h3>
-                                        <p className="text-green-600 font-semibold text-lg mt-1">${treatment.price.toFixed(2)}</p>
-                                        {treatment.notes && <p className="text-sm text-gray-500 mt-2 border-t pt-2">{treatment.notes}</p>}
+                                        <div className="flex justify-between items-start">
+                                            <h3 className="text-xl font-bold text-gray-800">{t.name}</h3>
+                                            <p className="text-lg font-bold text-green-600">${t.price.toFixed(2)}</p>
+                                        </div>
+                                        {t.notes && <p className="text-sm text-gray-600 mt-2 bg-gray-100 p-2 rounded-md">{t.notes}</p>}
                                     </div>
                                     <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-end space-x-2">
-                                        <button onClick={() => setEditingTreatment(treatment)} className="flex items-center text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-100 text-sm">
-                                            <PencilIcon className="h-4 w-4" />
-                                            <span className="mr-1">تعديل</span>
+                                        <button onClick={() => setEditingTreatment(t)} className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-100" title="تعديل">
+                                            <PencilIcon className="h-5 w-5" />
                                         </button>
-                                        <button onClick={() => setDeletingTreatment(treatment)} className="flex items-center text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-100 text-sm">
-                                            <TrashIcon className="h-4 w-4" />
-                                            <span className="mr-1">حذف</span>
+                                        <button onClick={() => setDeletingTreatment(t)} className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-100" title="حذف">
+                                            <TrashIcon className="h-5 w-5" />
                                         </button>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                         <p className="text-center text-gray-500 py-8">لم يتم العثور على علاجات. قم بإضافة علاج جديد.</p>
+                        <p className="text-center text-gray-500 py-8">لم يتم العثور على علاجات.</p>
                     )
                 )}
             </div>
-            {isAdding && <TreatmentFormModal onClose={() => setIsAdding(false)} onSave={handleCreate} />}
-            {editingTreatment && <TreatmentFormModal treatment={editingTreatment} onClose={() => setEditingTreatment(null)} onSave={(data) => handleUpdate(data as Treatment)} />}
+            {(isAdding || editingTreatment) && (
+                <TreatmentFormModal 
+                    key={editingTreatment?.id || 'add'}
+                    treatment={editingTreatment || undefined}
+                    onClose={() => { setIsAdding(false); setEditingTreatment(null); }} 
+                    onSave={handleSave}
+                />
+            )}
             {deletingTreatment && (
                 <ConfirmDeleteModal
                     title="حذف العلاج"

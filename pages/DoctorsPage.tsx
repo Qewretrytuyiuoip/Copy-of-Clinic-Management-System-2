@@ -639,7 +639,7 @@ const AddSessionModal: React.FC<AddSessionModalProps> = ({ onSave, onClose, pati
 // ===================================================================
 interface AddTreatmentToSessionModalProps {
     session: Session;
-    onSave: (treatmentToAdd: SessionTreatment, keepOpen?: boolean) => Promise<void>;
+    onSave: (keepOpen?: boolean) => Promise<void>;
     onClose: () => void;
 }
 
@@ -658,9 +658,9 @@ const AddTreatmentToSessionModal: React.FC<AddTreatmentToSessionModalProps> = ({
     useEffect(() => {
         const fetchTreatments = async () => {
             setLoading(true);
-            const availableTreatments = await api.treatments.getAll();
-            const sessionTreatmentIds = new Set(session.treatments.map(t => t.id));
-            setAllTreatments(availableTreatments.filter(t => !sessionTreatmentIds.has(t.id)));
+            const availableTreatments = await api.treatmentSettings.getAll();
+            const sessionTreatmentNames = new Set(session.treatments.map(t => t.name));
+            setAllTreatments(availableTreatments.filter(t => !sessionTreatmentNames.has(t.name)));
             setLoading(false);
         };
         fetchTreatments();
@@ -703,22 +703,24 @@ const AddTreatmentToSessionModal: React.FC<AddTreatmentToSessionModalProps> = ({
         spinnerStateSetter(true);
         
         try {
-            await onSave({
-                ...treatment,
-                sessionPrice: parseFloat(sessionPrice) || 0,
-                sessionNotes,
+            await api.sessionTreatments.create({
+                session_id: session.id,
+                treatment_name: treatment.name,
+                treatment_price: parseFloat(sessionPrice) || 0,
+                treatment_notes: sessionNotes,
+                treatment_date: treatmentDate,
                 completed: false,
-                treatmentDate,
-                additionalCosts: parseFloat(additionalCosts) || undefined,
-            }, !closeAfterSave);
+                additional_costs: parseFloat(additionalCosts) || undefined,
+            });
+
+            await onSave(!closeAfterSave);
 
             if (!closeAfterSave) {
                 resetForm();
-            } else {
-                onClose();
             }
         } catch (error) {
             console.error("Failed to save treatment:", error);
+            alert(`فشل في حفظ العلاج: ${error instanceof Error ? error.message : 'Unknown error'}`);
         } finally {
             spinnerStateSetter(false);
         }
@@ -908,7 +910,7 @@ const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, on
 // ===================================================================
 interface EditSessionTreatmentModalProps {
     treatment: SessionTreatment;
-    onSave: (updatedTreatment: SessionTreatment) => Promise<void>;
+    onSave: (updatedTreatment: Partial<SessionTreatment>) => Promise<void>;
     onClose: () => void;
 }
 
@@ -934,7 +936,6 @@ const EditSessionTreatmentModal: React.FC<EditSessionTreatmentModalProps> = ({ t
         e.preventDefault();
         setIsSaving(true);
         await onSave({ 
-            ...treatment, 
             sessionPrice: parseFloat(sessionPrice) || 0, 
             sessionNotes: sessionNotes,
             treatmentDate: treatmentDate,
@@ -997,46 +998,40 @@ const SessionTreatmentsPage: React.FC<SessionTreatmentsPageProps> = ({ session: 
     const [isAddingTreatment, setIsAddingTreatment] = useState(false);
     const [deletingTreatment, setDeletingTreatment] = useState<SessionTreatment | null>(null);
 
-    const refreshSession = useCallback(async () => {
+    const refreshSession = useCallback(async (keepAddModalOpen: boolean = false) => {
+        if (!keepAddModalOpen) {
+            setIsAddingTreatment(false);
+        }
         setLoading(true);
         const freshSession = await api.sessions.getById(session.id);
         if (freshSession) { setSession(freshSession); }
         setLoading(false);
     }, [session.id]);
     
-    useEffect(() => { refreshSession(); }, [refreshSession]);
+    useEffect(() => { refreshSession(); }, []);
 
-    const handleAddTreatment = async (treatmentToAdd: SessionTreatment, keepOpen: boolean = false) => {
-        const updatedTreatments = [...session.treatments, treatmentToAdd];
-        await api.sessions.update(session.id, { treatments: updatedTreatments });
-        if (!keepOpen) {
-            setIsAddingTreatment(false);
+    const handleUpdateTreatment = async (updates: Partial<SessionTreatment>) => {
+        if (editingTreatment) {
+            await api.sessionTreatments.update(editingTreatment.instanceId, updates);
+            setEditingTreatment(null);
+            await refreshSession();
         }
-        await refreshSession();
-    };
-
-    const handleUpdateTreatment = async (updatedTreatment: SessionTreatment) => {
-        const newTreatments = session.treatments.map(t => t.id === updatedTreatment.id ? updatedTreatment : t);
-        await api.sessions.update(session.id, { treatments: newTreatments });
-        await refreshSession();
-        setEditingTreatment(null);
     };
 
     const confirmDeleteTreatment = async () => {
         if (deletingTreatment) {
-            const newTreatments = session.treatments.filter(t => t.id !== deletingTreatment.id);
-            await api.sessions.update(session.id, { treatments: newTreatments });
+            await api.sessionTreatments.delete(deletingTreatment.instanceId);
             setDeletingTreatment(null);
             await refreshSession();
         }
     };
     
-    const handleToggleCompletion = async (treatmentId: string) => {
+    const handleToggleCompletion = async (treatment: SessionTreatment) => {
         const newTreatments = session.treatments.map(t =>
-            t.id === treatmentId ? { ...t, completed: !t.completed } : t
+            t.instanceId === treatment.instanceId ? { ...t, completed: !t.completed } : t
         );
-        setSession(prev => ({ ...prev!, treatments: newTreatments }));
-        await api.sessions.update(session.id, { treatments: newTreatments });
+        setSession(prev => ({ ...prev!, treatments: newTreatments })); // Optimistic update
+        await api.sessionTreatments.update(treatment.instanceId, { completed: !treatment.completed });
     };
 
     return (
@@ -1056,14 +1051,14 @@ const SessionTreatmentsPage: React.FC<SessionTreatmentsPageProps> = ({ session: 
             <div className="bg-white p-6 rounded-xl shadow-md min-h-[200px]">
                  {loading ? <CenteredLoadingSpinner /> : ( session.treatments.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{session.treatments.map(t => (
-                            <div key={t.id} className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-col justify-between hover:shadow-lg">
+                            <div key={t.instanceId} className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-col justify-between hover:shadow-lg">
                                 <div>
                                     <h3 className="text-xl font-bold text-gray-800">{t.name}</h3>
                                     <p className="text-green-600 font-semibold text-lg mt-2">${t.sessionPrice.toFixed(2)}</p>
                                     {t.sessionNotes && <p className="text-sm text-gray-600 mt-2 bg-gray-100 p-2 rounded-md">{t.sessionNotes}</p>}
                                     <div className="mt-4">
                                         <label className="flex items-center space-x-2 cursor-pointer">
-                                            <input type="checkbox" checked={t.completed} onChange={() => handleToggleCompletion(t.id)} className="h-5 w-5 rounded text-primary focus:ring-primary-500 border-gray-300"/>
+                                            <input type="checkbox" checked={t.completed} onChange={() => handleToggleCompletion(t)} className="h-5 w-5 rounded text-primary focus:ring-primary-500 border-gray-300"/>
                                             <span className="text-sm font-medium text-gray-700">مكتمل</span>
                                         </label>
                                     </div>
@@ -1079,7 +1074,7 @@ const SessionTreatmentsPage: React.FC<SessionTreatmentsPageProps> = ({ session: 
             </div>
             {editingTreatment && <EditSessionTreatmentModal treatment={editingTreatment} onClose={() => setEditingTreatment(null)} onSave={handleUpdateTreatment} />}
             {viewingTreatment && <ViewTreatmentDetailsModal treatment={viewingTreatment} onClose={() => setViewingTreatment(null)} />}
-            {isAddingTreatment && <AddTreatmentToSessionModal session={session} onClose={() => setIsAddingTreatment(false)} onSave={handleAddTreatment} />}
+            {isAddingTreatment && <AddTreatmentToSessionModal session={session} onClose={() => setIsAddingTreatment(false)} onSave={refreshSession} />}
             {deletingTreatment && (
                 <ConfirmDeleteModal
                     title="حذف العلاج"
@@ -1216,16 +1211,28 @@ const DoctorPatientsList: React.FC<DoctorPatientsListProps> = ({ doctor, onBack 
     }, [fetchPatients]);
 
     const handleUpdatePatient = async (updatedPatient: Patient) => {
-        await api.patients.update(updatedPatient.id, updatedPatient);
-        setEditingPatient(null);
-        await fetchPatients();
+        try {
+            await api.patients.update(updatedPatient.id, updatedPatient);
+        } catch (error) {
+            console.error("Failed to update patient:", error);
+            alert(`فشل تحديث المريض: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+        } finally {
+            setEditingPatient(null);
+            await fetchPatients();
+        }
     };
 
     const confirmDeletePatient = async () => {
         if (deletingPatient) {
-            await api.patients.delete(deletingPatient.id);
-            setDeletingPatient(null);
-            await fetchPatients();
+            try {
+                await api.patients.delete(deletingPatient.id);
+            } catch(error) {
+                console.error("Failed to delete patient:", error);
+                alert(`فشل حذف المريض: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+            } finally {
+                setDeletingPatient(null);
+                await fetchPatients();
+            }
         }
     };
     

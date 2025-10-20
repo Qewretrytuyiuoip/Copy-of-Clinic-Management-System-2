@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { Treatment } from '../types';
 import { api } from '../services/api';
@@ -10,7 +11,8 @@ const TreatmentsPage: React.FC = () => {
 
     const fetchTreatments = useCallback(async () => {
         setLoading(true);
-        const data = await api.treatments.getAll();
+        // FIX: The correct API object for treatment settings is `treatmentSettings`, not `treatments`.
+        const data = await api.treatmentSettings.getAll();
         setTreatments(data);
         setLoading(false);
     }, []);

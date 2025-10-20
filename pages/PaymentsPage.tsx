@@ -112,6 +112,76 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onSave, onClose, pati
     );
 };
 
+// ===================================================================
+// EditPaymentModal Component
+// ===================================================================
+interface EditPaymentModalProps {
+    payment: Payment;
+    onSave: (updatedPayment: Payment) => Promise<void>;
+    onClose: () => void;
+    patients: Patient[];
+}
+
+const EditPaymentModal: React.FC<EditPaymentModalProps> = ({ payment, onSave, onClose, patients }) => {
+    const [formData, setFormData] = useState({
+        patientId: payment.patientId,
+        amount: payment.amount.toString(),
+        date: payment.date,
+    });
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        await onSave({
+            ...payment,
+            ...formData,
+            amount: parseFloat(formData.amount),
+        });
+        setIsSaving(false);
+    };
+
+    const inputStyle = "w-full px-3 py-2 bg-white border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black";
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-xl font-bold text-gray-800">تعديل الدفعة</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600" /></button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="p-6 space-y-4">
+                        <div>
+                            <label htmlFor="patientId" className="block text-sm font-medium text-gray-700 mb-1">المريض</label>
+                            <select id="patientId" name="patientId" value={formData.patientId} onChange={handleChange} required className={`${inputStyle} bg-gray-100`} disabled>
+                                {patients.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">المبلغ</label>
+                            <input type="number" step="0.01" id="amount" name="amount" value={formData.amount} onChange={handleChange} required className={inputStyle} placeholder="0.00" />
+                        </div>
+                        <div>
+                            <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">التاريخ</label>
+                            <input type="date" id="date" name="date" value={formData.date} onChange={handleChange} required className={inputStyle} />
+                        </div>
+                    </div>
+                    <div className="flex justify-end items-center p-4 bg-gray-50 border-t">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">إلغاء</button>
+                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
 
 const PaymentsPage: React.FC<PaymentsPageProps> = ({ user }) => {
     const [payments, setPayments] = useState<Payment[]>([]);
@@ -119,17 +189,24 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user }) => {
     const [loading, setLoading] = useState(true);
     const [paymentToDelete, setPaymentToDelete] = useState<Payment | null>(null);
     const [isAddingPayment, setIsAddingPayment] = useState(false);
+    const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
 
     const fetchData = useCallback(async () => {
         setLoading(true);
-        const [pays, pats] = await Promise.all([
-            api.payments.getAll(),
-            api.patients.getAll()
-        ]);
-        setPayments(pays);
-        setPatients(pats);
-        setLoading(false);
+        try {
+            const [pays, pats] = await Promise.all([
+                api.payments.getAll(),
+                api.patients.getAll()
+            ]);
+            setPayments(pays);
+            setPatients(pats);
+        } catch (error) {
+            console.error("Failed to fetch data:", error);
+            alert('فشل في تحميل البيانات.');
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
     useEffect(() => {
@@ -137,16 +214,38 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user }) => {
     }, [fetchData]);
 
     const handleCreatePayment = async (newPaymentData: Omit<Payment, 'id'>) => {
-        await api.payments.create(newPaymentData);
-        setIsAddingPayment(false);
-        await fetchData();
+        try {
+            await api.payments.create(newPaymentData);
+            setIsAddingPayment(false);
+            await fetchData();
+        } catch (error) {
+            console.error("Failed to create payment:", error);
+            alert(`فشل إضافة الدفعة: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+        }
+    };
+
+    const handleUpdatePayment = async (updatedPayment: Payment) => {
+        try {
+            await api.payments.update(updatedPayment.id, updatedPayment);
+            setEditingPayment(null);
+            await fetchData();
+        } catch (error) {
+            console.error("Failed to update payment:", error);
+            alert(`فشل تعديل الدفعة: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+        }
     };
 
     const confirmDeletePayment = async () => {
         if (paymentToDelete) {
-            await api.payments.delete(paymentToDelete.id);
-            setPaymentToDelete(null);
-            await fetchData();
+            try {
+                await api.payments.delete(paymentToDelete.id);
+            } catch (error) {
+                console.error("Failed to delete payment:", error);
+                alert(`فشل حذف الدفعة: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+            } finally {
+                setPaymentToDelete(null);
+                await fetchData();
+            }
         }
     };
 
@@ -192,7 +291,7 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user }) => {
                                         <p className="text-sm text-gray-500 mt-1">{new Date(pay.date).toLocaleDateString()}</p>
                                     </div>
                                     <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-end space-x-2">
-                                        <button className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-100" title="تعديل">
+                                        <button onClick={() => setEditingPayment(pay)} className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-100" title="تعديل">
                                             <PencilIcon className="h-5 w-5" />
                                         </button>
                                         <button onClick={() => setPaymentToDelete(pay)} className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-100" title="حذف">
@@ -208,6 +307,14 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user }) => {
                 )}
             </div>
             {isAddingPayment && <AddPaymentModal patients={patients} onSave={handleCreatePayment} onClose={() => setIsAddingPayment(false)} />}
+            {editingPayment && (
+                <EditPaymentModal 
+                    payment={editingPayment}
+                    patients={patients}
+                    onSave={handleUpdatePayment}
+                    onClose={() => setEditingPayment(null)}
+                />
+            )}
             {paymentToDelete && (
                 <ConfirmDeleteModal
                     title="حذف الدفعة"

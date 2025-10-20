@@ -3,15 +3,6 @@ import { API_BASE_URL } from '../config';
 
 // --- MOCK DATABASE ---
 
-const generatePatientCode = (): string => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = 'P';
-    for (let i = 0; i < 6; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-};
-
 export let MOCK_USERS: User[] = [
     { id: 'admin1', name: 'د. مدير', email: 'admin@example.com', role: UserRole.Admin, password: '1' },
     { id: 'doc1', name: 'د. سميث', email: 'smith@clinic.com', role: UserRole.Doctor, password: '1' },
@@ -19,58 +10,11 @@ export let MOCK_USERS: User[] = [
     { id: 'sec1', name: 'سارة كونور', email: 'sarah@clinic.com', role: UserRole.Secretary, password: '1' },
 ];
 
-let MOCK_PATIENTS: Patient[] = [
-    { id: 'p1', code: generatePatientCode(), name: 'جون دو', age: 34, phone: '555-0101', notes: 'حساسية من البنسلين.', doctorId: 'doc1', gender: Gender.Male, isSmoker: true, drugAllergy: 'بنسلين', chronicDiseases: 'ربو' },
-    { id: 'p2', code: generatePatientCode(), name: 'جين رو', age: 28, phone: '555-0102', notes: 'صداع نصفي مزمن.', doctorId: 'doc1', gender: Gender.Female, isSmoker: false, isPregnant: true, drugAllergy: 'لا يوجد', chronicDiseases: 'صداع نصفي' },
-    { id: 'p3', code: generatePatientCode(), name: 'بيتر بان', age: 45, phone: '555-0103', notes: '', doctorId: 'doc2', gender: Gender.Male, isSmoker: false },
-];
-
-let MOCK_TREATMENTS: Treatment[] = [];
-
-let MOCK_SESSIONS: Session[] = [
-    { 
-        id: 's1', 
-        patientId: 'p1', 
-        doctorId: 'doc1', 
-        date: '2023-10-26T10:00:00.000Z', 
-        notes: 'فحص أولي. يوصى بالتنظيف.',
-        treatments: []
-    },
-    { 
-        id: 's2', 
-        patientId: 'p1', 
-        doctorId: 'doc1', 
-        date: '2023-11-02T11:00:00.000Z', 
-        notes: 'اكتمل التنظيف.',
-        treatments: []
-    },
-];
-
-let MOCK_APPOINTMENTS: Appointment[] = [
-    { id: 'app1', patientId: 'p2', doctorId: 'doc1', date: new Date().toISOString().split('T')[0], time: '14:00', notes: 'متابعة' },
-    { id: 'app2', patientId: 'p3', doctorId: 'doc2', date: new Date().toISOString().split('T')[0], time: '10:30', notes: 'استشارة مريض جديد' },
-];
-
-let MOCK_PAYMENTS: Payment[] = [
-    { id: 'pay1', patientId: 'p1', amount: 250, date: '2023-11-02' },
-];
-
-// FIX: Added mock data for patient photos, which was missing.
-let MOCK_PATIENT_PHOTOS: PatientPhoto[] = [
-    { id: 'ph1', patientId: 'p1', imageUrl: 'https://via.placeholder.com/400x300.png/0000FF/FFFFFF?text=Before', caption: 'صورة قبل العلاج', date: '2023-10-26' },
-    { id: 'ph2', patientId: 'p1', imageUrl: 'https://via.placeholder.com/400x300.png/008000/FFFFFF?text=After', caption: 'صورة بعد العلاج', date: '2023-11-02' },
-];
-
-// FIX: Added mock activity logs for patient history tracking.
-let MOCK_ACTIVITY_LOGS: ActivityLog[] = [
-    { id: 'log1', patientId: 'p1', userId: 'sec1', userName: 'سارة كونور', actionType: ActivityLogActionType.Create, description: 'تم إنشاء ملف المريض.', timestamp: '2023-10-26T09:05:00.000Z' },
-    { id: 'log2', patientId: 'p1', userId: 'doc1', userName: 'د. سميث', actionType: ActivityLogActionType.Update, description: "تم تحديث ملاحظات المريض.", timestamp: '2023-10-26T10:01:00.000Z' },
-    { id: 'log3', patientId: 'p1', userId: 'doc1', userName: 'د. سميث', actionType: ActivityLogActionType.Create, description: 'تمت إضافة جلسة جديدة.', timestamp: '2023-10-26T10:02:00.000Z' },
-    { id: 'log4', patientId: 'p2', userId: 'sec1', userName: 'سارة كونور', actionType: ActivityLogActionType.Create, description: 'تم إنشاء ملف المريض.', timestamp: '2023-10-27T14:00:00.000Z' },
-    { id: 'log5', patientId: 'p1', userId: 'sec1', userName: 'سارة كونور', actionType: ActivityLogActionType.Create, description: 'تمت إضافة دفعة بقيمة 250$.', timestamp: '2023-11-02T11:05:00.000Z' },
-    { id: 'log6', patientId: 'p1', userId: 'doc1', userName: 'د. سميث', actionType: ActivityLogActionType.Delete, description: 'تم حذف صورة "قبل العلاج".', timestamp: '2023-11-02T11:15:00.000Z' },
-    { id: 'log7', patientId: 'p1', userId: 'admin1', userName: 'د. مدير', actionType: ActivityLogActionType.Update, description: "تم تحديث رقم الهاتف من '555-0101' إلى '555-0199'.", timestamp: '2024-01-15T16:20:00.000Z' },
-];
+// MOCK_PATIENTS is now fetched from the API.
+// Dependent mock data is cleared to avoid invalid references.
+let MOCK_APPOINTMENTS: Appointment[] = [];
+let MOCK_PATIENT_PHOTOS: PatientPhoto[] = [];
+let MOCK_ACTIVITY_LOGS: ActivityLog[] = [];
 
 
 const createDefaultSchedule = (): DaySchedule[] => {
@@ -106,6 +50,12 @@ let MOCK_AVAILABILITY: DoctorAvailability[] = [
 
 // --- API FUNCTIONS ---
 
+// A single source of truth for fetching all users from the API
+let allUsersCache: User[] | null = null;
+// Cache for base treatments
+let allTreatmentSettingsCache: Treatment[] | null = null;
+
+
 const simulateDelay = <T,>(data: T): Promise<T> => new Promise(res => setTimeout(() => res(data), 500));
 
 // Helper for authenticated API calls
@@ -119,6 +69,8 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     const headers = {
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/json',
+        // Do not set Content-Type for FormData, the browser does it.
+        ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
         ...options.headers,
     };
 
@@ -218,9 +170,7 @@ export const logout = async (): Promise<void> => {
     }
 };
 
-// A single source of truth for fetching all users from the API
 // Includes a simple cache to avoid redundant network calls.
-let allUsersCache: User[] | null = null;
 const getAllUsers = async (forceRefresh: boolean = false): Promise<User[]> => {
     if (allUsersCache && !forceRefresh) {
         return allUsersCache;
@@ -417,36 +367,533 @@ const createUserCRUD = (role: UserRole) => ({
     },
 });
 
-const patientCRUD = createCRUD(MOCK_PATIENTS);
 const activityLogsCRUD = createCRUD(MOCK_ACTIVITY_LOGS);
+
+// Mapper function to convert API patient object to frontend Patient type
+const mapApiPatientToPatient = (p: any): Patient => ({
+    id: String(p.id),
+    code: p.code,
+    name: p.name,
+    age: p.age,
+    phone: p.phone,
+    notes: p.notes ?? undefined,
+    doctorId: String(p.doctor_id),
+    gender: p.gender === 'female' ? Gender.Female : Gender.Male,
+    isSmoker: !!p.is_smoker,
+    isPregnant: !!p.is_pregnant,
+    drugAllergy: p.drug_allergy ?? undefined,
+    chronicDiseases: p.chronic_diseases ?? undefined,
+});
+
+const mapApiPaymentToPayment = (p: any): Payment => ({
+    id: String(p.id),
+    patientId: String(p.patient_id),
+    amount: parseFloat(p.amount), // Ensure amount is a number
+    date: p.date.split('T')[0], // API returns ISO string, UI needs YYYY-MM-DD
+});
+
+const mapApiTreatmentSettingToTreatment = (t: any): Treatment => ({
+    id: String(t.id),
+    name: t.name,
+    price: parseFloat(t.price),
+    notes: t.notes ?? undefined,
+});
+
+const mapApiSessionTreatmentToSessionTreatment = (st: any, treatmentsByName: Map<string, Treatment>): SessionTreatment | null => {
+    const baseTreatment = treatmentsByName.get(st.treatment_name);
+
+    if (!baseTreatment) {
+        console.warn(`Base treatment named "${st.treatment_name}" not found for session_treatment ID ${st.id}. Skipping.`);
+        return null;
+    }
+
+    return {
+        ...baseTreatment,
+        instanceId: String(st.id),
+        sessionId: String(st.session_id),
+        sessionPrice: parseFloat(st.treatment_price),
+        sessionNotes: st.treatment_notes ?? undefined,
+        completed: !!st.completed,
+        treatmentDate: st.treatment_date ? new Date(st.treatment_date).toISOString().split('T')[0] : undefined,
+        additionalCosts: st.additional_costs ? parseFloat(st.additional_costs) : undefined,
+    };
+};
+
+// A base mapper for session that doesn't include treatments.
+const mapApiSessionToSessionBase = (s: any): Session => ({
+    id: String(s.id),
+    patientId: String(s.patient_id),
+    doctorId: String(s.doctor_id),
+    date: s.date,
+    notes: s.notes ?? '',
+    treatments: [], // Will be populated separately
+});
+
+// Fetches all session treatments and groups them by session ID for efficient access.
+const getGroupedSessionTreatments = async (): Promise<Record<string, SessionTreatment[]>> => {
+    try {
+        const [apiSessionTreatments, allTreatmentSettings] = await Promise.all([
+            apiFetch('treatments/all', { method: 'POST' }),
+            api.treatmentSettings.getAll()
+        ]);
+
+        if (!Array.isArray(apiSessionTreatments)) {
+            console.error('Expected an array of session treatments from API, but got:', apiSessionTreatments);
+            return {};
+        }
+        
+        const treatmentsByName = new Map(allTreatmentSettings.map(t => [t.name, t]));
+        
+        const groupedTreatments = apiSessionTreatments.reduce((acc, st) => {
+            const sessionId = String(st.session_id);
+            if (!acc[sessionId]) acc[sessionId] = [];
+            const mappedTreatment = mapApiSessionTreatmentToSessionTreatment(st, treatmentsByName);
+            if (mappedTreatment) {
+                acc[sessionId].push(mappedTreatment);
+            }
+            return acc;
+        }, {} as Record<string, SessionTreatment[]>);
+
+        return groupedTreatments;
+    } catch (error) {
+        console.error("Failed to get grouped session treatments:", error);
+        return {};
+    }
+};
 
 export const api = {
     doctors: createUserCRUD(UserRole.Doctor),
     secretaries: createUserCRUD(UserRole.Secretary),
     patients: {
-        ...patientCRUD,
-        create: (item: Omit<Patient, 'id' | 'code'>) => {
-            const newItem = { 
-                ...item, 
-                id: `new${Date.now()}`, 
-                code: generatePatientCode(),
-                drugAllergy: item.drugAllergy || '',
-                chronicDiseases: item.chronicDiseases || '',
-                gender: item.gender || Gender.Male,
-                isSmoker: item.isSmoker || false,
-                isPregnant: item.isPregnant || false,
-            } as Patient;
-            MOCK_PATIENTS.push(newItem);
-            return simulateDelay(newItem);
+        getAll: async (): Promise<Patient[]> => {
+            try {
+                const apiPatients = await apiFetch('patients/all', { method: 'POST' });
+                if (!Array.isArray(apiPatients)) {
+                    console.error('Expected an array of patients from API, but got:', apiPatients);
+                    return [];
+                }
+                return apiPatients.map(mapApiPatientToPatient);
+            } catch (error) {
+                console.error("Failed to fetch patients:", error);
+                return [];
+            }
+        },
+        getById: async (id: string): Promise<Patient | null> => {
+            try {
+                const formData = new FormData();
+                formData.append('id', id);
+                const responseData = await apiFetch('patients/get', { method: 'POST', body: formData });
+                const p = responseData.patient; 
+                if (!p) return null;
+                return mapApiPatientToPatient(p);
+            } catch (error) {
+                console.error(`Failed to fetch patient with id ${id}:`, error);
+                return null;
+            }
+        },
+        create: async (item: Omit<Patient, 'id' | 'code'>): Promise<Patient> => {
+            try {
+                const formData = new FormData();
+                formData.append('name', item.name);
+                formData.append('age', String(item.age));
+                formData.append('phone', item.phone);
+                formData.append('doctor_id', item.doctorId);
+                formData.append('gender', item.gender);
+                formData.append('is_smoker', item.isSmoker ? '1' : '0');
+                formData.append('is_pregnant', item.isPregnant ? '1' : '0');
+                if (item.notes) formData.append('notes', item.notes);
+                if (item.drugAllergy) formData.append('drug_allergy', item.drugAllergy);
+                if (item.chronicDiseases) formData.append('chronic_diseases', item.chronicDiseases);
+
+                const responseData = await apiFetch('patients/add', { method: 'POST', body: formData });
+                const createdApiPatient = responseData.patient;
+
+                if (!createdApiPatient || !createdApiPatient.id) {
+                    throw new Error("Invalid API response after creating patient.");
+                }
+                return mapApiPatientToPatient(createdApiPatient);
+            } catch (error) {
+                console.error("Failed to create patient via API:", error);
+                throw error;
+            }
+        },
+        update: async (id: string, updates: Partial<Patient>): Promise<Patient | null> => {
+            try {
+                const formData = new FormData();
+                formData.append('id', id);
+                
+                if (updates.name) formData.append('name', updates.name);
+                if (updates.age !== undefined) formData.append('age', String(updates.age));
+                if (updates.phone) formData.append('phone', updates.phone);
+                if (updates.doctorId) formData.append('doctor_id', updates.doctorId);
+                if (updates.gender) formData.append('gender', updates.gender);
+                if (updates.isSmoker !== undefined) formData.append('is_smoker', updates.isSmoker ? '1' : '0');
+                if (updates.isPregnant !== undefined) formData.append('is_pregnant', updates.isPregnant ? '1' : '0');
+                if (updates.notes) formData.append('notes', updates.notes);
+                if (updates.drugAllergy) formData.append('drug_allergy', updates.drugAllergy);
+                if (updates.chronicDiseases) formData.append('chronic_diseases', updates.chronicDiseases);
+
+                const responseData = await apiFetch('patients/edit', { method: 'POST', body: formData });
+                
+                if (responseData.message !== "Patient updated successfully") {
+                    const errorMessage = responseData.message || "An unexpected response was received from the server during update.";
+                    throw new Error(errorMessage);
+                }
+
+                const updatedApiPatient = responseData.patient;
+
+                if (!updatedApiPatient || !updatedApiPatient.id) {
+                    throw new Error("Patient data was not returned in the API response after update.");
+                }
+                return mapApiPatientToPatient(updatedApiPatient);
+            } catch (error) {
+                console.error(`Failed to update patient with ID ${id} via API:`, error);
+                throw error;
+            }
+        },
+        delete: async (id: string): Promise<boolean> => {
+            try {
+                const formData = new FormData();
+                formData.append('id', id);
+                const responseData = await apiFetch('patients/delete', { method: 'POST', body: formData });
+
+                // Verify the success message from the API response for a more robust check.
+                if (responseData.message === "Patient deleted successfully") {
+                    return true;
+                }
+                
+                // If the message is not what we expect, treat it as an error.
+                const errorMessage = responseData.message || "An unexpected response was received from the server.";
+                throw new Error(errorMessage);
+
+            } catch (error) {
+                console.error(`Failed to delete patient with ID ${id} via API:`, error);
+                throw error;
+            }
         },
     },
-    treatments: createCRUD(MOCK_TREATMENTS),
-    sessions: createCRUD(MOCK_SESSIONS),
+    treatmentSettings: {
+        getAll: async (forceRefresh: boolean = false): Promise<Treatment[]> => {
+            if (allTreatmentSettingsCache && !forceRefresh) {
+                return allTreatmentSettingsCache;
+            }
+            try {
+                const apiTreatments = await apiFetch('treatments_setting/all', { method: 'POST' });
+                if (!Array.isArray(apiTreatments)) {
+                    console.error('Expected an array of treatments from API, but got:', apiTreatments);
+                    allTreatmentSettingsCache = [];
+                    return [];
+                }
+                allTreatmentSettingsCache = apiTreatments.map(mapApiTreatmentSettingToTreatment);
+                return allTreatmentSettingsCache;
+            } catch (error) {
+                console.error("Failed to fetch treatments:", error);
+                return [];
+            }
+        },
+        create: async (item: Omit<Treatment, 'id'>): Promise<Treatment> => {
+            try {
+                const formData = new FormData();
+                formData.append('name', item.name);
+                formData.append('price', String(item.price));
+                if (item.notes) formData.append('notes', item.notes);
+
+                const responseData = await apiFetch('treatments_setting/add', { method: 'POST', body: formData });
+
+                if (responseData.message !== "Treatment created successfully") {
+                    throw new Error(responseData.message || "Failed to create treatment.");
+                }
+
+                const createdApiTreatment = responseData.treatment;
+                if (!createdApiTreatment || !createdApiTreatment.id) {
+                    throw new Error("Treatment data was not returned in the API response after creation.");
+                }
+                allTreatmentSettingsCache = null; // Invalidate cache
+                return mapApiTreatmentSettingToTreatment(createdApiTreatment);
+            } catch (error) {
+                console.error("Failed to create treatment via API:", error);
+                throw error;
+            }
+        },
+        update: async (id: string, updates: Partial<Treatment>): Promise<Treatment | null> => {
+             try {
+                const formData = new FormData();
+                formData.append('id', id);
+
+                if (updates.name) formData.append('name', updates.name);
+                if (updates.price !== undefined) formData.append('price', String(updates.price));
+                if (updates.notes) formData.append('notes', updates.notes);
+
+                const responseData = await apiFetch('treatments_setting/edit', { method: 'POST', body: formData });
+                
+                if (responseData.message !== "Treatment updated successfully") {
+                    throw new Error(responseData.message || "Failed to update treatment.");
+                }
+
+                const updatedApiTreatment = responseData.treatment;
+                if (!updatedApiTreatment) {
+                     throw new Error("Treatment data not returned after update.");
+                }
+                allTreatmentSettingsCache = null; // Invalidate cache
+                return mapApiTreatmentSettingToTreatment(updatedApiTreatment);
+            } catch (error) {
+                console.error(`Failed to update treatment with ID ${id}:`, error);
+                throw error;
+            }
+        },
+        delete: async (id: string): Promise<boolean> => {
+            try {
+                const formData = new FormData();
+                formData.append('id', id);
+                const responseData = await apiFetch('treatments_setting/delete', { method: 'POST', body: formData });
+
+                if (responseData.message === "Treatment deleted successfully") {
+                    allTreatmentSettingsCache = null; // Invalidate cache
+                    return true;
+                }
+                
+                throw new Error(responseData.message || "An unexpected response was received from the server.");
+
+            } catch (error) {
+                console.error(`Failed to delete treatment with ID ${id}:`, error);
+                throw error;
+            }
+        },
+    },
+    sessionTreatments: {
+        create: async (item: {
+            session_id: string,
+            treatment_name: string,
+            treatment_price: number,
+            additional_costs?: number,
+            treatment_notes?: string,
+            treatment_date: string,
+            completed: boolean,
+        }) => {
+            const formData = new FormData();
+            formData.append('session_id', item.session_id);
+            formData.append('treatment_name', item.treatment_name);
+            formData.append('treatment_price', String(item.treatment_price));
+            formData.append('treatment_date', item.treatment_date);
+            formData.append('completed', item.completed ? '1' : '0');
+            if (item.additional_costs) formData.append('additional_costs', String(item.additional_costs));
+            if (item.treatment_notes) formData.append('treatment_notes', item.treatment_notes);
+            
+            return apiFetch('treatments/add', { method: 'POST', body: formData });
+        },
+        update: async (id: string, updates: Partial<SessionTreatment>) => {
+            const formData = new FormData();
+            formData.append('id', id);
+            
+            if (updates.sessionPrice !== undefined) formData.append('treatment_price', String(updates.sessionPrice));
+            if (updates.additionalCosts !== undefined) formData.append('additional_costs', String(updates.additionalCosts));
+            // FIX: The property on SessionTreatment is sessionNotes, not treatmentNotes.
+            if (updates.sessionNotes !== undefined) formData.append('treatment_notes', updates.sessionNotes);
+            if (updates.treatmentDate !== undefined) formData.append('treatment_date', updates.treatmentDate);
+            if (updates.completed !== undefined) formData.append('completed', updates.completed ? '1' : '0');
+
+            return apiFetch('treatments/edit', { method: 'POST', body: formData });
+        },
+        delete: async (id: string) => {
+            const formData = new FormData();
+            formData.append('id', id);
+            return apiFetch('treatments/delete', { method: 'POST', body: formData });
+        },
+    },
+    sessions: {
+        getAll: async (): Promise<Session[]> => {
+            try {
+                const [apiSessions, groupedTreatments] = await Promise.all([
+                    apiFetch('sessions/all', { method: 'POST' }),
+                    getGroupedSessionTreatments()
+                ]);
+
+                if (!Array.isArray(apiSessions)) {
+                    console.error('Expected an array of sessions from API, but got:', apiSessions);
+                    return [];
+                }
+                
+                return apiSessions.map(s => {
+                    const session = mapApiSessionToSessionBase(s);
+                    session.treatments = groupedTreatments[session.id] || [];
+                    return session;
+                });
+
+            } catch (error) {
+                console.error("Failed to fetch sessions with treatments:", error);
+                return [];
+            }
+        },
+        getById: async (id: string): Promise<Session | null> => {
+            try {
+                const formData = new FormData();
+                formData.append('id', id);
+
+                const [responseData, groupedTreatments] = await Promise.all([
+                    apiFetch('sessions/get', { method: 'POST', body: formData }),
+                    getGroupedSessionTreatments()
+                ]);
+                
+                const s = responseData.session; 
+                if (!s) return null;
+                
+                const session = mapApiSessionToSessionBase(s);
+                session.treatments = groupedTreatments[session.id] || [];
+                return session;
+            } catch (error) {
+                console.error(`Failed to fetch session with id ${id}:`, error);
+                return null;
+            }
+        },
+        create: async (item: Omit<Session, 'id'>): Promise<Session> => {
+            try {
+                const formData = new FormData();
+                formData.append('patient_id', item.patientId);
+                formData.append('doctor_id', item.doctorId);
+                formData.append('date', item.date.split('T')[0]);
+                formData.append('notes', item.notes);
+
+                const responseData = await apiFetch('sessions/add', { method: 'POST', body: formData });
+
+                if (responseData.message !== "Session created successfully") {
+                    throw new Error(responseData.message || "Failed to create session.");
+                }
+
+                const createdApiSession = responseData.session;
+                if (!createdApiSession || !createdApiSession.id) {
+                    throw new Error("Session data was not returned in the API response after creation.");
+                }
+                return mapApiSessionToSessionBase(createdApiSession);
+            } catch (error) {
+                console.error("Failed to create session via API:", error);
+                throw error;
+            }
+        },
+        update: async (id: string, updates: Partial<Session>): Promise<Session | null> => {
+             try {
+                const formData = new FormData();
+                formData.append('id', id);
+
+                if (updates.date) formData.append('date', updates.date.split('T')[0]);
+                if (updates.notes !== undefined) formData.append('notes', updates.notes);
+                
+                const responseData = await apiFetch('sessions/edit', { method: 'POST', body: formData });
+                
+                if (responseData.message !== "Session updated successfully") {
+                    throw new Error(responseData.message || "Failed to update session.");
+                }
+
+                const updatedApiSession = responseData.session;
+                if (!updatedApiSession) {
+                     throw new Error("Session data not returned after update.");
+                }
+
+                return await api.sessions.getById(id);
+            } catch (error) {
+                console.error(`Failed to update session with ID ${id}:`, error);
+                throw error;
+            }
+        },
+        delete: async (id: string): Promise<boolean> => {
+            try {
+                const formData = new FormData();
+                formData.append('id', id);
+                const responseData = await apiFetch('sessions/delete', { method: 'POST', body: formData });
+
+                if (responseData.message === "Session deleted successfully") {
+                    return true;
+                }
+                
+                throw new Error(responseData.message || "An unexpected response was received from the server.");
+
+            } catch (error) {
+                console.error(`Failed to delete session with ID ${id}:`, error);
+                throw error;
+            }
+        },
+    },
     appointments: createCRUD(MOCK_APPOINTMENTS),
-    payments: createCRUD(MOCK_PAYMENTS),
-    // FIX: Added patientPhotos CRUD endpoint to the api object.
+    payments: {
+        getAll: async (): Promise<Payment[]> => {
+            try {
+                const apiPayments = await apiFetch('payments/all', { method: 'POST' });
+                if (!Array.isArray(apiPayments)) {
+                    console.error('Expected an array of payments from API, but got:', apiPayments);
+                    return [];
+                }
+                return apiPayments.map(mapApiPaymentToPayment);
+            } catch (error) {
+                console.error("Failed to fetch payments:", error);
+                return [];
+            }
+        },
+        create: async (item: Omit<Payment, 'id'>): Promise<Payment> => {
+            try {
+                const formData = new FormData();
+                formData.append('patient_id', item.patientId);
+                formData.append('amount', String(item.amount));
+                formData.append('date', item.date);
+
+                const responseData = await apiFetch('payments/add', { method: 'POST', body: formData });
+
+                if (responseData.message !== "Payment created successfully") {
+                    throw new Error(responseData.message || "Failed to create payment.");
+                }
+
+                const createdApiPayment = responseData.payment;
+                if (!createdApiPayment || !createdApiPayment.id) {
+                    throw new Error("Payment data was not returned in the API response after creation.");
+                }
+                return mapApiPaymentToPayment(createdApiPayment);
+            } catch (error) {
+                console.error("Failed to create payment via API:", error);
+                throw error;
+            }
+        },
+        update: async (id: string, updates: Partial<Payment>): Promise<Payment | null> => {
+             try {
+                const formData = new FormData();
+                formData.append('id', id);
+
+                if (updates.patientId) formData.append('patient_id', updates.patientId);
+                if (updates.amount !== undefined) formData.append('amount', String(updates.amount));
+                if (updates.date) formData.append('date', updates.date);
+
+                const responseData = await apiFetch('payments/edit', { method: 'POST', body: formData });
+                
+                if (responseData.message !== "Payment updated successfully") {
+                    throw new Error(responseData.message || "Failed to update payment.");
+                }
+
+                const updatedApiPayment = responseData.payment;
+                if (!updatedApiPayment) {
+                     throw new Error("Payment data not returned after update.");
+                }
+                return mapApiPaymentToPayment(updatedApiPayment);
+            } catch (error) {
+                console.error(`Failed to update payment with ID ${id}:`, error);
+                throw error;
+            }
+        },
+        delete: async (id: string): Promise<boolean> => {
+            try {
+                const formData = new FormData();
+                formData.append('id', id);
+                const responseData = await apiFetch('payments/delete', { method: 'POST', body: formData });
+
+                if (responseData.message === "Payment deleted successfully") {
+                    return true;
+                }
+                
+                throw new Error(responseData.message || "An unexpected response was received from the server.");
+
+            } catch (error) {
+                console.error(`Failed to delete payment with ID ${id}:`, error);
+                throw error;
+            }
+        },
+    },
     patientPhotos: createCRUD(MOCK_PATIENT_PHOTOS),
-    // FIX: Added activityLogs CRUD endpoint to the api object.
     activityLogs: {
         ...activityLogsCRUD,
         getByUserId: (userId: string) => simulateDelay(MOCK_ACTIVITY_LOGS.filter(log => log.userId === userId)),
@@ -468,6 +915,7 @@ export const api = {
 };
 
 // Custom getters
-export const getPatientsByDoctor = (doctorId: string) => simulateDelay(MOCK_PATIENTS.filter(p => p.doctorId === doctorId));
-// FIX: Corrected a logic error where the function was comparing a variable to itself.
-export const getSessionsByPatient = (patientId: string) => simulateDelay(MOCK_SESSIONS.filter(s => s.patientId === patientId));
+export const getSessionsByPatient = async (patientId: string): Promise<Session[]> => {
+    const allSessions = await api.sessions.getAll();
+    return allSessions.filter(s => s.patientId === patientId);
+};

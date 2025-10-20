@@ -29,7 +29,9 @@ export interface Treatment {
 }
 
 export interface SessionTreatment extends Treatment {
-    sessionPrice: number;
+    instanceId: string; // The unique ID of this entry from treatments/all
+    sessionId: string; // The session this belongs to
+    sessionPrice: number; // Price for this specific session, might be different from base price
     sessionNotes?: string;
     completed: boolean;
     treatmentDate?: string;
