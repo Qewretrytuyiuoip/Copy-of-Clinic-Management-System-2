@@ -1,7 +1,5 @@
-
-import React, { useEffect, useState, useCallback } from 'react';
-// FIX: Added 'Gender' to the import list to be used when creating a new patient.
-import { User, Appointment, Patient, UserRole, Gender } from '../types';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { User, Appointment, Patient, UserRole, Gender, DaySchedule } from '../types';
 import { api } from '../services/api';
 import { PlusIcon, PencilIcon, TrashIcon, XIcon, EyeIcon, SearchIcon, CalendarIcon, ClockIcon } from '../components/Icons';
 import { CenteredLoadingSpinner } from '../components/LoadingSpinner';
@@ -79,28 +77,122 @@ interface AppointmentFormModalProps {
     appointment?: Appointment;
     patients: Patient[];
     doctors: User[];
-    onSave: (data: Omit<Appointment, 'id'> | Appointment) => Promise<void>;
+    onSave: (data: Omit<Appointment, 'id'> | Appointment, refreshPatients: boolean) => Promise<void>;
     onClose: () => void;
 }
+
+const generateTimeSlots = (start: string, end: string, intervalMinutes: number): string[] => {
+    const slots: string[] = [];
+    try {
+        const [startHour, startMinute] = start.split(':').map(Number);
+        const [endHour, endMinute] = end.split(':').map(Number);
+        
+        const startDate = new Date();
+        startDate.setHours(startHour, startMinute, 0, 0);
+
+        const endDate = new Date();
+        endDate.setHours(endHour, endMinute, 0, 0);
+
+        while (startDate < endDate) {
+            slots.push(
+                `${startDate.getHours().toString().padStart(2, '0')}:${startDate.getMinutes().toString().padStart(2, '0')}`
+            );
+            startDate.setMinutes(startDate.getMinutes() + intervalMinutes);
+        }
+    } catch (e) {
+        console.error("Error generating time slots", e);
+    }
+    return slots;
+};
+
 
 const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment, patients, doctors, onSave, onClose }) => {
     const [formData, setFormData] = useState({
         patientId: appointment?.patientId || '',
         doctorId: appointment?.doctorId || '',
-        date: appointment ? new Date(appointment.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        date: appointment?.date || new Date().toISOString().split('T')[0],
         time: appointment?.time || '',
         notes: appointment?.notes || '',
     });
     const [isSaving, setIsSaving] = useState(false);
     const [showNewPatientForm, setShowNewPatientForm] = useState(false);
     const [newPatientData, setNewPatientData] = useState({ name: '', phone: '' });
+    
+    const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+    const [slotsLoading, setSlotsLoading] = useState(false);
+    const [slotsMessage, setSlotsMessage] = useState('');
 
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData(prev => {
+            const newState = { ...prev, [name]: value };
+
+            // When a patient is selected, automatically select their doctor
+            if (name === 'patientId') {
+                const selectedPatient = patients.find(p => p.id === value);
+                if (selectedPatient) {
+                    newState.doctorId = selectedPatient.doctorId;
+                } else {
+                    newState.doctorId = ''; // Reset if no patient is selected
+                }
+                 // Always reset time when patient changes, as doctor might change
+                newState.time = '';
+            }
+
+            // Reset time when doctor or date changes as slots will be refetched
+            if (name === 'doctorId' || name === 'date') {
+                newState.time = '';
+            }
+            return newState;
+        });
     };
     
+    useEffect(() => {
+        const fetchAvailableSlots = async () => {
+            if (formData.doctorId && formData.date) {
+                setSlotsLoading(true);
+                setAvailableSlots([]);
+                setSlotsMessage('');
+                try {
+                    const schedules = await api.doctorSchedules.getForDoctor(formData.doctorId);
+                    const selectedDate = new Date(formData.date);
+                    // getDay() is 0 for Sunday, 1 for Monday... which matches our backend
+                    const dayOfWeek = selectedDate.getDay(); 
+                    
+                    const daySchedule = schedules.find(s => s.day === dayOfWeek);
+
+                    if (!daySchedule || !daySchedule.isWorkDay) {
+                        setSlotsMessage('الطبيب غير متاح في هذا اليوم.');
+                        return;
+                    }
+                    
+                    const allAppointments = await api.appointments.getAll();
+                    const bookedSlots = allAppointments
+                        .filter(app => app.doctorId === formData.doctorId && app.date === formData.date && app.id !== appointment?.id)
+                        .map(app => app.time);
+
+                    const generatedSlots = generateTimeSlots(daySchedule.startTime, daySchedule.endTime, 30);
+                    
+                    const freeSlots = generatedSlots.filter(slot => !bookedSlots.includes(slot));
+                    
+                    if(freeSlots.length === 0) {
+                        setSlotsMessage('لا توجد أوقات متاحة في هذا اليوم.');
+                    }
+                    setAvailableSlots(freeSlots);
+
+                } catch (error) {
+                    console.error("Failed to fetch available slots:", error);
+                    setSlotsMessage('فشل في تحميل الأوقات المتاحة.');
+                } finally {
+                    setSlotsLoading(false);
+                }
+            }
+        };
+        fetchAvailableSlots();
+    }, [formData.doctorId, formData.date, appointment?.id]);
+
+
     const handleNewPatientChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setNewPatientData(prev => ({ ...prev, [name]: value }));
@@ -110,6 +202,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
         e.preventDefault();
         setIsSaving(true);
         let patientIdForAppointment = formData.patientId;
+        let refreshPatientsList = false;
     
         if (showNewPatientForm) {
             if (!newPatientData.name || !newPatientData.phone || !formData.doctorId) {
@@ -124,10 +217,10 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                     doctorId: formData.doctorId,
                     age: 0, 
                     notes: 'مريض جديد تم إنشاؤه من صفحة المواعيد',
-                    // FIX: Added the missing 'gender' property to satisfy the 'Patient' type.
                     gender: Gender.Male,
                 });
                 patientIdForAppointment = newPatient.id;
+                refreshPatientsList = true;
             } catch (error) {
                 console.error("فشل في إنشاء مريض جديد:", error);
                 alert('فشل في إنشاء المريض الجديد.');
@@ -141,6 +234,12 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
             setIsSaving(false);
             return;
         }
+
+        if(!formData.time) {
+            alert('يرجى اختيار وقت للموعد.');
+            setIsSaving(false);
+            return;
+        }
     
         const appointmentData = {
             ...formData,
@@ -148,7 +247,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
         };
     
         const dataToSave = appointment ? { ...appointment, ...appointmentData } : appointmentData;
-        await onSave(dataToSave);
+        await onSave(dataToSave, refreshPatientsList);
         setIsSaving(false);
     };
 
@@ -228,12 +327,23 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                         </div>
                         <div>
                             <label htmlFor="time" className="block text-sm font-medium text-gray-700 mb-1">الوقت</label>
-                            <div className="relative">
-                                <input type="time" id="time" name="time" value={formData.time} onChange={handleChange} required className={`${inputStyle} pr-10`} />
-                                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                    <ClockIcon className="h-5 w-5 text-black" />
+                            {slotsLoading ? (
+                                <div className="h-10 flex items-center justify-center text-sm text-gray-500">جاري تحميل الأوقات...</div>
+                            ) : (
+                                <div className="relative">
+                                    <select id="time" name="time" value={formData.time} onChange={handleChange} required className={`${inputStyle} pr-10`} disabled={!formData.doctorId || !formData.date}>
+                                        <option value="">اختر وقت...</option>
+                                        {availableSlots.length > 0 ? (
+                                            availableSlots.map(slot => <option key={slot} value={slot}>{slot}</option>)
+                                        ) : (
+                                            <option disabled>{slotsMessage || 'اختر طبيب وتاريخ'}</option>
+                                        )}
+                                    </select>
+                                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                        <ClockIcon className="h-5 w-5 text-black" />
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                         <div className="md:col-span-2"><label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={3} className={inputStyle}></textarea></div>
                     </div>
@@ -267,39 +377,60 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user }) => {
     const [searchTerm, setSearchTerm] = useState('');
 
 
-    const fetchData = useCallback(async () => {
+    const fetchData = useCallback(async (refreshPatients = false) => {
         setLoading(true);
-        const [apps, pats, docs] = await Promise.all([
-            api.appointments.getAll(),
-            api.patients.getAll(),
-            api.doctors.getAll(),
-        ]);
-        setAppointments(apps);
-        setPatients(pats);
-        setDoctors(docs);
-        setLoading(false);
-    }, []);
+        try {
+            const appointmentPromise = api.appointments.getAll();
+            const doctorsPromise = api.doctors.getAll();
+            const patientsPromise = refreshPatients || patients.length === 0 ? api.patients.getAll() : Promise.resolve(patients);
+
+            const [apps, docs, pats] = await Promise.all([appointmentPromise, doctorsPromise, patientsPromise]);
+            
+            setAppointments(apps);
+            setDoctors(docs);
+            setPatients(pats);
+        } catch (error) {
+            console.error("Failed to fetch data:", error);
+            alert(`فشل تحميل البيانات: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+        } finally {
+            setLoading(false);
+        }
+    }, [patients]);
 
     useEffect(() => {
         fetchData();
-    }, [fetchData]);
+    }, []);
 
-    const handleSaveAppointment = async (data: Omit<Appointment, 'id'> | Appointment) => {
-        if ('id' in data) {
-            await api.appointments.update(data.id, data);
-        } else {
-            await api.appointments.create(data);
+    const handleSaveAppointment = async (data: Omit<Appointment, 'id'> | Appointment, refreshPatients: boolean) => {
+        try {
+            const dataWithUser = { ...data, createdBy: user.id };
+            if ('id' in dataWithUser) {
+                await api.appointments.update(dataWithUser.id, dataWithUser);
+            } else {
+                await api.appointments.create(dataWithUser);
+            }
+        } catch (error) {
+            const action = 'id' in data ? 'تعديل' : 'إضافة';
+            console.error(`Failed to ${action} appointment:`, error);
+            alert(`فشل ${action} الموعد: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+        } finally {
+            setIsAddingAppointment(false);
+            setEditingAppointment(null);
+            await fetchData(refreshPatients);
         }
-        setIsAddingAppointment(false);
-        setEditingAppointment(null);
-        await fetchData();
     };
 
     const confirmDeleteAppointment = async () => {
         if (deletingAppointment) {
-            await api.appointments.delete(deletingAppointment.id);
-            setDeletingAppointment(null);
-            await fetchData();
+            try {
+                await api.appointments.delete(deletingAppointment.id);
+            } catch (error) {
+                console.error("Failed to delete appointment:", error);
+                alert(`فشل حذف الموعد: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+            } finally {
+                setDeletingAppointment(null);
+                await fetchData();
+            }
         }
     };
 

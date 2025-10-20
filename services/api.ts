@@ -12,7 +12,6 @@ export let MOCK_USERS: User[] = [
 
 // MOCK_PATIENTS is now fetched from the API.
 // Dependent mock data is cleared to avoid invalid references.
-let MOCK_APPOINTMENTS: Appointment[] = [];
 let MOCK_PATIENT_PHOTOS: PatientPhoto[] = [];
 let MOCK_ACTIVITY_LOGS: ActivityLog[] = [];
 
@@ -49,9 +48,31 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     });
 
     if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`API call to ${endpoint} failed:`, response.status, errorText);
-        throw new Error(`API call failed: ${response.statusText}`);
+        let errorMessage = `خطأ في الخادم: ${response.status} ${response.statusText}`;
+        try {
+            // Try to parse a structured JSON error from the server
+            const errorData = await response.json();
+            if (errorData.message) {
+                errorMessage = errorData.message;
+                // If there are validation errors, append them
+                if (errorData.errors) {
+                    const validationErrors = Object.values(errorData.errors).flat().join('\n');
+                    errorMessage += `\n\nالتفاصيل:\n${validationErrors}`;
+                }
+            } else {
+                // If it's JSON but not in the expected format, stringify it
+                errorMessage = JSON.stringify(errorData);
+            }
+        } catch (e) {
+            // If the response is not JSON, use the raw text
+            const errorText = await response.text();
+            if (errorText) {
+                errorMessage = errorText;
+            }
+        }
+        console.error(`API call to ${endpoint} failed with status ${response.status}:`, errorMessage);
+        // Throw the detailed error message to be caught by the UI
+        throw new Error(errorMessage);
     }
 
     return response.json();
@@ -368,6 +389,28 @@ const mapApiTreatmentSettingToTreatment = (t: any): Treatment => ({
     notes: t.notes ?? undefined,
 });
 
+const mapApiAppointmentToAppointment = (apiApp: any): Appointment => {
+    let time = '00:00';
+    // The time field can be a full ISO string (e.g., from `time` or `created_at`). We only need HH:MM.
+    if (apiApp.time && typeof apiApp.time === 'string') {
+        // Handle full datetime strings like "2024-07-25 14:30:00" or "2024-07-25T14:30:00.000Z"
+        const timeMatch = apiApp.time.match(/(\d{2}):(\d{2})/);
+        if (timeMatch) {
+            time = `${timeMatch[1]}:${timeMatch[2]}`;
+        }
+    }
+    
+    return {
+        id: String(apiApp.id),
+        patientId: String(apiApp.patient_id),
+        doctorId: String(apiApp.doctor_id),
+        date: apiApp.date.split('T')[0], // Extract YYYY-MM-DD from the date field
+        time: time,
+        notes: apiApp.notes ?? undefined,
+        createdBy: apiApp.created_by ? String(apiApp.created_by) : undefined,
+    };
+};
+
 const mapApiSessionTreatmentToSessionTreatment = (st: any, treatmentsByName: Map<string, Treatment>): SessionTreatment | null => {
     const baseTreatment = treatmentsByName.get(st.treatment_name);
 
@@ -560,7 +603,7 @@ export const api = {
                 throw new Error(errorMessage);
 
             } catch (error) {
-                console.error(`Failed to delete patient with ID ${id} via API:`, error);
+                console.error(`Failed to delete patient with ID ${id}:`, error);
                 throw error;
             }
         },
@@ -805,7 +848,90 @@ export const api = {
             }
         },
     },
-    appointments: createCRUD(MOCK_APPOINTMENTS),
+    appointments: {
+        getAll: async (): Promise<Appointment[]> => {
+            try {
+                const apiAppointments = await apiFetch('appointments/all', { method: 'POST' });
+                if (!Array.isArray(apiAppointments)) {
+                    console.error('Expected an array of appointments from API, but got:', apiAppointments);
+                    return [];
+                }
+                return apiAppointments.map(mapApiAppointmentToAppointment);
+            } catch (error) {
+                console.error("Failed to fetch appointments:", error);
+                return [];
+            }
+        },
+        create: async (item: Omit<Appointment, 'id'>): Promise<Appointment> => {
+            try {
+                const formData = new FormData();
+                formData.append('patient_id', item.patientId);
+                formData.append('doctor_id', item.doctorId);
+                formData.append('date', item.date);
+                formData.append('time', `${item.time}:00`);
+                if (item.createdBy) formData.append('created_by', item.createdBy);
+                if (item.notes) formData.append('notes', item.notes);
+
+                const responseData = await apiFetch('appointments/add', { method: 'POST', body: formData });
+
+                if (responseData.message !== "Appointment created") {
+                    throw new Error(responseData.message || "Failed to create appointment.");
+                }
+                const createdApiApp = responseData.data;
+                if (!createdApiApp || !createdApiApp.id) {
+                    throw new Error("Appointment data was not returned after creation.");
+                }
+                return mapApiAppointmentToAppointment(createdApiApp);
+            } catch (error) {
+                console.error("Failed to create appointment via API:", error);
+                throw error;
+            }
+        },
+        update: async (id: string, updates: Partial<Appointment>): Promise<Appointment | null> => {
+             try {
+                const formData = new FormData();
+                formData.append('id', id);
+
+                if (updates.patientId) formData.append('patient_id', updates.patientId);
+                if (updates.doctorId) formData.append('doctor_id', updates.doctorId);
+                if (updates.date) formData.append('date', updates.date);
+                if (updates.time) formData.append('time', `${updates.time}:00`);
+                if (updates.notes) formData.append('notes', updates.notes);
+
+                const responseData = await apiFetch('appointments/edit', { method: 'POST', body: formData });
+                
+                if (responseData.message !== "Appointment updated successfully") {
+                    throw new Error(responseData.message || "Failed to update appointment.");
+                }
+
+                const updatedApiApp = responseData.data;
+                if (!updatedApiApp) {
+                     throw new Error("Appointment data not returned after update.");
+                }
+                return mapApiAppointmentToAppointment(updatedApiApp);
+            } catch (error) {
+                console.error(`Failed to update appointment with ID ${id}:`, error);
+                throw error;
+            }
+        },
+        delete: async (id: string): Promise<boolean> => {
+            try {
+                const formData = new FormData();
+                formData.append('id', id);
+                const responseData = await apiFetch('appointments/delete', { method: 'POST', body: formData });
+
+                if (responseData.message === "Appointment deleted successfully") {
+                    return true;
+                }
+                
+                throw new Error(responseData.message || "An unexpected response was received from the server.");
+
+            } catch (error) {
+                console.error(`Failed to delete appointment with ID ${id}:`, error);
+                throw error;
+            }
+        },
+    },
     payments: {
         getAll: async (): Promise<Payment[]> => {
             try {

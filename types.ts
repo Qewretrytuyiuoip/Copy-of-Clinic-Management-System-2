@@ -69,6 +69,7 @@ export interface Appointment {
     date: string; // YYYY-MM-DD
     time: string; // HH:MM
     notes?: string;
+    createdBy?: string;
 }
 
 export interface Payment {
