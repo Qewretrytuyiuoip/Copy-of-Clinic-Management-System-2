@@ -87,6 +87,7 @@ export interface PatientPhoto {
 }
 
 export interface DaySchedule {
+    id?: string; // Optional ID from the database for existing schedules
     day: number; // 0 for Sunday, 1 for Monday, etc.
     isWorkDay: boolean;
     startTime: string; // HH:MM

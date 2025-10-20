@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { User, DoctorAvailability, DaySchedule } from '../types';
+import { User, DaySchedule } from '../types';
 import { api } from '../services/api';
 import { DAY_NAMES } from '../constants';
 import { CenteredLoadingSpinner } from '../components/LoadingSpinner';
@@ -14,31 +14,29 @@ const DoctorSettingsPage: React.FC<DoctorSettingsPageProps> = ({ user }) => {
     const [saving, setSaving] = useState(false);
     const [feedback, setFeedback] = useState('');
 
-    const createFullSchedule = useCallback((data?: DoctorAvailability | null): DaySchedule[] => {
-        const baseSchedule: DaySchedule[] = DAY_NAMES.map((_, index) => ({
-            day: index,
-            isWorkDay: false,
-            startTime: '09:00',
-            endTime: '17:00',
-        }));
-
-        if (data?.schedule) {
-            data.schedule.forEach(daySetting => {
-                const index = baseSchedule.findIndex(d => d.day === daySetting.day);
-                if (index !== -1) {
-                    baseSchedule[index] = { ...daySetting };
-                }
-            });
-        }
-        return baseSchedule;
-    }, []);
-
     const fetchAvailability = useCallback(async () => {
         setLoading(true);
-        const data = await api.availability.get(user.id);
-        setSchedule(createFullSchedule(data));
-        setLoading(false);
-    }, [user.id, createFullSchedule]);
+        try {
+            const data = await api.doctorSchedules.getForDoctor(user.id);
+    
+            const fullSchedule = DAY_NAMES.map((_, index) => {
+                const dayData = data.find(d => d.day === index);
+                return dayData || {
+                    day: index,
+                    isWorkDay: false,
+                    startTime: '09:00',
+                    endTime: '17:00',
+                };
+            });
+    
+            setSchedule(fullSchedule);
+        } catch (error) {
+            console.error("Could not fetch schedule", error);
+            setFeedback('فشل في تحميل الجدول الزمني.');
+        } finally {
+            setLoading(false);
+        }
+    }, [user.id]);
 
     useEffect(() => {
         fetchAvailability();
@@ -62,11 +60,14 @@ const DoctorSettingsPage: React.FC<DoctorSettingsPageProps> = ({ user }) => {
         setSaving(true);
         setFeedback('');
         try {
-            await api.availability.set(user.id, schedule);
+            await api.doctorSchedules.setForDoctor(user.id, schedule);
             setFeedback('تم تحديث التواجد بنجاح!');
+            // Refetch to get new IDs for any created schedules
+            await fetchAvailability();
             setTimeout(() => setFeedback(''), 3000);
         } catch (error) {
-            setFeedback('فشل تحديث التواجد.');
+            console.error("Failed to save schedule:", error);
+            setFeedback(`فشل تحديث التواجد: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
         } finally {
             setSaving(false);
         }

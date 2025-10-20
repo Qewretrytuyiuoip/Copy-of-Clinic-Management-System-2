@@ -17,37 +17,6 @@ let MOCK_PATIENT_PHOTOS: PatientPhoto[] = [];
 let MOCK_ACTIVITY_LOGS: ActivityLog[] = [];
 
 
-const createDefaultSchedule = (): DaySchedule[] => {
-    return Array.from({ length: 7 }, (_, i) => ({
-        day: i,
-        isWorkDay: false,
-        startTime: '09:00',
-        endTime: '17:00',
-    }));
-};
-
-let MOCK_AVAILABILITY: DoctorAvailability[] = [
-    { 
-        doctorId: 'doc1', 
-        schedule: createDefaultSchedule().map(d => {
-            if ([1, 3, 5].includes(d.day)) {
-                return { ...d, isWorkDay: true };
-            }
-            return d;
-        })
-    },
-    { 
-        doctorId: 'doc2', 
-        schedule: createDefaultSchedule().map(d => {
-            if ([2, 4].includes(d.day)) {
-                return { ...d, isWorkDay: true, startTime: '10:00', endTime: '18:00' };
-            }
-            return d;
-        })
-    },
-];
-
-
 // --- API FUNCTIONS ---
 
 // A single source of truth for fetching all users from the API
@@ -428,6 +397,30 @@ const mapApiSessionToSessionBase = (s: any): Session => ({
     notes: s.notes ?? '',
     treatments: [], // Will be populated separately
 });
+
+// Helper to format time from API's ISO string to HH:MM for time inputs
+const formatTimeFromISO = (isoString: string | null): string => {
+    if (!isoString) return '09:00'; // Default start time
+    try {
+        const date = new Date(isoString);
+        // Using UTC methods to avoid timezone issues, as the 'Z' indicates UTC.
+        const hours = date.getUTCHours().toString().padStart(2, '0');
+        const minutes = date.getUTCMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
+    } catch (e) {
+        console.error("Invalid date string for time formatting:", isoString, e);
+        return '00:00';
+    }
+};
+
+const mapApiScheduleToDaySchedule = (apiSchedule: any): DaySchedule => ({
+    id: String(apiSchedule.id),
+    day: apiSchedule.day_of_week,
+    isWorkDay: !!apiSchedule.is_work_day,
+    startTime: formatTimeFromISO(apiSchedule.start_time),
+    endTime: formatTimeFromISO(apiSchedule.end_time),
+});
+
 
 // Fetches all session treatments and groups them by session ID for efficient access.
 const getGroupedSessionTreatments = async (): Promise<Record<string, SessionTreatment[]>> => {
@@ -898,20 +891,41 @@ export const api = {
         ...activityLogsCRUD,
         getByUserId: (userId: string) => simulateDelay(MOCK_ACTIVITY_LOGS.filter(log => log.userId === userId)),
     },
-    availability: {
-        get: (doctorId: string) => simulateDelay(MOCK_AVAILABILITY.find(a => a.doctorId === doctorId) || null),
-        set: (doctorId: string, schedule: DaySchedule[]) => {
-            const index = MOCK_AVAILABILITY.findIndex(a => a.doctorId === doctorId);
-            const newAvailability = { doctorId, schedule };
-            if (index > -1) {
-                MOCK_AVAILABILITY[index] = newAvailability;
-            } else {
-                MOCK_AVAILABILITY.push(newAvailability);
+    doctorSchedules: {
+        getForDoctor: async (doctorId: string): Promise<DaySchedule[]> => {
+            try {
+                const apiSchedules = await apiFetch('doctor_schedules/all', { method: 'POST' });
+                if (!Array.isArray(apiSchedules)) {
+                    console.error("Expected an array of schedules, got:", apiSchedules);
+                    return [];
+                }
+                const doctorSchedules = apiSchedules.filter(s => String(s.doctor_id) === doctorId);
+                return doctorSchedules.map(mapApiScheduleToDaySchedule);
+            } catch (error) {
+                console.error("Failed to fetch doctor schedules:", error);
+                throw error; 
             }
-            return simulateDelay(newAvailability);
         },
-        getAll: () => simulateDelay(MOCK_AVAILABILITY),
-    }
+        setForDoctor: async (doctorId: string, schedule: DaySchedule[]): Promise<void> => {
+            const promises = schedule.map(async (day) => {
+                const formData = new FormData();
+                
+                formData.append('doctor_id', doctorId);
+                formData.append('day_of_week', String(day.day));
+                formData.append('is_work_day', day.isWorkDay ? '1' : '0');
+                formData.append('start_time', day.startTime);
+                formData.append('end_time', day.endTime);
+
+                if (day.id) {
+                    formData.append('id', day.id);
+                    await apiFetch('doctor_schedules/edit', { method: 'POST', body: formData });
+                } else if (day.isWorkDay) { 
+                    await apiFetch('doctor_schedules/add', { method: 'POST', body: formData });
+                }
+            });
+            await Promise.all(promises);
+        }
+    },
 };
 
 // Custom getters
