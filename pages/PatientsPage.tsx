@@ -22,7 +22,7 @@ const AddEditPhotoModal: React.FC<AddEditPhotoModalProps> = ({ photo, patientId,
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const isEditMode = !!photo;
-    const inputStyle = "w-full px-3 py-2 bg-white border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black";
+    const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
     const fileToBase64 = (file: File): Promise<string> =>
         new Promise((resolve, reject) => {
@@ -94,19 +94,19 @@ const AddEditPhotoModal: React.FC<AddEditPhotoModalProps> = ({ photo, patientId,
         setIsSaving(false);
     };
     
-    const dropzoneClasses = `w-full h-48 border-2 border-dashed rounded-lg flex flex-col justify-center items-center cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary-50' : 'border-gray-300 hover:border-primary'}`;
+    const dropzoneClasses = `w-full h-48 border-2 border-dashed rounded-lg flex flex-col justify-center items-center cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary-50 dark:bg-primary-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-primary'}`;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h2 className="text-xl font-bold text-gray-800">{isEditMode ? 'تعديل الصورة' : 'إضافة صورة جديدة'}</h2>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600" /></button>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{isEditMode ? 'تعديل الصورة' : 'إضافة صورة جديدة'}</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">الصورة</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الصورة</label>
                             <div 
                                 className={dropzoneClasses}
                                 onClick={() => fileInputRef.current?.click()}
@@ -124,7 +124,7 @@ const AddEditPhotoModal: React.FC<AddEditPhotoModalProps> = ({ photo, patientId,
                                 {imagePreview ? (
                                     <img src={imagePreview} alt="معاينة الصورة" className="max-h-full max-w-full object-contain rounded-md" />
                                 ) : (
-                                    <div className="text-center text-gray-500">
+                                    <div className="text-center text-gray-500 dark:text-gray-400">
                                         <PhotographIcon className="h-12 w-12 mx-auto" />
                                         <p>اسحب وأفلت الصورة هنا، أو انقر للاختيار</p>
                                     </div>
@@ -132,12 +132,12 @@ const AddEditPhotoModal: React.FC<AddEditPhotoModalProps> = ({ photo, patientId,
                             </div>
                         </div>
                         <div>
-                            <label htmlFor="caption" className="block text-sm font-medium text-gray-700 mb-1">تعليق</label>
+                            <label htmlFor="caption" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تعليق</label>
                             <textarea id="caption" name="caption" value={caption} onChange={(e) => setCaption(e.target.value)} rows={3} className={inputStyle} placeholder="أضف تعليقًا وصفيًا..."></textarea>
                         </div>
                     </div>
-                    <div className="flex justify-end items-center p-4 bg-gray-50 border-t">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">إلغاء</button>
+                    <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
                         <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
                     </div>
                 </form>
@@ -293,13 +293,13 @@ const PatientGalleryPage: React.FC<PatientGalleryPageProps> = ({ patient, onBack
         <div>
             <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
                 <div className="flex items-center gap-4">
-                    <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                    <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
                         <ArrowBackIcon className="h-5 w-5" />
                         <span>العودة</span>
                     </button>
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">معرض صور المريض</h1>
-                        <p className="text-gray-500">{patient.name}</p>
+                        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">معرض صور المريض</h1>
+                        <p className="text-gray-500 dark:text-gray-400">{patient.name}</p>
                     </div>
                 </div>
                 <button onClick={() => setIsAdding(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
@@ -308,18 +308,18 @@ const PatientGalleryPage: React.FC<PatientGalleryPageProps> = ({ patient, onBack
                 </button>
             </div>
             
-            <div className="bg-white p-6 rounded-xl shadow-md min-h-[200px]">
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[200px]">
                 {loading ? <CenteredLoadingSpinner /> : photos.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                         {photos.map(photo => (
-                            <div key={photo.id} className="border bg-gray-50 rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-shadow">
+                            <div key={photo.id} className="border bg-gray-50 dark:bg-gray-800 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-shadow">
                                 <img src={photo.imageUrl} alt={photo.caption} className="w-full h-48 object-cover cursor-pointer" onClick={() => setViewingPhotoUrl(photo.imageUrl)} />
                                 <div className="p-4">
-                                    <p className="font-semibold text-gray-800">{photo.caption || "بدون تعليق"}</p>
-                                    <p className="text-sm text-gray-500">{new Date(photo.date).toLocaleDateString()}</p>
+                                    <p className="font-semibold text-gray-800 dark:text-gray-100">{photo.caption || "بدون تعليق"}</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">{new Date(photo.date).toLocaleDateString()}</p>
                                     <div className="mt-4 flex justify-end gap-2">
-                                        <button onClick={() => setEditingPhoto(photo)} className="p-2 rounded-full hover:bg-blue-100 text-blue-600" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
-                                        <button onClick={() => setDeletingPhoto(photo)} className="p-2 rounded-full hover:bg-red-100 text-red-600" title="حذف"><TrashIcon className="h-5 w-5" /></button>
+                                        <button onClick={() => setEditingPhoto(photo)} className="p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
+                                        <button onClick={() => setDeletingPhoto(photo)} className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400" title="حذف"><TrashIcon className="h-5 w-5" /></button>
                                     </div>
                                 </div>
                             </div>
@@ -328,8 +328,8 @@ const PatientGalleryPage: React.FC<PatientGalleryPageProps> = ({ patient, onBack
                 ) : (
                     <div className="text-center py-16">
                         <PhotographIcon className="mx-auto h-12 w-12 text-gray-400" />
-                        <h3 className="mt-2 text-lg font-medium text-gray-900">لا توجد صور</h3>
-                        <p className="mt-1 text-sm text-gray-500">ابدأ بإضافة أول صورة لهذا المريض.</p>
+                        <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-gray-100">لا توجد صور</h3>
+                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">ابدأ بإضافة أول صورة لهذا المريض.</p>
                     </div>
                 )}
             </div>
@@ -374,8 +374,8 @@ interface PatientDetailsPageProps {
 
 const DetailItem: React.FC<{ label: string; value?: string | number | null; children?: React.ReactNode }> = ({ label, value, children }) => (
     <div className="py-3 sm:py-4">
-        <dt className="text-sm font-medium text-gray-500">{label}</dt>
-        <dd className="mt-1 text-lg text-gray-900 sm:mt-0">{children || value || <span className="text-gray-400">لا يوجد</span>}</dd>
+        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{label}</dt>
+        <dd className="mt-1 text-lg text-gray-900 dark:text-gray-100 sm:mt-0">{children || value || <span className="text-gray-400 dark:text-gray-500">لا يوجد</span>}</dd>
     </div>
 );
 
@@ -384,35 +384,35 @@ const PatientDetailsPage: React.FC<PatientDetailsPageProps> = ({ patient, onBack
         <div>
             <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-4">
-                    <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                    <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
                         <ArrowBackIcon className="h-5 w-5" />
                         <span>العودة</span>
                     </button>
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">تفاصيل المريض</h1>
-                        <p className="text-gray-500">{patient.name}</p>
+                        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">تفاصيل المريض</h1>
+                        <p className="text-gray-500 dark:text-gray-400">{patient.name}</p>
                     </div>
                 </div>
             </div>
 
-            <div className="bg-white shadow-md rounded-xl overflow-hidden">
+            <div className="bg-white dark:bg-slate-800 shadow-md rounded-xl overflow-hidden">
                 <div className="px-4 py-5 sm:px-6">
-                    <h3 className="text-xl leading-6 font-bold text-gray-900">
+                    <h3 className="text-xl leading-6 font-bold text-gray-900 dark:text-gray-100">
                         {patient.name}
-                        <span className="ml-3 inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-primary-100 text-primary-800">{patient.code}</span>
+                        <span className="ml-3 inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-300">{patient.code}</span>
                     </h3>
                 </div>
-                <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
-                    <dl className="sm:divide-y sm:divide-gray-200">
+                <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-5 sm:p-0">
+                    <dl className="sm:divide-y sm:divide-gray-200 dark:sm:divide-gray-700">
                         <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6"> <DetailItem label="العمر" value={patient.age} /> </div>
                         <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6"> <DetailItem label="الهاتف" value={patient.phone} /> </div>
                         <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6"> <DetailItem label="الجنس" value={patient.gender === Gender.Female ? 'أنثى' : 'ذكر'} /> </div>
                         <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                             <DetailItem label="الحالة الاجتماعية/الصحية">
                                 <div className="flex items-center space-x-4">
-                                    {patient.isSmoker && <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">مدخن</span>}
-                                    {patient.isPregnant && <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800">حامل</span>}
-                                    {!patient.isSmoker && !patient.isPregnant && <span className="text-gray-400">لا يوجد</span>}
+                                    {patient.isSmoker && <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300">مدخن</span>}
+                                    {patient.isPregnant && <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300">حامل</span>}
+                                    {!patient.isSmoker && !patient.isPregnant && <span className="text-gray-400 dark:text-gray-500">لا يوجد</span>}
                                 </div>
                             </DetailItem>
                         </div>
@@ -438,21 +438,21 @@ interface ConfirmDeleteModalProps {
 
 const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCancel, title, message }) => (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 transition-opacity" onClick={onCancel}>
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
             <div className="p-6">
                 <div className="text-center">
-                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-                        <TrashIcon className="h-6 w-6 text-red-600" aria-hidden="true" />
+                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30">
+                        <TrashIcon className="h-6 w-6 text-red-600 dark:text-red-400" aria-hidden="true" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-800 mt-4">{title}</h3>
-                    <p className="text-sm text-gray-500 mt-2 px-4">{message}</p>
+                    <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-4">{title}</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 px-4">{message}</p>
                 </div>
             </div>
-            <div className="bg-gray-50 px-6 py-4 rounded-b-2xl flex justify-center gap-4">
+            <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex justify-center gap-4">
                 <button type="button" onClick={onConfirm} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
                     نعم، قم بالحذف
                 </button>
-                <button type="button" onClick={onCancel} className="w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                <button type="button" onClick={onCancel} className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
                     إلغاء
                 </button>
             </div>
@@ -475,7 +475,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({ session, onSave, on
         notes: session.notes,
     });
     const [isSaving, setIsSaving] = useState(false);
-    const inputStyle = "w-full px-3 py-2 border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary text-black";
+    const inputStyle = "w-full px-3 py-2 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary text-black dark:text-white bg-white dark:bg-gray-700";
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -496,24 +496,24 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({ session, onSave, on
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h2 className="text-xl font-bold text-gray-800">تعديل الجلسة</h2>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600" /></button>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">تعديل الجلسة</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4">
                         <div>
-                            <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">تاريخ الجلسة</label>
+                            <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاريخ الجلسة</label>
                             <input type="date" id="date" name="date" value={formData.date} onChange={handleChange} required className={inputStyle} />
                         </div>
                         <div>
-                            <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label>
+                            <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات</label>
                             <textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={4} className={inputStyle}></textarea>
                         </div>
                     </div>
-                    <div className="flex justify-end items-center p-4 bg-gray-50 border-t">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">إلغاء</button>
+                    <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
                         <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
                     </div>
                 </form>
@@ -533,48 +533,48 @@ interface ViewTreatmentDetailsModalProps {
 const ViewTreatmentDetailsModal: React.FC<ViewTreatmentDetailsModalProps> = ({ treatment, onClose }) => {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h2 className="text-xl font-bold text-gray-800">تفاصيل العلاج</h2>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600" /></button>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">تفاصيل العلاج</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
                 </div>
-                <div className="p-6 space-y-3 divide-y divide-gray-200">
+                <div className="p-6 space-y-3 divide-y divide-gray-200 dark:divide-gray-700">
                     <div>
-                        <p className="text-sm font-medium text-gray-500">اسم العلاج</p>
-                        <p className="text-lg font-semibold text-gray-800">{treatment.name}</p>
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">اسم العلاج</p>
+                        <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">{treatment.name}</p>
                     </div>
                     {treatment.treatmentDate && (
                         <div className="pt-3">
-                            <p className="text-sm font-medium text-gray-500">تاريخ العلاج</p>
-                            <p className="text-lg font-semibold text-gray-800">{new Date(treatment.treatmentDate).toLocaleDateString()}</p>
+                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">تاريخ العلاج</p>
+                            <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">{new Date(treatment.treatmentDate).toLocaleDateString()}</p>
                         </div>
                     )}
                     <div className="pt-3 grid grid-cols-2 gap-4">
                         <div>
-                            <p className="text-sm font-medium text-gray-500">السعر</p>
-                            <p className="text-lg font-semibold text-green-600">${treatment.sessionPrice.toFixed(2)}</p>
+                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">السعر</p>
+                            <p className="text-lg font-semibold text-green-600 dark:text-green-400">${treatment.sessionPrice.toFixed(2)}</p>
                         </div>
                          {treatment.additionalCosts && treatment.additionalCosts > 0 && (
                             <div>
-                                <p className="text-sm font-medium text-gray-500">تكاليف إضافية</p>
-                                <p className="text-lg font-semibold text-green-600">${treatment.additionalCosts.toFixed(2)}</p>
+                                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">تكاليف إضافية</p>
+                                <p className="text-lg font-semibold text-green-600 dark:text-green-400">${treatment.additionalCosts.toFixed(2)}</p>
                             </div>
                          )}
                     </div>
                     {treatment.sessionNotes && (
                          <div className="pt-3">
-                            <p className="text-sm font-medium text-gray-500">ملاحظات الجلسة</p>
-                            <p className="text-md text-gray-700 whitespace-pre-wrap">{treatment.sessionNotes}</p>
+                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">ملاحظات الجلسة</p>
+                            <p className="text-md text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{treatment.sessionNotes}</p>
                         </div>
                     )}
                      {treatment.notes && (
                          <div className="pt-3">
-                            <p className="text-sm font-medium text-gray-500">ملاحظات عامة</p>
-                            <p className="text-md text-gray-700 whitespace-pre-wrap">{treatment.notes}</p>
+                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">ملاحظات عامة</p>
+                            <p className="text-md text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{treatment.notes}</p>
                         </div>
                     )}
                 </div>
-                <div className="flex justify-end items-center p-4 bg-gray-50 border-t">
+                <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
                     <button type="button" onClick={onClose} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700">إغلاق</button>
                 </div>
             </div>
@@ -596,7 +596,7 @@ interface AddSessionModalProps {
 const AddSessionModal: React.FC<AddSessionModalProps> = ({ onSave, onClose, patientId, doctorId }) => {
     const [formData, setFormData] = useState({ date: new Date().toISOString().split('T')[0], notes: '' });
     const [isSaving, setIsSaving] = useState(false);
-    const inputStyle = "w-full px-3 py-2 border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary text-black";
+    const inputStyle = "w-full px-3 py-2 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary text-black dark:text-white bg-white dark:bg-gray-700";
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -613,14 +613,14 @@ const AddSessionModal: React.FC<AddSessionModalProps> = ({ onSave, onClose, pati
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center p-4 border-b"><h2 className="text-xl font-bold text-gray-800">إضافة جلسة جديدة</h2><button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600" /></button></div>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700"><h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">إضافة جلسة جديدة</h2><button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button></div>
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4">
-                        <div><label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">تاريخ الجلسة</label><input type="date" id="date" name="date" value={formData.date} onChange={handleChange} required className={inputStyle} /></div>
-                        <div><label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={4} className={inputStyle}></textarea></div>
+                        <div><label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاريخ الجلسة</label><input type="date" id="date" name="date" value={formData.date} onChange={handleChange} required className={inputStyle} /></div>
+                        <div><label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={4} className={inputStyle}></textarea></div>
                     </div>
-                    <div className="flex justify-end items-center p-4 bg-gray-50 border-t"><button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">إلغاء</button><button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button></div>
+                    <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700"><button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button><button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button></div>
                 </form>
             </div>
         </div>
@@ -647,7 +647,7 @@ const AddTreatmentToSessionModal: React.FC<AddTreatmentToSessionModalProps> = ({
     const [additionalCosts, setAdditionalCosts] = useState('');
     const [isSaving, setIsSaving] = useState(false); // For "save and close"
     const [isSavingAndAdding, setIsSavingAndAdding] = useState(false); // For "save and add"
-    const inputStyle = "w-full px-3 py-2 bg-white border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black";
+    const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
     useEffect(() => {
         const fetchTreatments = async () => {
@@ -732,13 +732,13 @@ const AddTreatmentToSessionModal: React.FC<AddTreatmentToSessionModalProps> = ({
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center p-4 border-b"><h2 className="text-xl font-bold text-gray-800">إضافة علاج للجلسة</h2><button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600" /></button></div>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700"><h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">إضافة علاج للجلسة</h2><button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button></div>
                 {loading ? <div className="p-6 flex justify-center items-center h-48"><LoadingSpinner/></div> : (
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4">
                         <div>
-                            <label htmlFor="treatment" className="block text-sm font-medium text-gray-700 mb-1">اختر علاج</label>
+                            <label htmlFor="treatment" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">اختر علاج</label>
                             <select id="treatment" value={selectedTreatmentId} onChange={handleTreatmentChange} required className={inputStyle}>
                                 <option value="">-- اختر علاج --</option>
                                 {allTreatments.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -747,28 +747,28 @@ const AddTreatmentToSessionModal: React.FC<AddTreatmentToSessionModalProps> = ({
                         {selectedTreatmentId && (
                             <>
                                 <div>
-                                    <label htmlFor="treatmentDate" className="block text-sm font-medium text-gray-700 mb-1">تاريخ العلاج</label>
+                                    <label htmlFor="treatmentDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاريخ العلاج</label>
                                     <input type="date" id="treatmentDate" value={treatmentDate} onChange={e => setTreatmentDate(e.target.value)} required className={inputStyle} />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label htmlFor="sessionPrice" className="block text-sm font-medium text-gray-700 mb-1">السعر</label>
+                                        <label htmlFor="sessionPrice" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">السعر</label>
                                         <input type="number" step="0.01" id="sessionPrice" value={sessionPrice} onChange={e => setSessionPrice(e.target.value)} required className={inputStyle} />
                                     </div>
                                     <div>
-                                        <label htmlFor="additionalCosts" className="block text-sm font-medium text-gray-700 mb-1">تكاليف اضافية</label>
-                                        <input type="number" step="0.01" id="additionalCosts" value={additionalCosts} readOnly className={`${inputStyle} bg-gray-100 cursor-not-allowed`} placeholder="يتم حسابه من الملاحظات" />
+                                        <label htmlFor="additionalCosts" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تكاليف اضافية</label>
+                                        <input type="number" step="0.01" id="additionalCosts" value={additionalCosts} readOnly className={`${inputStyle} bg-gray-100 dark:bg-gray-800 cursor-not-allowed`} placeholder="يتم حسابه من الملاحظات" />
                                     </div>
                                 </div>
                                 <div>
-                                    <label htmlFor="sessionNotes" className="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label>
+                                    <label htmlFor="sessionNotes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات</label>
                                     <textarea id="sessionNotes" value={sessionNotes} onChange={e => setSessionNotes(e.target.value)} rows={3} className={inputStyle} placeholder="ملاحظات حول العلاج... سيتم استخلاص الأرقام للتكاليف الإضافية (مثال: 'مادة خاصة 150 ومادة أخرى 50.5')"></textarea>
                                 </div>
                             </>
                         )}
                     </div>
-                     <div className="flex justify-end items-center p-4 bg-gray-50 border-t space-x-2 space-x-reverse">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">إلغاء</button>
+                     <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700 space-x-2 space-x-reverse">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
                         <button
                             type="button"
                             onClick={handleSaveAndAddAnother}
@@ -815,7 +815,7 @@ const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, on
         chronicDiseases: patient.chronicDiseases || '',
     });
     const [isSaving, setIsSaving] = useState(false);
-    const inputStyle = "w-full px-3 py-2 bg-white border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black";
+    const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -852,45 +852,45 @@ const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, on
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg" role="dialog" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h2 className="text-xl font-bold text-gray-800">تعديل بيانات المريض</h2>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600" /></button>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-lg" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">تعديل بيانات المريض</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 max-h-[70vh] overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-4">
                          <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">كود المريض</label>
-                            <p className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-600">{patient.code}</p>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">كود المريض</label>
+                            <p className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-600 dark:text-gray-400">{patient.code}</p>
                         </div>
-                         <div><label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">الاسم</label><input type="text" id="name" name="name" value={formData.name} onChange={handleChange} required className={inputStyle} /></div>
-                         <div><label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-1">العمر</label><input type="number" id="age" name="age" value={formData.age} onChange={handleChange} required className={inputStyle} /></div>
-                         <div><label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">الهاتف</label><input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleChange} required className={inputStyle} /></div>
+                         <div><label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الاسم</label><input type="text" id="name" name="name" value={formData.name} onChange={handleChange} required className={inputStyle} /></div>
+                         <div><label htmlFor="age" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">العمر</label><input type="number" id="age" name="age" value={formData.age} onChange={handleChange} required className={inputStyle} /></div>
+                         <div><label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الهاتف</label><input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleChange} required className={inputStyle} /></div>
                          <div>
-                            <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-1">الجنس</label>
+                            <label htmlFor="gender" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الجنس</label>
                             <select id="gender" name="gender" value={formData.gender} onChange={handleChange} className={inputStyle}>
                                 <option value={Gender.Male}>ذكر</option>
                                 <option value={Gender.Female}>أنثى</option>
                             </select>
                         </div>
-                        <div className="md:col-span-2"><label htmlFor="drugAllergyEdit" className="block text-sm font-medium text-gray-700 mb-1">الحساسية الدوائية</label><textarea id="drugAllergyEdit" name="drugAllergy" value={formData.drugAllergy} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
-                        <div className="md:col-span-2"><label htmlFor="chronicDiseasesEdit" className="block text-sm font-medium text-gray-700 mb-1">الأمراض المزمنة</label><textarea id="chronicDiseasesEdit" name="chronicDiseases" value={formData.chronicDiseases} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
-                        <div className="md:col-span-2"><label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">ملاحظات عامة</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                        <div className="md:col-span-2"><label htmlFor="drugAllergyEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الحساسية الدوائية</label><textarea id="drugAllergyEdit" name="drugAllergy" value={formData.drugAllergy} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                        <div className="md:col-span-2"><label htmlFor="chronicDiseasesEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأمراض المزمنة</label><textarea id="chronicDiseasesEdit" name="chronicDiseases" value={formData.chronicDiseases} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                        <div className="md:col-span-2"><label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات عامة</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
                         <div className="md:col-span-2 flex items-center space-x-4 pt-2">
                            <label className="flex items-center cursor-pointer">
-                                <input type="checkbox" name="isSmoker" checked={formData.isSmoker} onChange={handleChange} className="h-4 w-4 text-primary rounded border-gray-300 focus:ring-primary" />
-                                <span className="mr-2 text-sm text-gray-700">مدخن</span>
+                                <input type="checkbox" name="isSmoker" checked={formData.isSmoker} onChange={handleChange} className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary" />
+                                <span className="mr-2 text-sm text-gray-700 dark:text-gray-300">مدخن</span>
                             </label>
                             {formData.gender === Gender.Female && (
                                 <label className="flex items-center cursor-pointer">
-                                    <input type="checkbox" name="isPregnant" checked={formData.isPregnant} onChange={handleChange} className="h-4 w-4 text-primary rounded border-gray-300 focus:ring-primary" />
-                                    <span className="mr-2 text-sm text-gray-700">حامل</span>
+                                    <input type="checkbox" name="isPregnant" checked={formData.isPregnant} onChange={handleChange} className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary" />
+                                    <span className="mr-2 text-sm text-gray-700 dark:text-gray-300">حامل</span>
                                 </label>
                             )}
                         </div>
                     </div>
-                    <div className="flex justify-end items-center p-4 bg-gray-50 border-t rounded-b-lg space-x-2">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">إلغاء</button>
+                    <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700 rounded-b-lg space-x-2">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
                         <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
                     </div>
                 </form>
@@ -914,7 +914,7 @@ const EditSessionTreatmentModal: React.FC<EditSessionTreatmentModalProps> = ({ t
     const [treatmentDate, setTreatmentDate] = useState(treatment.treatmentDate || new Date().toISOString().split('T')[0]);
     const [additionalCosts, setAdditionalCosts] = useState(treatment.additionalCosts?.toString() || '');
     const [isSaving, setIsSaving] = useState(false);
-    const inputStyle = "w-full px-3 py-2 bg-white border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black";
+    const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
     useEffect(() => {
         const numbers = sessionNotes.match(/\d+(\.\d+)?/g);
@@ -940,35 +940,35 @@ const EditSessionTreatmentModal: React.FC<EditSessionTreatmentModalProps> = ({ t
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h2 className="text-xl font-bold text-gray-800">تعديل علاج الجلسة</h2>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600" /></button>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">تعديل علاج الجلسة</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4">
-                        <p className="text-gray-700"><span className="font-semibold">العلاج:</span> {treatment.name}</p>
+                        <p className="text-gray-700 dark:text-gray-300"><span className="font-semibold">العلاج:</span> {treatment.name}</p>
                         <div>
-                            <label htmlFor="treatmentDate" className="block text-sm font-medium text-gray-700 mb-1">تاريخ العلاج</label>
+                            <label htmlFor="treatmentDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاريخ العلاج</label>
                             <input type="date" id="treatmentDate" value={treatmentDate} onChange={e => setTreatmentDate(e.target.value)} required className={inputStyle} />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label htmlFor="sessionPrice" className="block text-sm font-medium text-gray-700 mb-1">السعر</label>
+                                <label htmlFor="sessionPrice" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">السعر</label>
                                 <input type="number" step="0.01" id="sessionPrice" value={sessionPrice} onChange={e => setSessionPrice(e.target.value)} required className={inputStyle} />
                             </div>
                             <div>
-                                <label htmlFor="additionalCosts" className="block text-sm font-medium text-gray-700 mb-1">تكاليف اضافية</label>
-                                <input type="number" step="0.01" id="additionalCosts" value={additionalCosts} readOnly className={`${inputStyle} bg-gray-100 cursor-not-allowed`} placeholder="يتم حسابه من الملاحظات" />
+                                <label htmlFor="additionalCosts" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تكاليف اضافية</label>
+                                <input type="number" step="0.01" id="additionalCosts" value={additionalCosts} readOnly className={`${inputStyle} bg-gray-100 dark:bg-gray-800 cursor-not-allowed`} placeholder="يتم حسابه من الملاحظات" />
                             </div>
                         </div>
                          <div>
-                            <label htmlFor="sessionNotes" className="block text-sm font-medium text-gray-700 mb-1">ملاحظات خاصة بالجلسة</label>
+                            <label htmlFor="sessionNotes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات خاصة بالجلسة</label>
                             <textarea id="sessionNotes" name="sessionNotes" value={sessionNotes} onChange={(e) => setSessionNotes(e.target.value)} rows={3} className={inputStyle} placeholder="ملاحظات حول العلاج... سيتم استخلاص الأرقام للتكاليف الإضافية." />
                         </div>
                     </div>
-                    <div className="flex justify-end items-center p-4 bg-gray-50 border-t rounded-b-lg space-x-2">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">إلغاء</button>
+                    <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700 rounded-b-lg space-x-2">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
                         <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
                     </div>
                 </form>
@@ -1032,38 +1032,38 @@ const SessionTreatmentsPage: React.FC<SessionTreatmentsPageProps> = ({ session: 
         <div>
              <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-4">
-                    <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                    <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
                         <ArrowBackIcon className="h-5 w-5" />
                         <span>العودة</span>
                     </button>
-                    <div><h1 className="text-2xl md:text-3xl font-bold text-gray-800">علاجات جلسة</h1><p className="text-gray-500">{new Date(session.date).toLocaleDateString()}</p></div>
+                    <div><h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">علاجات جلسة</h1><p className="text-gray-500 dark:text-gray-400">{new Date(session.date).toLocaleDateString()}</p></div>
                 </div>
                 <div>
                     <button onClick={() => setIsAddingTreatment(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors"><PlusIcon className="h-5 w-5 ml-2" />إضافة علاج</button>
                 </div>
             </div>
-            <div className="bg-white p-6 rounded-xl shadow-md min-h-[200px]">
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[200px]">
                  {loading ? <CenteredLoadingSpinner /> : ( session.treatments.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{session.treatments.map(t => (
-                            <div key={t.instanceId} className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-col justify-between hover:shadow-lg">
+                            <div key={t.instanceId} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col justify-between hover:shadow-lg">
                                 <div>
-                                    <h3 className="text-xl font-bold text-gray-800">{t.name}</h3>
-                                    <p className="text-green-600 font-semibold text-lg mt-2">${t.sessionPrice.toFixed(2)}</p>
-                                    {t.sessionNotes && <p className="text-sm text-gray-600 mt-2 bg-gray-100 p-2 rounded-md">{t.sessionNotes}</p>}
+                                    <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{t.name}</h3>
+                                    <p className="text-green-600 dark:text-green-400 font-semibold text-lg mt-2">${t.sessionPrice.toFixed(2)}</p>
+                                    {t.sessionNotes && <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 bg-gray-100 dark:bg-gray-700 p-2 rounded-md">{t.sessionNotes}</p>}
                                     <div className="mt-4">
                                         <label className="flex items-center space-x-2 cursor-pointer">
-                                            <input type="checkbox" checked={t.completed} onChange={() => handleToggleCompletion(t)} className="h-5 w-5 rounded text-primary focus:ring-primary-500 border-gray-300"/>
-                                            <span className="text-sm font-medium text-gray-700">مكتمل</span>
+                                            <input type="checkbox" checked={t.completed} onChange={() => handleToggleCompletion(t)} className="h-5 w-5 rounded text-primary focus:ring-primary-500 border-gray-300 dark:border-gray-600"/>
+                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">مكتمل</span>
                                         </label>
                                     </div>
                                 </div>
-                                <div className="mt-4 pt-4 border-t flex items-center justify-end space-x-2">
-                                    <button onClick={() => setViewingTreatment(t)} className="text-gray-600 hover:text-primary p-2 rounded-full hover:bg-gray-200" title="عرض التفاصيل"><EyeIcon className="h-5 w-5" /></button>
-                                    <button onClick={() => setEditingTreatment(t)} className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-100" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
-                                    <button onClick={() => setDeletingTreatment(t)} className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-100" title="حذف"><TrashIcon className="h-5 w-5" /></button>
+                                <div className="mt-4 pt-4 border-t dark:border-gray-600 flex items-center justify-end space-x-2">
+                                    <button onClick={() => setViewingTreatment(t)} className="text-gray-600 dark:text-gray-300 hover:text-primary p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="عرض التفاصيل"><EyeIcon className="h-5 w-5" /></button>
+                                    <button onClick={() => setEditingTreatment(t)} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
+                                    <button onClick={() => setDeletingTreatment(t)} className="text-red-600 dark:text-red-400 hover:text-red-800 p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف"><TrashIcon className="h-5 w-5" /></button>
                                 </div>
                             </div>))}
-                        </div>) : <p className="text-center text-gray-500 py-8">لا توجد علاجات مسجلة لهذه الجلسة.</p>
+                        </div>) : <p className="text-center text-gray-500 dark:text-gray-400 py-8">لا توجد علاجات مسجلة لهذه الجلسة.</p>
                 )}
             </div>
             {editingTreatment && <EditSessionTreatmentModal treatment={editingTreatment} onClose={() => setEditingTreatment(null)} onSave={handleUpdateTreatment} />}
@@ -1129,37 +1129,37 @@ const PatientSessionsPage: React.FC<{ patient: Patient; onBack: () => void; }> =
         <div>
             <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-4">
-                    <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                    <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
                         <ArrowBackIcon className="h-5 w-5" />
                         <span>العودة</span>
                     </button>
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-800">جلسات: {patient.name}</h1>
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">جلسات: {patient.name}</h1>
                 </div>
                  <div>
                     <button onClick={() => setIsAddingSession(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors"><PlusIcon className="h-5 w-5 ml-2" />إضافة جلسة</button>
                 </div>
             </div>
-            <div className="bg-white p-6 rounded-xl shadow-md min-h-[200px]">
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[200px]">
                 {loading ? <CenteredLoadingSpinner /> : sessions.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{sessions.map(s => {
                         const allTreatmentsCompleted = s.treatments.length > 0 && s.treatments.every(t => t.completed);
                         return (
-                        <div key={s.id} className="relative bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-col justify-between hover:shadow-lg">
+                        <div key={s.id} className="relative bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col justify-between hover:shadow-lg">
                              {allTreatmentsCompleted && (
-                                <div className="absolute top-3 left-3 text-green-500 bg-white rounded-full" title="الجلسة مكتملة">
+                                <div className="absolute top-3 left-3 text-green-500 bg-white dark:bg-gray-800 rounded-full" title="الجلسة مكتملة">
                                     <CheckIcon className="h-6 w-6" />
                                 </div>
                             )}
-                            <div><p className="font-bold text-lg text-gray-800">{new Date(s.date).toLocaleDateString()}</p><p className="text-gray-600 mt-2 text-sm h-12 overflow-hidden">{s.notes || 'لا توجد ملاحظات.'}</p></div>
-                            <div className="mt-4 pt-4 border-t flex items-center justify-end space-x-2">
-                                <button onClick={() => setViewingTreatmentsFor(s)} className="flex items-center text-purple-600 hover:text-purple-800 p-1 rounded hover:bg-purple-100 text-sm"><BeakerIcon className="h-4 w-4" /><span className="mr-1">العلاجات ({s.treatments.length})</span></button>
-                                <button onClick={() => setEditingSession(s)} className="flex items-center text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-100 text-sm"><PencilIcon className="h-4 w-4" /><span className="mr-1">تعديل</span></button>
-                                <button onClick={() => setDeletingSession(s)} className="flex items-center text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-100 text-sm"><TrashIcon className="h-4 w-4" /><span className="mr-1">حذف</span></button>
+                            <div><p className="font-bold text-lg text-gray-800 dark:text-gray-100">{new Date(s.date).toLocaleDateString()}</p><p className="text-gray-600 dark:text-gray-300 mt-2 text-sm h-12 overflow-hidden">{s.notes || 'لا توجد ملاحظات.'}</p></div>
+                            <div className="mt-4 pt-4 border-t dark:border-gray-600 flex items-center justify-end space-x-2">
+                                <button onClick={() => setViewingTreatmentsFor(s)} className="flex items-center text-purple-600 dark:text-purple-400 hover:text-purple-800 p-1 rounded hover:bg-purple-100 dark:hover:bg-purple-900/40 text-sm"><BeakerIcon className="h-4 w-4" /><span className="mr-1">العلاجات ({s.treatments.length})</span></button>
+                                <button onClick={() => setEditingSession(s)} className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 text-sm"><PencilIcon className="h-4 w-4" /><span className="mr-1">تعديل</span></button>
+                                <button onClick={() => setDeletingSession(s)} className="flex items-center text-red-600 dark:text-red-400 hover:text-red-800 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-sm"><TrashIcon className="h-4 w-4" /><span className="mr-1">حذف</span></button>
                             </div>
                         </div>
                         )
                     })}
-                    </div>) : <p className="text-center text-gray-500 py-8">لا توجد جلسات مسجلة.</p>}
+                    </div>) : <p className="text-center text-gray-500 dark:text-gray-400 py-8">لا توجد جلسات مسجلة.</p>}
             </div>
             {isAddingSession && <AddSessionModal onClose={() => setIsAddingSession(false)} onSave={handleCreateSession} patientId={patient.id} doctorId={patient.doctorId} />}
             {editingSession && <EditSessionModal session={editingSession} onClose={() => setEditingSession(null)} onSave={handleUpdateSession} />}
@@ -1199,7 +1199,7 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
         chronicDiseases: ''
     });
     const [isSaving, setIsSaving] = useState(false);
-    const inputStyle = "w-full px-3 py-2 bg-white border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black";
+    const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
@@ -1231,49 +1231,49 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg" role="dialog" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h2 className="text-xl font-bold text-gray-800">إضافة مريض جديد</h2>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600" /></button>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-lg" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">إضافة مريض جديد</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 max-h-[70vh] overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label htmlFor="nameAdd" className="block text-sm font-medium text-gray-700 mb-1">الاسم</label><input type="text" id="nameAdd" name="name" value={formData.name} onChange={handleChange} required className={inputStyle} /></div>
-                        <div><label htmlFor="ageAdd" className="block text-sm font-medium text-gray-700 mb-1">العمر</label><input type="number" id="ageAdd" name="age" value={formData.age} onChange={handleChange} required className={inputStyle} /></div>
-                        <div><label htmlFor="phoneAdd" className="block text-sm font-medium text-gray-700 mb-1">الهاتف</label><input type="tel" id="phoneAdd" name="phone" value={formData.phone} onChange={handleChange} required className={inputStyle} /></div>
+                        <div><label htmlFor="nameAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الاسم</label><input type="text" id="nameAdd" name="name" value={formData.name} onChange={handleChange} required className={inputStyle} /></div>
+                        <div><label htmlFor="ageAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">العمر</label><input type="number" id="ageAdd" name="age" value={formData.age} onChange={handleChange} required className={inputStyle} /></div>
+                        <div><label htmlFor="phoneAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الهاتف</label><input type="tel" id="phoneAdd" name="phone" value={formData.phone} onChange={handleChange} required className={inputStyle} /></div>
                         <div>
-                            <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-1">الجنس</label>
+                            <label htmlFor="gender" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الجنس</label>
                             <select id="gender" name="gender" value={formData.gender} onChange={handleChange} className={inputStyle}>
                                 <option value={Gender.Male}>ذكر</option>
                                 <option value={Gender.Female}>أنثى</option>
                             </select>
                         </div>
                         <div className="md:col-span-2">
-                             <label htmlFor="doctorId" className="block text-sm font-medium text-gray-700 mb-1">الطبيب المسؤول</label>
+                             <label htmlFor="doctorId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الطبيب المسؤول</label>
                             <select id="doctorId" name="doctorId" value={formData.doctorId} onChange={handleChange} required className={inputStyle}>
                                 <option value="">اختر طبيب...</option>
                                 {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                             </select>
                         </div>
 
-                        <div className="md:col-span-2"><label htmlFor="drugAllergyAdd" className="block text-sm font-medium text-gray-700 mb-1">الحساسية الدوائية</label><textarea id="drugAllergyAdd" name="drugAllergy" value={formData.drugAllergy} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
-                        <div className="md:col-span-2"><label htmlFor="chronicDiseasesAdd" className="block text-sm font-medium text-gray-700 mb-1">الأمراض المزمنة</label><textarea id="chronicDiseasesAdd" name="chronicDiseases" value={formData.chronicDiseases} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
-                        <div className="md:col-span-2"><label htmlFor="notesAdd" className="block text-sm font-medium text-gray-700 mb-1">ملاحظات عامة</label><textarea id="notesAdd" name="notes" value={formData.notes} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                        <div className="md:col-span-2"><label htmlFor="drugAllergyAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الحساسية الدوائية</label><textarea id="drugAllergyAdd" name="drugAllergy" value={formData.drugAllergy} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                        <div className="md:col-span-2"><label htmlFor="chronicDiseasesAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأمراض المزمنة</label><textarea id="chronicDiseasesAdd" name="chronicDiseases" value={formData.chronicDiseases} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                        <div className="md:col-span-2"><label htmlFor="notesAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات عامة</label><textarea id="notesAdd" name="notes" value={formData.notes} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
                         <div className="md:col-span-2 flex items-center space-x-4 pt-2">
                            <label className="flex items-center cursor-pointer">
-                                <input type="checkbox" name="isSmoker" checked={formData.isSmoker} onChange={handleChange} className="h-4 w-4 text-primary rounded border-gray-300 focus:ring-primary" />
-                                <span className="mr-2 text-sm text-gray-700">مدخن</span>
+                                <input type="checkbox" name="isSmoker" checked={formData.isSmoker} onChange={handleChange} className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary" />
+                                <span className="mr-2 text-sm text-gray-700 dark:text-gray-300">مدخن</span>
                             </label>
                             {formData.gender === Gender.Female && (
                                 <label className="flex items-center cursor-pointer">
-                                    <input type="checkbox" name="isPregnant" checked={formData.isPregnant} onChange={handleChange} className="h-4 w-4 text-primary rounded border-gray-300 focus:ring-primary" />
-                                    <span className="mr-2 text-sm text-gray-700">حامل</span>
+                                    <input type="checkbox" name="isPregnant" checked={formData.isPregnant} onChange={handleChange} className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary" />
+                                    <span className="mr-2 text-sm text-gray-700 dark:text-gray-300">حامل</span>
                                 </label>
                             )}
                         </div>
                     </div>
-                    <div className="flex justify-end items-center p-4 bg-gray-50 border-t">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">إلغاء</button>
+                    <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
                         <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
                     </div>
                 </form>
@@ -1371,19 +1371,19 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user }) => {
     return (
         <div>
             <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">
                     {user.role === UserRole.Doctor ? "مرضاي" : "إدارة المرضى"}
                 </h1>
                 <div className="relative w-full max-w-sm">
                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                       <SearchIcon className="w-5 h-5 text-gray-400" />
+                       <SearchIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
                    </div>
                    <input
                        type="text"
                        value={searchTerm}
                        onChange={(e) => setSearchTerm(e.target.value)}
                        placeholder="ابحث بالاسم أو الكود..."
-                       className="w-full pl-3 pr-10 py-2 bg-white border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black"
+                       className="w-full pl-3 pr-10 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                    />
                 </div>
                 {(user.role !== UserRole.Doctor) && (
@@ -1394,37 +1394,39 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user }) => {
                 )}
             </div>
             
-            <div className="bg-white p-6 rounded-xl shadow-md min-h-[200px]">
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[200px]">
                 {loading ? <CenteredLoadingSpinner /> : (
                     filteredPatients.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {filteredPatients.map(patient => (
-                                <div key={patient.id} className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-col justify-between hover:shadow-lg">
+                                <div key={patient.id} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col justify-between hover:shadow-lg">
                                     <div>
                                         <div className="flex justify-between items-start">
-                                            <h3 className="text-xl font-bold text-gray-800">{patient.name}</h3>
-                                            <span className="text-xs font-semibold text-gray-500 bg-gray-200 px-2 py-1 rounded-full">{patient.code}</span>
+                                            <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{patient.name}</h3>
+                                            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full">{patient.code}</span>
                                         </div>
-                                        <div className="mt-2 space-y-1 text-sm text-gray-600">
+                                        <div className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-300">
                                             <p><span className="font-semibold">العمر:</span> {patient.age}</p>
                                             <p><span className="font-semibold">الهاتف:</span> {patient.phone}</p>
                                             <p><span className="font-semibold">الجنس:</span> {patient.gender === Gender.Female ? 'أنثى' : 'ذكر'}</p>
-                                            {patient.isSmoker && <p className="font-semibold text-orange-600">مدخن</p>}
-                                            {patient.isPregnant && <p className="font-semibold text-pink-600">حامل</p>}
+                                            {patient.isSmoker && <p className="font-semibold text-orange-600 dark:text-orange-400">مدخن</p>}
+                                            {patient.isPregnant && <p className="font-semibold text-pink-600 dark:text-pink-400">حامل</p>}
                                         </div>
                                     </div>
-                                    <div className="mt-4 pt-4 border-t flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
-                                         <button onClick={() => setViewingPatient(patient)} className="flex items-center text-gray-600 hover:text-gray-800 p-1 rounded hover:bg-gray-200 text-sm" title="عرض التفاصيل"><EyeIcon className="h-4 w-4" /><span className="mr-1">عرض</span></button>
-                                         <button onClick={() => setViewingPhotosFor(patient)} className="flex items-center text-indigo-600 hover:text-indigo-800 p-1 rounded hover:bg-indigo-100 text-sm" title="عرض الصور"><PhotographIcon className="h-4 w-4" /><span className="mr-1">الصور</span></button>
-                                         <button onClick={() => setViewingSessionsFor(patient)} className="flex items-center text-teal-600 hover:text-teal-800 p-1 rounded hover:bg-teal-100 text-sm"><ClipboardListIcon className="h-4 w-4" /><span className="mr-1">الجلسات</span></button>
-                                         <button onClick={() => setEditingPatient(patient)} className="flex items-center text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-100 text-sm"><PencilIcon className="h-4 w-4" /><span className="mr-1">تعديل</span></button>
-                                         <button onClick={() => setDeletingPatient(patient)} className="flex items-center text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-100 text-sm"><TrashIcon className="h-4 w-4" /><span className="mr-1">حذف</span></button>
+                                    <div className="mt-4 pt-4 border-t dark:border-gray-600 flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+                                         <button onClick={() => setViewingPatient(patient)} className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-sm" title="عرض التفاصيل"><EyeIcon className="h-4 w-4" /><span className="mr-1">عرض</span></button>
+                                         <button onClick={() => setViewingPhotosFor(patient)} className="flex items-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 p-1 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-sm" title="عرض الصور"><PhotographIcon className="h-4 w-4" /><span className="mr-1">الصور</span></button>
+                                         {(user.role !== UserRole.Secretary) && (
+                                            <button onClick={() => setViewingSessionsFor(patient)} className="flex items-center text-teal-600 dark:text-teal-400 hover:text-teal-800 p-1 rounded hover:bg-teal-100 dark:hover:bg-teal-900/40 text-sm"><ClipboardListIcon className="h-4 w-4" /><span className="mr-1">الجلسات</span></button>
+                                         )}
+                                         <button onClick={() => setEditingPatient(patient)} className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 text-sm"><PencilIcon className="h-4 w-4" /><span className="mr-1">تعديل</span></button>
+                                         <button onClick={() => setDeletingPatient(patient)} className="flex items-center text-red-600 dark:text-red-400 hover:text-red-800 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-sm"><TrashIcon className="h-4 w-4" /><span className="mr-1">حذف</span></button>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <p className="text-center text-gray-500 py-8">
+                        <p className="text-center text-gray-500 dark:text-gray-400 py-8">
                             {user.role === UserRole.Doctor ? "لا يوجد مرضى مسجلون باسمك." : "لم يتم العثور على مرضى."}
                         </p>
                     )

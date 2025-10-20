@@ -9,15 +9,15 @@ interface DashboardAdminProps {
 }
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ElementType }> = ({ title, value, icon: Icon }) => (
-    <div className="p-4 sm:p-6 bg-white rounded-xl shadow-md flex items-center space-x-4">
+    <div className="p-4 sm:p-6 bg-white dark:bg-slate-800 rounded-xl shadow-md flex items-center space-x-4">
         <div className="flex-shrink-0">
-            <div className="p-3 bg-primary-100 rounded-full">
-                <Icon className="h-6 w-6 text-primary" />
+            <div className="p-3 bg-primary-100 dark:bg-primary-900/40 rounded-full">
+                <Icon className="h-6 w-6 text-primary dark:text-primary-300" />
             </div>
         </div>
         <div>
-            <div className="text-lg sm:text-xl font-medium text-black">{value}</div>
-            <p className="text-sm text-gray-500">{title}</p>
+            <div className="text-lg sm:text-xl font-medium text-black dark:text-white">{value}</div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
         </div>
     </div>
 );
@@ -52,9 +52,9 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user }) => {
                 <StatCard title="مواعيد اليوم" value={stats.appointments} icon={CalendarIcon} />
                 <StatCard title="إجمالي الإيرادات" value={`$${stats.revenue.toLocaleString()}`} icon={CurrencyDollarIcon} />
             </div>
-            <div className="mt-8 bg-white p-6 rounded-xl shadow-md">
-                <h2 className="text-xl font-semibold mb-4">النشاط الأخير</h2>
-                <p>سجل النشاط قادم قريبا...</p>
+            <div className="mt-8 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md">
+                <h2 className="text-xl font-semibold mb-4 dark:text-gray-100">النشاط الأخير</h2>
+                <p className="dark:text-gray-300">سجل النشاط قادم قريبا...</p>
             </div>
         </div>
     );

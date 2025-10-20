@@ -9,15 +9,15 @@ interface DashboardDoctorProps {
 }
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ElementType }> = ({ title, value, icon: Icon }) => (
-     <div className="p-4 sm:p-6 bg-white rounded-xl shadow-md flex items-center space-x-4">
+     <div className="p-4 sm:p-6 bg-white dark:bg-slate-800 rounded-xl shadow-md flex items-center space-x-4">
         <div className="flex-shrink-0">
-            <div className="p-3 bg-primary-100 rounded-full">
-                <Icon className="h-6 w-6 text-primary" />
+            <div className="p-3 bg-primary-100 dark:bg-primary-900/40 rounded-full">
+                <Icon className="h-6 w-6 text-primary dark:text-primary-300" />
             </div>
         </div>
         <div>
-            <div className="text-lg sm:text-xl font-medium text-black">{value}</div>
-            <p className="text-sm text-gray-500">{title}</p>
+            <div className="text-lg sm:text-xl font-medium text-black dark:text-white">{value}</div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
         </div>
     </div>
 );
@@ -43,19 +43,19 @@ const DashboardDoctor: React.FC<DashboardDoctorProps> = ({ user }) => {
                 <StatCard title="مرضاي" value={patientCount} icon={UserGroupIcon} />
                 <StatCard title="المواعيد القادمة" value={appointments.length} icon={CalendarIcon} />
             </div>
-             <div className="mt-8 bg-white p-6 rounded-xl shadow-md">
-                <h2 className="text-xl font-semibold mb-4">جدول اليوم</h2>
+             <div className="mt-8 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md">
+                <h2 className="text-xl font-semibold mb-4 dark:text-gray-100">جدول اليوم</h2>
                 {appointments.length > 0 ? (
-                    <ul>
+                    <ul className="dark:text-gray-200">
                         {appointments.map(app => (
-                            <li key={app.id} className="border-b py-2 flex justify-between">
+                            <li key={app.id} className="border-b dark:border-gray-700 py-2 flex justify-between">
                                 <span>{app.time} - معرف المريض: {app.patientId}</span>
-                                <span className="text-gray-600">{app.notes}</span>
+                                <span className="text-gray-600 dark:text-gray-400">{app.notes}</span>
                             </li>
                         ))}
                     </ul>
                 ) : (
-                    <p>لا توجد مواعيد مجدولة لهذا اليوم.</p>
+                    <p className="dark:text-gray-300">لا توجد مواعيد مجدولة لهذا اليوم.</p>
                 )}
             </div>
         </div>

@@ -16,21 +16,21 @@ interface ConfirmDeleteModalProps {
 
 const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCancel, title, message }) => (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 transition-opacity" onClick={onCancel}>
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
             <div className="p-6">
                 <div className="text-center">
-                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-                        <TrashIcon className="h-6 w-6 text-red-600" aria-hidden="true" />
+                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30">
+                        <TrashIcon className="h-6 w-6 text-red-600 dark:text-red-400" aria-hidden="true" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-800 mt-4">{title}</h3>
-                    <p className="text-sm text-gray-500 mt-2 px-4">{message}</p>
+                    <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-4">{title}</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 px-4">{message}</p>
                 </div>
             </div>
-            <div className="bg-gray-50 px-6 py-4 rounded-b-2xl flex justify-center gap-4">
+            <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex justify-center gap-4">
                 <button type="button" onClick={onConfirm} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
                     نعم، قم بالحذف
                 </button>
-                <button type="button" onClick={onCancel} className="w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                <button type="button" onClick={onCancel} className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
                     إلغاء
                 </button>
             </div>
@@ -51,19 +51,19 @@ interface ViewAppointmentModalProps {
 const ViewAppointmentModal: React.FC<ViewAppointmentModalProps> = ({ appointment, patientName, doctorName, onClose }) => {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h2 className="text-xl font-bold text-gray-800">تفاصيل الموعد</h2>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600" /></button>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">تفاصيل الموعد</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
                 </div>
                 <div className="p-6 space-y-4">
-                    <div><p className="text-sm font-medium text-gray-500">المريض</p><p className="text-lg font-semibold text-gray-900">{patientName}</p></div>
-                    <div><p className="text-sm font-medium text-gray-500">الطبيب</p><p className="text-lg font-semibold text-gray-900">{doctorName}</p></div>
-                    <div><p className="text-sm font-medium text-gray-500">التاريخ</p><p className="text-lg font-semibold text-gray-900">{new Date(appointment.date).toLocaleDateString()}</p></div>
-                    <div><p className="text-sm font-medium text-gray-500">الوقت</p><p className="text-lg font-semibold text-gray-900">{appointment.time}</p></div>
-                    {appointment.notes && (<div><p className="text-sm font-medium text-gray-500">ملاحظات</p><p className="text-md text-gray-700 bg-gray-100 p-2 rounded-md">{appointment.notes}</p></div>)}
+                    <div><p className="text-sm font-medium text-gray-500 dark:text-gray-400">المريض</p><p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{patientName}</p></div>
+                    <div><p className="text-sm font-medium text-gray-500 dark:text-gray-400">الطبيب</p><p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{doctorName}</p></div>
+                    <div><p className="text-sm font-medium text-gray-500 dark:text-gray-400">التاريخ</p><p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{new Date(appointment.date).toLocaleDateString()}</p></div>
+                    <div><p className="text-sm font-medium text-gray-500 dark:text-gray-400">الوقت</p><p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{appointment.time}</p></div>
+                    {appointment.notes && (<div><p className="text-sm font-medium text-gray-500 dark:text-gray-400">ملاحظات</p><p className="text-md text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 p-2 rounded-md">{appointment.notes}</p></div>)}
                 </div>
-                <div className="flex justify-end p-4 bg-gray-50 border-t"><button onClick={onClose} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-700">إغلاق</button></div>
+                <div className="flex justify-end p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700"><button onClick={onClose} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-700">إغلاق</button></div>
             </div>
         </div>
     );
@@ -79,6 +79,7 @@ interface AppointmentFormModalProps {
     doctors: User[];
     onSave: (data: Omit<Appointment, 'id'> | Appointment, refreshPatients: boolean) => Promise<void>;
     onClose: () => void;
+    user: User;
 }
 
 const generateTimeSlots = (start: string, end: string, intervalMinutes: number): string[] => {
@@ -106,11 +107,11 @@ const generateTimeSlots = (start: string, end: string, intervalMinutes: number):
 };
 
 
-const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment, patients, doctors, onSave, onClose }) => {
+const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment, patients, doctors, onSave, onClose, user }) => {
     const [formData, setFormData] = useState({
         patientId: appointment?.patientId || '',
         doctorId: appointment?.doctorId || '',
-        date: appointment?.date || new Date().toISOString().split('T')[0],
+        date: appointment?.date ? new Date(appointment.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         time: appointment?.time || '',
         notes: appointment?.notes || '',
     });
@@ -128,19 +129,16 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
         setFormData(prev => {
             const newState = { ...prev, [name]: value };
 
-            // When a patient is selected, automatically select their doctor
             if (name === 'patientId') {
                 const selectedPatient = patients.find(p => p.id === value);
                 if (selectedPatient) {
                     newState.doctorId = selectedPatient.doctorId;
                 } else {
-                    newState.doctorId = ''; // Reset if no patient is selected
+                    newState.doctorId = '';
                 }
-                 // Always reset time when patient changes, as doctor might change
                 newState.time = '';
             }
 
-            // Reset time when doctor or date changes as slots will be refetched
             if (name === 'doctorId' || name === 'date') {
                 newState.time = '';
             }
@@ -157,7 +155,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                 try {
                     const schedules = await api.doctorSchedules.getForDoctor(formData.doctorId);
                     const selectedDate = new Date(formData.date);
-                    // getDay() is 0 for Sunday, 1 for Monday... which matches our backend
+                    selectedDate.setMinutes(selectedDate.getMinutes() + selectedDate.getTimezoneOffset());
                     const dayOfWeek = selectedDate.getDay(); 
                     
                     const daySchedule = schedules.find(s => s.day === dayOfWeek);
@@ -244,6 +242,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
         const appointmentData = {
             ...formData,
             patientId: patientIdForAppointment,
+            createdBy: user.id,
         };
     
         const dataToSave = appointment ? { ...appointment, ...appointmentData } : appointmentData;
@@ -252,23 +251,23 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
     };
 
     const isEditMode = !!appointment;
-    const inputStyle = "w-full px-3 py-2 bg-white border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black";
+    const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg" role="dialog" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h2 className="text-xl font-bold text-gray-800">{isEditMode ? 'تعديل الموعد' : 'إضافة موعد جديد'}</h2>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600" /></button>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-lg" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{isEditMode ? 'تعديل الموعد' : 'إضافة موعد جديد'}</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
                 </div>
                 <form onSubmit={handleSubmit}>
-                    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[70vh] overflow-y-auto">
                         <div className="md:col-span-2">
                            {showNewPatientForm ? (
-                                <div className="p-4 border rounded-md bg-gray-50">
+                                <div className="p-4 border dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-800">
                                     <div className="flex justify-between items-center mb-3">
-                                        <h3 className="text-md font-semibold text-gray-800">إضافة مريض جديد</h3>
+                                        <h3 className="text-md font-semibold text-gray-800 dark:text-gray-100">إضافة مريض جديد</h3>
                                         <button 
                                             type="button" 
                                             onClick={() => setShowNewPatientForm(false)} 
@@ -279,11 +278,11 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <label htmlFor="newPatientName" className="block text-sm font-medium text-gray-700 mb-1">اسم المريض</label>
+                                            <label htmlFor="newPatientName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">اسم المريض</label>
                                             <input type="text" id="newPatientName" name="name" value={newPatientData.name} onChange={handleNewPatientChange} required className={inputStyle} placeholder="الاسم الكامل" />
                                         </div>
                                         <div>
-                                            <label htmlFor="newPatientPhone" className="block text-sm font-medium text-gray-700 mb-1">هاتف المريض</label>
+                                            <label htmlFor="newPatientPhone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">هاتف المريض</label>
                                             <input type="tel" id="newPatientPhone" name="phone" value={newPatientData.phone} onChange={handleNewPatientChange} required className={inputStyle} placeholder="رقم الهاتف" />
                                         </div>
                                     </div>
@@ -291,7 +290,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                             ) : (
                                 <div>
                                     <div className="flex justify-between items-center mb-1">
-                                        <label htmlFor="patientId" className="block text-sm font-medium text-gray-700">المريض</label>
+                                        <label htmlFor="patientId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">المريض</label>
                                         <button 
                                             type="button"
                                             onClick={() => setShowNewPatientForm(true)}
@@ -309,7 +308,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                             )}
                         </div>
                         <div>
-                            <label htmlFor="doctorId" className="block text-sm font-medium text-gray-700 mb-1">الطبيب</label>
+                            <label htmlFor="doctorId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الطبيب</label>
                             <select id="doctorId" name="doctorId" value={formData.doctorId} onChange={handleChange} required className={inputStyle}>
                                 <option value="">اختر طبيب...</option>
                                 {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -317,18 +316,18 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                         </div>
                         <div></div> {/* Empty div for alignment */}
                         <div>
-                            <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">التاريخ</label>
+                            <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">التاريخ</label>
                             <div className="relative">
                                 <input type="date" id="date" name="date" value={formData.date} onChange={handleChange} required className={`${inputStyle} pr-10`} />
                                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                    <CalendarIcon className="h-5 w-5 text-black" />
+                                    <CalendarIcon className="h-5 w-5 text-black dark:text-white" />
                                 </div>
                             </div>
                         </div>
                         <div>
-                            <label htmlFor="time" className="block text-sm font-medium text-gray-700 mb-1">الوقت</label>
+                            <label htmlFor="time" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الوقت</label>
                             {slotsLoading ? (
-                                <div className="h-10 flex items-center justify-center text-sm text-gray-500">جاري تحميل الأوقات...</div>
+                                <div className="h-10 flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">جاري تحميل الأوقات...</div>
                             ) : (
                                 <div className="relative">
                                     <select id="time" name="time" value={formData.time} onChange={handleChange} required className={`${inputStyle} pr-10`} disabled={!formData.doctorId || !formData.date}>
@@ -340,15 +339,15 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                                         )}
                                     </select>
                                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                        <ClockIcon className="h-5 w-5 text-black" />
+                                        <ClockIcon className="h-5 w-5 text-black dark:text-white" />
                                     </div>
                                 </div>
                             )}
                         </div>
-                        <div className="md:col-span-2"><label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={3} className={inputStyle}></textarea></div>
+                        <div className="md:col-span-2"><label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={3} className={inputStyle}></textarea></div>
                     </div>
-                    <div className="flex justify-end items-center p-4 bg-gray-50 border-t">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">إلغاء</button>
+                    <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
                         <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
                     </div>
                 </form>
@@ -446,17 +445,17 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user }) => {
     return (
         <div>
             <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-800">المواعيد</h1>
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">المواعيد</h1>
                 <div className="relative w-full max-w-sm">
                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                       <SearchIcon className="w-5 h-5 text-gray-400" />
+                       <SearchIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
                    </div>
                    <input
                        type="text"
                        value={searchTerm}
                        onChange={(e) => setSearchTerm(e.target.value)}
                        placeholder="ابحث عن مريض أو طبيب..."
-                       className="w-full pl-3 pr-10 py-2 bg-white border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black"
+                       className="w-full pl-3 pr-10 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                    />
                 </div>
                 {(user.role === UserRole.Admin || user.role === UserRole.Secretary) && (
@@ -467,31 +466,31 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user }) => {
                 )}
             </div>
 
-            <div className="bg-white p-6 rounded-xl shadow-md min-h-[200px]">
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[200px]">
                 {loading ? <CenteredLoadingSpinner /> : (
                     filteredAppointments.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {filteredAppointments.map(app => (
-                                <div key={app.id} className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-col transition-shadow hover:shadow-lg">
+                                <div key={app.id} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col transition-shadow hover:shadow-lg">
                                     <div className="flex-grow">
                                         <div className="flex justify-between items-baseline">
                                             <h3 className="text-lg font-bold text-primary">{getPatientName(app.patientId)}</h3>
-                                            <span className="text-xs font-semibold text-gray-600 bg-gray-200 px-2 py-1 rounded-full">{new Date(app.date).toLocaleDateString()}</span>
+                                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full">{new Date(app.date).toLocaleDateString()}</span>
                                         </div>
-                                        <p className="text-gray-800 font-bold text-3xl my-2">{app.time}</p>
-                                        <p className="text-gray-500 text-sm">مع الطبيب: {getDoctorName(app.doctorId)}</p>
-                                        {app.notes && <p className="mt-2 text-sm text-gray-700 bg-gray-100 p-2 rounded-md">ملاحظات: {app.notes}</p>}
+                                        <p className="text-gray-800 dark:text-gray-100 font-bold text-3xl my-2">{app.time}</p>
+                                        <p className="text-gray-500 dark:text-gray-400 text-sm">مع الطبيب: {getDoctorName(app.doctorId)}</p>
+                                        {app.notes && <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 p-2 rounded-md">ملاحظات: {app.notes}</p>}
                                     </div>
-                                     <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-end space-x-2">
-                                        <button onClick={() => setViewingAppointment(app)} className="flex items-center text-gray-600 hover:text-gray-800 transition-colors text-sm p-1 rounded hover:bg-gray-200" title="عرض">
+                                     <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex items-center justify-end space-x-2">
+                                        <button onClick={() => setViewingAppointment(app)} className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors text-sm p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="عرض">
                                             <EyeIcon className="h-4 w-4" />
                                             <span className="mr-1">عرض</span>
                                         </button>
-                                        <button onClick={() => setEditingAppointment(app)} className="flex items-center text-blue-600 hover:text-blue-800 transition-colors text-sm p-1 rounded hover:bg-blue-100" title="تعديل">
+                                        <button onClick={() => setEditingAppointment(app)} className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 transition-colors text-sm p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل">
                                             <PencilIcon className="h-4 w-4" />
                                             <span className="mr-1">تعديل</span>
                                         </button>
-                                        <button onClick={() => setDeletingAppointment(app)} className="flex items-center text-red-600 hover:text-red-800 transition-colors text-sm p-1 rounded hover:bg-red-100" title="إلغاء">
+                                        <button onClick={() => setDeletingAppointment(app)} className="flex items-center text-red-600 dark:text-red-400 hover:text-red-800 transition-colors text-sm p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40" title="إلغاء">
                                             <TrashIcon className="h-4 w-4" />
                                             <span className="mr-1">إلغاء</span>
                                         </button>
@@ -500,7 +499,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user }) => {
                             ))}
                         </div>
                     ) : (
-                         <p className="text-center text-gray-500 py-8">لم يتم العثور على مواعيد.</p>
+                         <p className="text-center text-gray-500 dark:text-gray-400 py-8">لم يتم العثور على مواعيد.</p>
                     )
                 )}
             </div>
@@ -513,6 +512,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user }) => {
                     onSave={handleSaveAppointment}
                     patients={patients}
                     doctors={doctors}
+                    user={user}
                 />
             )}
             {viewingAppointment && (

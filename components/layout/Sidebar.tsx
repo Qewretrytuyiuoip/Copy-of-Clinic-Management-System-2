@@ -32,8 +32,8 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
                     }}
                     className={`flex items-center mt-4 py-2 px-6 rounded-md transition-colors duration-200 ${
                         currentPage === item.page
-                            ? 'bg-primary-100 text-primary-700'
-                            : 'text-gray-600 hover:bg-gray-200'
+                            ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300'
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                     }`}
                 >
                     <item.icon className="h-6 w-6" />
@@ -47,7 +47,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
         <>
             {/* Mobile Sidebar with Overlay */}
             <div className={`fixed inset-0 z-30 flex transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-                <div className="relative flex w-64 max-w-xs flex-1 flex-col bg-white">
+                <div className="relative flex w-64 max-w-xs flex-1 flex-col bg-white dark:bg-slate-800">
                     <div className="absolute top-0 left-0 -ml-12 pt-2">
                         <button
                             type="button"
@@ -68,8 +68,8 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
             {sidebarOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden" onClick={() => setSidebarOpen(false)}></div>}
 
             {/* Desktop Sidebar */}
-            <aside className="hidden lg:flex lg:flex-col w-64 bg-white border-r">
-                <div className="flex items-center justify-center h-20 border-b">
+            <aside className="hidden lg:flex lg:flex-col w-64 bg-white dark:bg-slate-800 border-r dark:border-gray-700">
+                <div className="flex items-center justify-center h-20 border-b dark:border-gray-700">
                     <h1 className="text-2xl font-bold text-primary">كلينك برو</h1>
                 </div>
                 <div className="flex-1 overflow-y-auto">
