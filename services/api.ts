@@ -1,4 +1,4 @@
-import { User, UserRole, Patient, Treatment, Session, Appointment, Payment, DoctorAvailability, SessionTreatment, Gender, DaySchedule, PatientPhoto, ActivityLog, ActivityLogActionType } from '../types';
+import { User, UserRole, Patient, Treatment, Session, Appointment, Payment, DoctorAvailability, SessionTreatment, Gender, DaySchedule, PatientPhoto, ActivityLog, ActivityLogActionType, CreatePatientPhotosPayload } from '../types';
 import { API_BASE_URL } from '../config';
 
 // --- MOCK DATABASE ---
@@ -12,8 +12,6 @@ export let MOCK_USERS: User[] = [
 
 // MOCK_PATIENTS is now fetched from the API.
 // Dependent mock data is cleared to avoid invalid references.
-let MOCK_PATIENT_PHOTOS: PatientPhoto[] = [];
-let MOCK_ACTIVITY_LOGS: ActivityLog[] = [];
 
 
 // --- API FUNCTIONS ---
@@ -357,8 +355,6 @@ const createUserCRUD = (role: UserRole) => ({
     },
 });
 
-const activityLogsCRUD = createCRUD(MOCK_ACTIVITY_LOGS);
-
 // Mapper function to convert API patient object to frontend Patient type
 const mapApiPatientToPatient = (p: any): Patient => ({
     id: String(p.id),
@@ -464,6 +460,30 @@ const mapApiScheduleToDaySchedule = (apiSchedule: any): DaySchedule => ({
     endTime: formatTimeFromISO(apiSchedule.end_time),
 });
 
+const mapApiPhotoToPatientPhoto = (p: any): PatientPhoto => ({
+    id: String(p.id),
+    patientId: String(p.patient_id),
+    imageUrl: p.image_url,
+    caption: p.caption ?? '',
+    date: p.date.split('T')[0],
+});
+
+// Helper function to convert data URL to Blob
+const dataUrlToBlob = (dataUrl: string): Blob => {
+    const arr = dataUrl.split(',');
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    if (!mimeMatch) {
+        throw new Error('Invalid data URL format');
+    }
+    const mime = mimeMatch[1];
+    const bstr = atob(arr[1].trim());
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+};
 
 // Fetches all session treatments and groups them by session ID for efficient access.
 const getGroupedSessionTreatments = async (): Promise<Record<string, SessionTreatment[]>> => {
@@ -496,6 +516,16 @@ const getGroupedSessionTreatments = async (): Promise<Record<string, SessionTrea
         return {};
     }
 };
+
+const mapApiActivityLog = (log: any): ActivityLog => ({
+    id: String(log.id),
+    userId: String(log.user_id),
+    patientId: String(log.patient_id),
+    actionType: log.action_type as ActivityLogActionType,
+    description: log.description,
+    timestamp: log.timestamp,
+    userName: log.user ? log.user.name : 'مستخدم غير معروف',
+});
 
 export const api = {
     doctors: createUserCRUD(UserRole.Doctor),
@@ -1012,10 +1042,86 @@ export const api = {
             }
         },
     },
-    patientPhotos: createCRUD(MOCK_PATIENT_PHOTOS),
+    patientPhotos: {
+        getAll: async (): Promise<PatientPhoto[]> => {
+            try {
+                const apiPhotos = await apiFetch('patient_photos/all', { method: 'POST' });
+                if (!Array.isArray(apiPhotos)) {
+                    console.error('Expected an array of photos from API, but got:', apiPhotos);
+                    return [];
+                }
+                return apiPhotos.map(mapApiPhotoToPatientPhoto);
+            } catch (error) {
+                console.error("Failed to fetch patient photos:", error);
+                return [];
+            }
+        },
+        create: async (item: CreatePatientPhotosPayload): Promise<void> => {
+            const formData = new FormData();
+            formData.append('patient_id', item.patientId);
+        
+            item.imageUrls.forEach((dataUrl, index) => {
+                if (dataUrl.startsWith('data:image')) {
+                    const blob = dataUrlToBlob(dataUrl);
+                    formData.append('images[]', blob, `upload_${index}.${blob.type.split('/')[1] || 'jpg'}`);
+                }
+            });
+        
+            item.captions.forEach((caption) => {
+                formData.append('captions[]', caption || '');
+            });
+        
+            await apiFetch('patient_photos/add', { method: 'POST', body: formData });
+        },
+        update: async (id: string, updates: Partial<PatientPhoto>): Promise<void> => {
+            const formData = new FormData();
+            formData.append('id', id);
+
+            if (updates.patientId) {
+                formData.append('patient_id', updates.patientId);
+            } else {
+                throw new Error('Patient ID is required to update a photo.');
+            }
+
+            if (updates.caption !== undefined) {
+                formData.append('captions[0]', updates.caption);
+            }
+            
+            if (updates.imageUrl && updates.imageUrl.startsWith('data:image')) {
+                const blob = dataUrlToBlob(updates.imageUrl);
+                formData.append('images[0]', blob, `upload.${blob.type.split('/')[1] || 'jpg'}`);
+            }
+
+            const responseData = await apiFetch('patient_photos/edit', { method: 'POST', body: formData });
+
+            if (responseData.message !== "تم التعديل بنجاح") {
+                throw new Error(responseData.message || 'API did not confirm photo update.');
+            }
+        },
+        delete: async (id: string): Promise<boolean> => {
+            const formData = new FormData();
+            formData.append('id', id);
+            const responseData = await apiFetch('patient_photos/delete', { method: 'POST', body: formData });
+            if (responseData.message !== "تم الحذف بنجاح") {
+                 throw new Error(responseData.message || "An unexpected response was received from the server.");
+            }
+            return true;
+        },
+    },
     activityLogs: {
-        ...activityLogsCRUD,
-        getByUserId: (userId: string) => simulateDelay(MOCK_ACTIVITY_LOGS.filter(log => log.userId === userId)),
+        getAll: async (): Promise<ActivityLog[]> => {
+            try {
+                const apiLogs = await apiFetch('activity_logs/all', { method: 'POST' });
+                if (!Array.isArray(apiLogs)) {
+                    console.error('Expected an array of activity logs from API, but got:', apiLogs);
+                    return [];
+                }
+                return apiLogs.map(mapApiActivityLog);
+            } catch (error) {
+                console.error("Failed to fetch activity logs:", error);
+                return [];
+            }
+        },
     },
     doctorSchedules: {
         getForDoctor: async (doctorId: string): Promise<DaySchedule[]> => {

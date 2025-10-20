@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { User, Patient, Session, SessionTreatment, Treatment, UserRole, Gender, PatientPhoto, ActivityLog, ActivityLogActionType } from '../types';
+import { User, Patient, Session, SessionTreatment, Treatment, UserRole, Gender, PatientPhoto, ActivityLog, ActivityLogActionType, CreatePatientPhotosPayload } from '../types';
 import { api } from '../services/api';
-import { PlusIcon, PencilIcon, TrashIcon, UserGroupIcon, XIcon, ClipboardListIcon, BeakerIcon, ArrowBackIcon, EyeIcon, CheckIcon, SearchIcon, PhotographIcon, ListBulletIcon } from '../components/Icons';
+import { PlusIcon, PencilIcon, TrashIcon, UserGroupIcon, XIcon, ClipboardListIcon, BeakerIcon, ArrowBackIcon, EyeIcon, CheckIcon, SearchIcon, PhotographIcon, ListBulletIcon, MinusIcon, ResetIcon } from '../components/Icons';
 import LoadingSpinner, { CenteredLoadingSpinner } from '../components/LoadingSpinner';
 
 // ===================================================================
@@ -16,18 +16,20 @@ import LoadingSpinner, { CenteredLoadingSpinner } from '../components/LoadingSpi
 interface AddEditPhotoModalProps {
     photo?: PatientPhoto;
     patientId: string;
-    onSave: (data: Omit<PatientPhoto, 'id'> | PatientPhoto) => Promise<void>;
+    onSave: (data: PatientPhoto | CreatePatientPhotosPayload) => Promise<void>;
     onClose: () => void;
 }
 
 const AddEditPhotoModal: React.FC<AddEditPhotoModalProps> = ({ photo, patientId, onSave, onClose }) => {
-    const [imageFile, setImageFile] = useState<File | null>(null);
-    const [imagePreview, setImagePreview] = useState<string | null>(photo?.imageUrl || null);
-    const [caption, setCaption] = useState(photo?.caption || '');
+    const isEditMode = !!photo;
+    
+    const [files, setFiles] = useState<File[]>([]);
+    const [previews, setPreviews] = useState<string[]>(isEditMode && photo ? [photo.imageUrl] : []);
+    const [captions, setCaptions] = useState<string[]>(isEditMode && photo ? [photo.caption || ''] : []);
+
     const [isSaving, setIsSaving] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
-    const isEditMode = !!photo;
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
     const fileToBase64 = (file: File): Promise<string> =>
@@ -38,109 +40,124 @@ const AddEditPhotoModal: React.FC<AddEditPhotoModalProps> = ({ photo, patientId,
             reader.onerror = (error) => reject(error);
         });
 
-    const handleFileSelect = (file: File) => {
-        if (file && file.type.startsWith('image/')) {
-            setImageFile(file);
-            const previewUrl = URL.createObjectURL(file);
-            setImagePreview(previewUrl);
+    const handleFilesSelect = (selectedFiles: FileList | null) => {
+        if (!selectedFiles) return;
+        const newFiles = Array.from(selectedFiles).filter(file => file.type.startsWith('image/'));
+        if (newFiles.length === 0) return;
+
+        const newPreviews = newFiles.map(file => URL.createObjectURL(file));
+
+        if (isEditMode) {
+            setFiles(newFiles.slice(0, 1));
+            setPreviews(newPreviews.slice(0, 1));
         } else {
-            alert('الرجاء اختيار ملف صورة صالح.');
+            setFiles(prev => [...prev, ...newFiles]);
+            setPreviews(prev => [...prev, ...newPreviews]);
+            setCaptions(prev => [...prev, ...new Array(newFiles.length).fill('')]);
         }
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            handleFileSelect(e.target.files[0]);
+    const handleCaptionChange = (index: number, value: string) => {
+        setCaptions(prev => {
+            const newCaptions = [...prev];
+            newCaptions[index] = value;
+            return newCaptions;
+        });
+    };
+
+    const handleRemoveImage = (index: number) => {
+        if (isEditMode) {
+            setFiles([]);
+            setPreviews([]);
+        } else {
+            setFiles(prev => prev.filter((_, i) => i !== index));
+            setPreviews(prev => prev.filter((_, i) => i !== index));
+            setCaptions(prev => prev.filter((_, i) => i !== index));
         }
     };
-    
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDragging(true);
-    };
 
-    const handleDragLeave = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDragging(false);
-    };
-
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => handleFilesSelect(e.target.files);
+    const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+    const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
     const handleDrop = (e: React.DragEvent) => {
         e.preventDefault();
         setIsDragging(false);
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            handleFileSelect(e.dataTransfer.files[0]);
-        }
+        handleFilesSelect(e.dataTransfer.files);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!imageFile && !isEditMode) {
-            alert('يرجى رفع صورة.');
+        if (previews.length === 0) {
+            alert('يرجى رفع صورة واحدة على الأقل.');
             return;
         }
+        if (files.length === 0 && !isEditMode) {
+             alert('يرجى رفع صورة واحدة على الأقل.');
+             return;
+        }
+
         setIsSaving(true);
-        
-        let imageUrl = photo?.imageUrl || '';
-        if (imageFile) {
-            imageUrl = await fileToBase64(imageFile);
+        try {
+            if (isEditMode && photo) {
+                let imageUrl = photo.imageUrl;
+                if (files.length > 0) {
+                    imageUrl = await fileToBase64(files[0]);
+                }
+                const dataToSave: PatientPhoto = { ...photo, imageUrl, caption: captions[0] || '' };
+                await onSave(dataToSave);
+            } else {
+                const imageUrls = await Promise.all(files.map(file => fileToBase64(file)));
+                const dataToSave: CreatePatientPhotosPayload = { patientId, imageUrls, captions };
+                await onSave(dataToSave);
+            }
+        } catch (error) {
+            console.error("Failed to save photos", error);
+            alert(`فشل الحفظ: ${error instanceof Error ? error.message : "خطأ غير معروف"}`);
+        } finally {
+            setIsSaving(false);
         }
-
-        const dataToSave = {
-            patientId: patientId,
-            imageUrl: imageUrl,
-            caption: caption,
-            date: new Date().toISOString().split('T')[0],
-        };
-
-        if (isEditMode) {
-            await onSave({ ...photo, ...dataToSave });
-        } else {
-            await onSave(dataToSave);
-        }
-        setIsSaving(false);
     };
-    
-    const dropzoneClasses = `w-full h-48 border-2 border-dashed rounded-lg flex flex-col justify-center items-center cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary-50 dark:bg-primary-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-primary'}`;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl" role="dialog" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
-                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{isEditMode ? 'تعديل الصورة' : 'إضافة صورة جديدة'}</h2>
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{isEditMode ? 'تعديل الصورة' : 'إضافة صور جديدة'}</h2>
                     <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
                 </div>
                 <form onSubmit={handleSubmit}>
-                    <div className="p-6 space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الصورة</label>
-                            <div 
-                                className={dropzoneClasses}
-                                onClick={() => fileInputRef.current?.click()}
-                                onDragOver={handleDragOver}
-                                onDragLeave={handleDragLeave}
-                                onDrop={handleDrop}
-                            >
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    onChange={handleFileChange}
-                                    accept="image/*"
-                                    className="hidden"
-                                />
-                                {imagePreview ? (
-                                    <img src={imagePreview} alt="معاينة الصورة" className="max-h-full max-w-full object-contain rounded-md" />
-                                ) : (
-                                    <div className="text-center text-gray-500 dark:text-gray-400">
-                                        <PhotographIcon className="h-12 w-12 mx-auto" />
-                                        <p>اسحب وأفلت الصورة هنا، أو انقر للاختيار</p>
+                    <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                        {isEditMode ? (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الصورة</label>
+                                <div className={`w-full h-48 border-2 border-dashed rounded-lg flex justify-center items-center cursor-pointer transition-colors hover:border-primary`} onClick={() => fileInputRef.current?.click()}>
+                                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+                                    {previews.length > 0 ? <img src={previews[0]} alt="معاينة" className="max-h-full max-w-full object-contain rounded-md" /> : <div className="text-center text-gray-500 dark:text-gray-400"><PhotographIcon className="h-12 w-12 mx-auto" /><p>انقر لتغيير الصورة</p></div>}
+                                </div>
+                                <div className="mt-4">
+                                    <label htmlFor="caption" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تعليق</label>
+                                    <textarea id="caption" value={captions[0] || ''} onChange={(e) => handleCaptionChange(0, e.target.value)} rows={3} className={inputStyle} placeholder="أضف تعليقًا وصفيًا..."></textarea>
+                                </div>
+                            </div>
+                        ) : (
+                            <div>
+                                {previews.length > 0 && (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                                        {previews.map((previewUrl, index) => (
+                                            <div key={index} className="relative group border dark:border-gray-600 rounded-lg p-2 space-y-2 bg-gray-50 dark:bg-gray-900">
+                                                <img src={previewUrl} alt={`معاينة ${index + 1}`} className="w-full h-32 object-cover rounded-md" />
+                                                <textarea value={captions[index] || ''} onChange={(e) => handleCaptionChange(index, e.target.value)} placeholder={`تعليق الصورة ${index + 1}`} rows={2} className={inputStyle} />
+                                                <button type="button" onClick={() => handleRemoveImage(index)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100" aria-label={`Remove image ${index + 1}`}><XIcon className="h-4 w-4" /></button>
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
+                                <div className={`w-full h-32 border-2 border-dashed rounded-lg flex flex-col justify-center items-center cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary-50 dark:bg-primary-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-primary'}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => fileInputRef.current?.click()}>
+                                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" multiple />
+                                    <div className="text-center text-gray-500 dark:text-gray-400"><PhotographIcon className="h-12 w-12 mx-auto" /><p>اسحب وأفلت الصور هنا، أو انقر للاختيار</p></div>
+                                </div>
                             </div>
-                        </div>
-                        <div>
-                            <label htmlFor="caption" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تعليق</label>
-                            <textarea id="caption" name="caption" value={caption} onChange={(e) => setCaption(e.target.value)} rows={3} className={inputStyle} placeholder="أضف تعليقًا وصفيًا..."></textarea>
-                        </div>
+                        )}
                     </div>
                     <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
@@ -203,10 +220,6 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({ imageUrl, onClose }
     
     const zoomIn = () => setScale(s => Math.min(s * 1.2, 5));
     const zoomOut = () => setScale(s => Math.max(s / 1.2, 0.5));
-    
-    // FIX: Removed local icon definitions to use imported components.
-    const MinusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M18 12H6" /></svg>;
-    const ResetIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.664 0l3.181-3.183m-11.664 0l-3.181-3.183a8.25 8.25 0 0111.664 0l3.181 3.183" /></svg>;
 
     return (
         <div 
@@ -240,9 +253,8 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({ imageUrl, onClose }
                 </button>
             </div>
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 bg-gray-800 bg-opacity-50 text-white rounded-full">
-                <button onClick={zoomOut} className="p-2 hover:bg-gray-700 rounded-full focus:outline-none"><MinusIcon /></button>
-                <button onClick={reset} className="p-2 hover:bg-gray-700 rounded-full focus:outline-none"><ResetIcon /></button>
-                {/* FIX: Replaced local PlusIconComponent with the imported PlusIcon for consistency. */}
+                <button onClick={zoomOut} className="p-2 hover:bg-gray-700 rounded-full focus:outline-none"><MinusIcon className="w-6 h-6" /></button>
+                <button onClick={reset} className="p-2 hover:bg-gray-700 rounded-full focus:outline-none"><ResetIcon className="w-6 h-6" /></button>
                 <button onClick={zoomIn} className="p-2 hover:bg-gray-700 rounded-full focus:outline-none"><PlusIcon className="w-6 h-6" /></button>
             </div>
         </div>
@@ -276,7 +288,7 @@ const PatientGalleryPage: React.FC<PatientGalleryPageProps> = ({ patient, onBack
         fetchPhotos();
     }, [fetchPhotos]);
 
-    const handleSavePhoto = async (data: Omit<PatientPhoto, 'id'> | PatientPhoto) => {
+    const handleSavePhoto = async (data: PatientPhoto | CreatePatientPhotosPayload) => {
         if ('id' in data) {
             await api.patientPhotos.update(data.id, data);
         } else {
@@ -1181,15 +1193,15 @@ const PatientSessionsPage: React.FC<{ patient: Patient; onBack: () => void; }> =
     );
 };
 
+
 // ===================================================================
-// DoctorPatientsList Component (Specific to this page)
+// DoctorPatientsPage Component
 // ===================================================================
-interface DoctorPatientsListProps {
+interface DoctorPatientsPageProps {
     doctor: User;
     onBack: () => void;
 }
-
-const DoctorPatientsList: React.FC<DoctorPatientsListProps> = ({ doctor, onBack }) => {
+const DoctorPatientsPage: React.FC<DoctorPatientsPageProps> = ({ doctor, onBack }) => {
     const [patients, setPatients] = useState<Patient[]>([]);
     const [loading, setLoading] = useState(true);
     const [viewingSessionsFor, setViewingSessionsFor] = useState<Patient | null>(null);
@@ -1198,6 +1210,7 @@ const DoctorPatientsList: React.FC<DoctorPatientsListProps> = ({ doctor, onBack 
     const [searchTerm, setSearchTerm] = useState('');
     const [viewingPatient, setViewingPatient] = useState<Patient | null>(null);
     const [viewingPhotosFor, setViewingPhotosFor] = useState<Patient | null>(null);
+
 
     const fetchPatients = useCallback(async () => {
         setLoading(true);
@@ -1211,28 +1224,16 @@ const DoctorPatientsList: React.FC<DoctorPatientsListProps> = ({ doctor, onBack 
     }, [fetchPatients]);
 
     const handleUpdatePatient = async (updatedPatient: Patient) => {
-        try {
-            await api.patients.update(updatedPatient.id, updatedPatient);
-        } catch (error) {
-            console.error("Failed to update patient:", error);
-            alert(`فشل تحديث المريض: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
-        } finally {
-            setEditingPatient(null);
-            await fetchPatients();
-        }
+        await api.patients.update(updatedPatient.id, updatedPatient);
+        setEditingPatient(null);
+        await fetchPatients();
     };
 
     const confirmDeletePatient = async () => {
         if (deletingPatient) {
-            try {
-                await api.patients.delete(deletingPatient.id);
-            } catch(error) {
-                console.error("Failed to delete patient:", error);
-                alert(`فشل حذف المريض: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
-            } finally {
-                setDeletingPatient(null);
-                await fetchPatients();
-            }
+            await api.patients.delete(deletingPatient.id);
+            setDeletingPatient(null);
+            await fetchPatients();
         }
     };
     
@@ -1240,7 +1241,7 @@ const DoctorPatientsList: React.FC<DoctorPatientsListProps> = ({ doctor, onBack 
         patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         patient.code.toLowerCase().includes(searchTerm.toLowerCase())
     );
-    
+
     if (viewingPatient) {
         return <PatientDetailsPage patient={viewingPatient} onBack={() => setViewingPatient(null)} />;
     }
@@ -1256,17 +1257,19 @@ const DoctorPatientsList: React.FC<DoctorPatientsListProps> = ({ doctor, onBack 
     return (
         <div>
             <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-                 <div className="flex items-center gap-4">
-                    <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                <div className="flex items-center gap-4">
+                     <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
                         <ArrowBackIcon className="h-5 w-5" />
-                        <span>كل الأطباء</span>
+                        <span>العودة</span>
                     </button>
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">مرضى الدكتور {doctor.name}</h1>
+                        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">مرضى الدكتور: {doctor.name}</h1>
                     </div>
                 </div>
-                 <div className="relative w-full max-w-sm">
-                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"><SearchIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" /></div>
+                <div className="relative w-full max-w-sm">
+                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                       <SearchIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                   </div>
                    <input
                        type="text"
                        value={searchTerm}
@@ -1288,7 +1291,13 @@ const DoctorPatientsList: React.FC<DoctorPatientsListProps> = ({ doctor, onBack 
                                             <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{patient.name}</h3>
                                             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full">{patient.code}</span>
                                         </div>
-                                        <p className="mt-2 text-sm text-gray-600 dark:text-gray-300"><span className="font-semibold">العمر:</span> {patient.age}</p>
+                                        <div className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-300">
+                                            <p><span className="font-semibold">العمر:</span> {patient.age}</p>
+                                            <p><span className="font-semibold">الهاتف:</span> {patient.phone}</p>
+                                            <p><span className="font-semibold">الجنس:</span> {patient.gender === Gender.Female ? 'أنثى' : 'ذكر'}</p>
+                                            {patient.isSmoker && <p className="font-semibold text-orange-600 dark:text-orange-400">مدخن</p>}
+                                            {patient.isPregnant && <p className="font-semibold text-pink-600 dark:text-pink-400">حامل</p>}
+                                        </div>
                                     </div>
                                     <div className="mt-4 pt-4 border-t dark:border-gray-600 flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
                                          <button onClick={() => setViewingPatient(patient)} className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-sm" title="عرض التفاصيل"><EyeIcon className="h-4 w-4" /><span className="mr-1">عرض</span></button>
@@ -1300,7 +1309,11 @@ const DoctorPatientsList: React.FC<DoctorPatientsListProps> = ({ doctor, onBack 
                                 </div>
                             ))}
                         </div>
-                    ) : ( <p className="text-center text-gray-500 dark:text-gray-400 py-8">لا يوجد مرضى مسجلون لهذا الطبيب.</p> )
+                    ) : (
+                        <p className="text-center text-gray-500 dark:text-gray-400 py-8">
+                            لا يوجد مرضى مسجلون لهذا الطبيب.
+                        </p>
+                    )
                 )}
             </div>
             {editingPatient && <EditPatientModal patient={editingPatient} onClose={() => setEditingPatient(null)} onSave={handleUpdatePatient} />}
@@ -1317,94 +1330,6 @@ const DoctorPatientsList: React.FC<DoctorPatientsListProps> = ({ doctor, onBack 
 };
 
 // ===================================================================
-// DoctorActivityLogPage Component
-// ===================================================================
-interface DoctorActivityLogPageProps {
-    doctor: User;
-    onBack: () => void;
-}
-
-const DoctorActivityLogPage: React.FC<DoctorActivityLogPageProps> = ({ doctor, onBack }) => {
-    const [logs, setLogs] = useState<ActivityLog[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [dateFilter, setDateFilter] = useState('');
-
-    useEffect(() => {
-        const fetchLogs = async () => {
-            setLoading(true);
-            const doctorLogs = await api.activityLogs.getByUserId(doctor.id);
-            setLogs(doctorLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
-            setLoading(false);
-        };
-        fetchLogs();
-    }, [doctor.id]);
-
-    const filteredLogs = logs.filter(log => {
-        const matchesSearch = log.description.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesDate = !dateFilter || log.timestamp.startsWith(dateFilter);
-        return matchesSearch && matchesDate;
-    });
-
-    const ActionIcon: React.FC<{ type: ActivityLogActionType }> = ({ type }) => {
-        switch (type) {
-            case ActivityLogActionType.Create:
-                return <PlusIcon className="h-5 w-5 text-green-500" />;
-            case ActivityLogActionType.Update:
-                return <PencilIcon className="h-5 w-5 text-blue-500" />;
-            case ActivityLogActionType.Delete:
-                return <TrashIcon className="h-5 w-5 text-red-500" />;
-            default:
-                return null;
-        }
-    };
-
-    return (
-        <div>
-            <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-                <div className="flex items-center gap-4">
-                     <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
-                        <ArrowBackIcon className="h-5 w-5" />
-                        <span>العودة</span>
-                    </button>
-                    <div>
-                        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">سجل أعمال الطبيب</h1>
-                        <p className="text-gray-500 dark:text-gray-400">{doctor.name}</p>
-                    </div>
-                </div>
-            </div>
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md">
-                 <div className="flex flex-col md:flex-row gap-4 mb-6">
-                    <div className="relative flex-grow">
-                       <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"><SearchIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" /></div>
-                       <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="ابحث في السجل..." className="w-full pl-3 pr-10 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary" />
-                    </div>
-                    <input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="w-full md:w-auto px-3 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary" />
-                </div>
-                {loading ? <CenteredLoadingSpinner /> : (
-                    filteredLogs.length > 0 ? (
-                        <div className="space-y-4">
-                            {filteredLogs.map(log => (
-                                <div key={log.id} className="flex items-start p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border dark:border-gray-700">
-                                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center border dark:border-gray-600 mr-4"><ActionIcon type={log.actionType} /></div>
-                                    <div className="flex-grow">
-                                        <p className="font-semibold text-gray-800 dark:text-gray-100">{log.description}</p>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">في {new Date(log.timestamp).toLocaleString()}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-16"><h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">لا توجد سجلات</h3><p className="mt-1 text-sm text-gray-500 dark:text-gray-400">لم يتم العثور على سجلات تطابق بحثك.</p></div>
-                    )
-                )}
-            </div>
-        </div>
-    );
-};
-
-
-// ===================================================================
 // AddDoctorModal Component
 // ===================================================================
 interface AddDoctorModalProps {
@@ -1415,18 +1340,24 @@ interface AddDoctorModalProps {
 const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ onSave, onClose }) => {
     const [formData, setFormData] = useState({ name: '', email: '', password: '' });
     const [isSaving, setIsSaving] = useState(false);
-    const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!formData.password) {
+            alert('كلمة المرور مطلوبة للطبيب الجديد.');
+            return;
+        }
         setIsSaving(true);
         await onSave(formData);
         setIsSaving(false);
     };
+    
+    const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
@@ -1437,9 +1368,18 @@ const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ onSave, onClose }) => {
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4">
-                        <div><label htmlFor="nameAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الاسم</label><input type="text" id="nameAdd" name="name" value={formData.name} onChange={handleChange} required className={inputStyle} /></div>
-                        <div><label htmlFor="emailAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">البريد الإلكتروني</label><input type="email" id="emailAdd" name="email" value={formData.email} onChange={handleChange} required className={inputStyle} /></div>
-                        <div><label htmlFor="passwordAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">كلمة المرور</label><input type="password" id="passwordAdd" name="password" value={formData.password} onChange={handleChange} required className={inputStyle} /></div>
+                        <div>
+                            <label htmlFor="nameAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الاسم</label>
+                            <input type="text" id="nameAdd" name="name" value={formData.name} onChange={handleChange} required className={inputStyle} />
+                        </div>
+                        <div>
+                            <label htmlFor="emailAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">البريد الإلكتروني</label>
+                            <input type="email" id="emailAdd" name="email" value={formData.email} onChange={handleChange} required className={inputStyle} />
+                        </div>
+                        <div>
+                            <label htmlFor="passwordAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">كلمة المرور</label>
+                            <input type="password" id="passwordAdd" name="password" value={formData.password} onChange={handleChange} required className={inputStyle} />
+                        </div>
                     </div>
                     <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
@@ -1463,20 +1403,24 @@ interface EditDoctorModalProps {
 const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ doctor, onSave, onClose }) => {
     const [formData, setFormData] = useState({ name: doctor.name, email: doctor.email, password: '' });
     const [isSaving, setIsSaving] = useState(false);
-    const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
         const updates: Partial<User> = { name: formData.name, email: formData.email };
-        if (formData.password) updates.password = formData.password;
+        if (formData.password) {
+            updates.password = formData.password;
+        }
         await onSave({ ...doctor, ...updates });
         setIsSaving(false);
     };
+    
+    const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
@@ -1501,21 +1445,24 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ doctor, onSave, onClo
     );
 };
 
+
 // ===================================================================
 // Main DoctorsPage Component
 // ===================================================================
+// FIX: Removed unused props interface
 const DoctorsPage: React.FC = () => {
     const [doctors, setDoctors] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
-    const [viewingPatientsFor, setViewingPatientsFor] = useState<User | null>(null);
     const [isAddingDoctor, setIsAddingDoctor] = useState(false);
     const [editingDoctor, setEditingDoctor] = useState<User | null>(null);
     const [deletingDoctor, setDeletingDoctor] = useState<User | null>(null);
-    const [viewingActivityLogForDoctor, setViewingActivityLogForDoctor] = useState<User | null>(null);
+    const [viewingDoctor, setViewingDoctor] = useState<User | null>(null);
+
 
     const fetchDoctors = useCallback(async () => {
         setLoading(true);
-        setDoctors(await api.doctors.getAll());
+        const allUsers = await api.doctors.getAll();
+        setDoctors(allUsers);
         setLoading(false);
     }, []);
 
@@ -1528,7 +1475,7 @@ const DoctorsPage: React.FC = () => {
         setIsAddingDoctor(false);
         await fetchDoctors();
     };
-
+    
     const handleUpdateDoctor = async (updatedDoctor: User) => {
         await api.doctors.update(updatedDoctor.id, updatedDoctor);
         setEditingDoctor(null);
@@ -1543,12 +1490,8 @@ const DoctorsPage: React.FC = () => {
         }
     };
 
-    if (viewingActivityLogForDoctor) {
-        return <DoctorActivityLogPage doctor={viewingActivityLogForDoctor} onBack={() => setViewingActivityLogForDoctor(null)} />;
-    }
-
-    if (viewingPatientsFor) {
-        return <DoctorPatientsList doctor={viewingPatientsFor} onBack={() => setViewingPatientsFor(null)} />;
+    if (viewingDoctor) {
+        return <DoctorPatientsPage doctor={viewingDoctor} onBack={() => setViewingDoctor(null)} />;
     }
 
     return (
@@ -1571,14 +1514,10 @@ const DoctorsPage: React.FC = () => {
                                         <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{doc.name}</h3>
                                         <p className="text-gray-600 dark:text-gray-300 mt-1 text-sm">{doc.email}</p>
                                     </div>
-                                    <div className="mt-4 pt-4 border-t dark:border-gray-600 flex items-center justify-end space-x-2">
-                                        <button onClick={() => setViewingPatientsFor(doc)} className="flex items-center text-teal-600 dark:text-teal-400 hover:text-teal-800 p-1 rounded hover:bg-teal-100 dark:hover:bg-teal-900/40 text-sm">
+                                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex items-center justify-end space-x-2">
+                                        <button onClick={() => setViewingDoctor(doc)} className="flex items-center text-green-600 dark:text-green-400 hover:text-green-800 p-1 rounded hover:bg-green-100 dark:hover:bg-green-900/40 text-sm">
                                             <UserGroupIcon className="h-4 w-4" />
                                             <span className="mr-1">المرضى</span>
-                                        </button>
-                                        <button onClick={() => setViewingActivityLogForDoctor(doc)} className="flex items-center text-purple-600 dark:text-purple-400 hover:text-purple-800 p-1 rounded hover:bg-purple-100 dark:hover:bg-purple-900/40 text-sm">
-                                            <ListBulletIcon className="h-4 w-4" />
-                                            <span className="mr-1">السجل</span>
                                         </button>
                                         <button onClick={() => setEditingDoctor(doc)} className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 text-sm">
                                             <PencilIcon className="h-4 w-4" />
@@ -1611,5 +1550,5 @@ const DoctorsPage: React.FC = () => {
     );
 };
 
-// FIX: Added default export for the DoctorsPage component.
+// FIX: Added missing default export.
 export default DoctorsPage;

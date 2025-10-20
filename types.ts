@@ -87,6 +87,12 @@ export interface PatientPhoto {
     date: string; // YYYY-MM-DD
 }
 
+export interface CreatePatientPhotosPayload {
+    patientId: string;
+    imageUrls: string[]; // base64 data URLs
+    captions: string[];
+}
+
 export interface DaySchedule {
     id?: string; // Optional ID from the database for existing schedules
     day: number; // 0 for Sunday, 1 for Monday, etc.

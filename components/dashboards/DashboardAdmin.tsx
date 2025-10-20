@@ -1,8 +1,9 @@
 
 import React, { useEffect, useState } from 'react';
-import { User, Patient, Appointment, Payment } from '../../types';
+import { User, Patient, Appointment, Payment, ActivityLog, ActivityLogActionType } from '../../types';
 import { api } from '../../services/api';
-import { CurrencyDollarIcon, UserGroupIcon, CalendarIcon, UsersIcon } from '../Icons';
+import { CurrencyDollarIcon, UserGroupIcon, CalendarIcon, UsersIcon, PlusIcon, PencilIcon, TrashIcon, SearchIcon } from '../Icons';
+import { CenteredLoadingSpinner } from '../LoadingSpinner';
 
 interface DashboardAdminProps {
     user: User;
@@ -22,27 +23,82 @@ const StatCard: React.FC<{ title: string; value: string | number; icon: React.El
     </div>
 );
 
+const ActionIcon: React.FC<{ action: ActivityLogActionType }> = ({ action }) => {
+    const iconProps = { className: "h-5 w-5" };
+    switch (action) {
+        case ActivityLogActionType.Create:
+            return <div className="bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 rounded-full p-2"><PlusIcon {...iconProps} /></div>;
+        case ActivityLogActionType.Update:
+            return <div className="bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-full p-2"><PencilIcon {...iconProps} /></div>;
+        case ActivityLogActionType.Delete:
+            return <div className="bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full p-2"><TrashIcon {...iconProps} /></div>;
+        default:
+            return <div className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full p-2"><UsersIcon {...iconProps} /></div>;
+    }
+};
+
+
 const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user }) => {
     const [stats, setStats] = useState({ doctors: 0, patients: 0, appointments: 0, revenue: 0 });
+    const [allLogs, setAllLogs] = useState<ActivityLog[]>([]);
+    const [filteredLogs, setFilteredLogs] = useState<ActivityLog[]>([]);
+    const [patients, setPatients] = useState<Patient[]>([]);
+    const [visibleCount, setVisibleCount] = useState(5);
+    const [loadingLogs, setLoadingLogs] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [dateFilter, setDateFilter] = useState('');
     
     useEffect(() => {
         const fetchData = async () => {
-            const [doctors, patients, appointments, payments] = await Promise.all([
+            const [doctors, fetchedPatients, appointments, payments, logs] = await Promise.all([
                 api.doctors.getAll(),
                 api.patients.getAll(),
                 api.appointments.getAll(),
-                api.payments.getAll()
+                api.payments.getAll(),
+                api.activityLogs.getAll()
             ]);
             const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
             setStats({
                 doctors: doctors.length,
-                patients: patients.length,
+                patients: fetchedPatients.length,
                 appointments: appointments.length,
                 revenue: totalRevenue
             });
+            setPatients(fetchedPatients);
+            setAllLogs(logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+            setLoadingLogs(false);
         };
         fetchData();
     }, []);
+
+    useEffect(() => {
+        let logs = allLogs;
+
+        if (dateFilter) {
+            logs = logs.filter(log => log.timestamp.startsWith(dateFilter));
+        }
+
+        if (searchTerm) {
+            const lowerCaseSearch = searchTerm.toLowerCase();
+            logs = logs.filter(log => {
+                const patient = patients.find(p => p.id === log.patientId);
+                return (
+                    log.description.toLowerCase().includes(lowerCaseSearch) ||
+                    log.userName.toLowerCase().includes(lowerCaseSearch) ||
+                    (patient && patient.name.toLowerCase().includes(lowerCaseSearch))
+                );
+            });
+        }
+
+        setFilteredLogs(logs);
+        setVisibleCount(5); // Reset visible count on filter change
+    }, [searchTerm, dateFilter, allLogs, patients]);
+
+    const displayedLogs = filteredLogs.slice(0, visibleCount);
+
+    const handleShowMore = () => {
+        setVisibleCount(prev => prev + 5);
+    };
 
     return (
         <div>
@@ -54,7 +110,61 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user }) => {
             </div>
             <div className="mt-8 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md">
                 <h2 className="text-xl font-semibold mb-4 dark:text-gray-100">النشاط الأخير</h2>
-                <p className="dark:text-gray-300">سجل النشاط قادم قريبا...</p>
+                 <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                    <div className="relative flex-grow">
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                            <SearchIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                        </div>
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="ابحث بالوصف، اسم المريض أو المستخدم..."
+                            className="w-full pl-3 pr-10 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                        />
+                    </div>
+                    <input
+                        type="date"
+                        value={dateFilter}
+                        onChange={(e) => setDateFilter(e.target.value)}
+                        className="px-3 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                    />
+                </div>
+
+                {loadingLogs ? <CenteredLoadingSpinner /> : (
+                    <>
+                        {displayedLogs.length > 0 ? (
+                            <div className="space-y-4">
+                                {displayedLogs.map(log => (
+                                    <div key={log.id} className="flex items-start space-x-4 rtl:space-x-reverse p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                                        <ActionIcon action={log.actionType} />
+                                        <div className="flex-grow">
+                                            <p className="text-sm text-gray-800 dark:text-gray-200">{log.description}</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                بواسطة {log.userName} &bull; {new Date(log.timestamp).toLocaleString('ar-SA', { dateStyle: 'medium', timeStyle: 'short' })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-10 text-gray-500 dark:text-gray-400">
+                                <p>لا يوجد نشاط يطابق بحثك.</p>
+                            </div>
+                        )}
+
+                        {visibleCount < filteredLogs.length && (
+                            <div className="mt-6 text-center">
+                                <button
+                                    onClick={handleShowMore}
+                                    className="px-6 py-2 bg-primary text-white font-semibold rounded-lg shadow-md hover:bg-primary-700 transition-colors"
+                                >
+                                    عرض المزيد
+                                </button>
+                            </div>
+                        )}
+                    </>
+                )}
             </div>
         </div>
     );

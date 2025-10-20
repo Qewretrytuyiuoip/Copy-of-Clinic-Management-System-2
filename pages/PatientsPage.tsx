@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { User, Patient, UserRole, Session, SessionTreatment, Treatment, Payment, Gender, PatientPhoto, ActivityLog, ActivityLogActionType } from '../types';
+import { User, Patient, UserRole, Session, SessionTreatment, Treatment, Payment, Gender, PatientPhoto, ActivityLog, ActivityLogActionType, CreatePatientPhotosPayload } from '../types';
 import { api } from '../services/api';
 import { PlusIcon, PencilIcon, TrashIcon, XIcon, ClipboardListIcon, BeakerIcon, ArrowBackIcon, EyeIcon, CurrencyDollarIcon, CheckIcon, SearchIcon, PhotographIcon, ListBulletIcon } from '../components/Icons';
 import LoadingSpinner, { CenteredLoadingSpinner } from '../components/LoadingSpinner';
@@ -10,18 +10,20 @@ import LoadingSpinner, { CenteredLoadingSpinner } from '../components/LoadingSpi
 interface AddEditPhotoModalProps {
     photo?: PatientPhoto;
     patientId: string;
-    onSave: (data: Omit<PatientPhoto, 'id'> | PatientPhoto) => Promise<void>;
+    onSave: (data: PatientPhoto | CreatePatientPhotosPayload) => Promise<void>;
     onClose: () => void;
 }
 
 const AddEditPhotoModal: React.FC<AddEditPhotoModalProps> = ({ photo, patientId, onSave, onClose }) => {
-    const [imageFile, setImageFile] = useState<File | null>(null);
-    const [imagePreview, setImagePreview] = useState<string | null>(photo?.imageUrl || null);
-    const [caption, setCaption] = useState(photo?.caption || '');
+    const isEditMode = !!photo;
+    
+    const [files, setFiles] = useState<File[]>([]);
+    const [previews, setPreviews] = useState<string[]>(isEditMode && photo ? [photo.imageUrl] : []);
+    const [captions, setCaptions] = useState<string[]>(isEditMode && photo ? [photo.caption || ''] : []);
+
     const [isSaving, setIsSaving] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
-    const isEditMode = !!photo;
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
     const fileToBase64 = (file: File): Promise<string> =>
@@ -32,109 +34,124 @@ const AddEditPhotoModal: React.FC<AddEditPhotoModalProps> = ({ photo, patientId,
             reader.onerror = (error) => reject(error);
         });
 
-    const handleFileSelect = (file: File) => {
-        if (file && file.type.startsWith('image/')) {
-            setImageFile(file);
-            const previewUrl = URL.createObjectURL(file);
-            setImagePreview(previewUrl);
+    const handleFilesSelect = (selectedFiles: FileList | null) => {
+        if (!selectedFiles) return;
+        const newFiles = Array.from(selectedFiles).filter(file => file.type.startsWith('image/'));
+        if (newFiles.length === 0) return;
+
+        const newPreviews = newFiles.map(file => URL.createObjectURL(file));
+
+        if (isEditMode) {
+            setFiles(newFiles.slice(0, 1));
+            setPreviews(newPreviews.slice(0, 1));
         } else {
-            alert('الرجاء اختيار ملف صورة صالح.');
+            setFiles(prev => [...prev, ...newFiles]);
+            setPreviews(prev => [...prev, ...newPreviews]);
+            setCaptions(prev => [...prev, ...new Array(newFiles.length).fill('')]);
         }
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            handleFileSelect(e.target.files[0]);
+    const handleCaptionChange = (index: number, value: string) => {
+        setCaptions(prev => {
+            const newCaptions = [...prev];
+            newCaptions[index] = value;
+            return newCaptions;
+        });
+    };
+
+    const handleRemoveImage = (index: number) => {
+        if (isEditMode) {
+            setFiles([]);
+            setPreviews([]);
+        } else {
+            setFiles(prev => prev.filter((_, i) => i !== index));
+            setPreviews(prev => prev.filter((_, i) => i !== index));
+            setCaptions(prev => prev.filter((_, i) => i !== index));
         }
     };
-    
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDragging(true);
-    };
 
-    const handleDragLeave = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDragging(false);
-    };
-
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => handleFilesSelect(e.target.files);
+    const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+    const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
     const handleDrop = (e: React.DragEvent) => {
         e.preventDefault();
         setIsDragging(false);
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            handleFileSelect(e.dataTransfer.files[0]);
-        }
+        handleFilesSelect(e.dataTransfer.files);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!imageFile && !isEditMode) {
-            alert('يرجى رفع صورة.');
+        if (previews.length === 0) {
+            alert('يرجى رفع صورة واحدة على الأقل.');
             return;
         }
+        if (files.length === 0 && !isEditMode) {
+             alert('يرجى رفع صورة واحدة على الأقل.');
+             return;
+        }
+
         setIsSaving(true);
-        
-        let imageUrl = photo?.imageUrl || '';
-        if (imageFile) {
-            imageUrl = await fileToBase64(imageFile);
+        try {
+            if (isEditMode && photo) {
+                let imageUrl = photo.imageUrl;
+                if (files.length > 0) {
+                    imageUrl = await fileToBase64(files[0]);
+                }
+                const dataToSave: PatientPhoto = { ...photo, imageUrl, caption: captions[0] || '' };
+                await onSave(dataToSave);
+            } else {
+                const imageUrls = await Promise.all(files.map(file => fileToBase64(file)));
+                const dataToSave: CreatePatientPhotosPayload = { patientId, imageUrls, captions };
+                await onSave(dataToSave);
+            }
+        } catch (error) {
+            console.error("Failed to save photos", error);
+            alert(`فشل الحفظ: ${error instanceof Error ? error.message : "خطأ غير معروف"}`);
+        } finally {
+            setIsSaving(false);
         }
-
-        const dataToSave = {
-            patientId: patientId,
-            imageUrl: imageUrl,
-            caption: caption,
-            date: new Date().toISOString().split('T')[0],
-        };
-
-        if (isEditMode) {
-            await onSave({ ...photo, ...dataToSave });
-        } else {
-            await onSave(dataToSave);
-        }
-        setIsSaving(false);
     };
-    
-    const dropzoneClasses = `w-full h-48 border-2 border-dashed rounded-lg flex flex-col justify-center items-center cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary-50 dark:bg-primary-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-primary'}`;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl" role="dialog" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
-                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{isEditMode ? 'تعديل الصورة' : 'إضافة صورة جديدة'}</h2>
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{isEditMode ? 'تعديل الصورة' : 'إضافة صور جديدة'}</h2>
                     <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
                 </div>
                 <form onSubmit={handleSubmit}>
-                    <div className="p-6 space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الصورة</label>
-                            <div 
-                                className={dropzoneClasses}
-                                onClick={() => fileInputRef.current?.click()}
-                                onDragOver={handleDragOver}
-                                onDragLeave={handleDragLeave}
-                                onDrop={handleDrop}
-                            >
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    onChange={handleFileChange}
-                                    accept="image/*"
-                                    className="hidden"
-                                />
-                                {imagePreview ? (
-                                    <img src={imagePreview} alt="معاينة الصورة" className="max-h-full max-w-full object-contain rounded-md" />
-                                ) : (
-                                    <div className="text-center text-gray-500 dark:text-gray-400">
-                                        <PhotographIcon className="h-12 w-12 mx-auto" />
-                                        <p>اسحب وأفلت الصورة هنا، أو انقر للاختيار</p>
+                    <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                        {isEditMode ? (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الصورة</label>
+                                <div className={`w-full h-48 border-2 border-dashed rounded-lg flex justify-center items-center cursor-pointer transition-colors hover:border-primary`} onClick={() => fileInputRef.current?.click()}>
+                                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+                                    {previews.length > 0 ? <img src={previews[0]} alt="معاينة" className="max-h-full max-w-full object-contain rounded-md" /> : <div className="text-center text-gray-500 dark:text-gray-400"><PhotographIcon className="h-12 w-12 mx-auto" /><p>انقر لتغيير الصورة</p></div>}
+                                </div>
+                                <div className="mt-4">
+                                    <label htmlFor="caption" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تعليق</label>
+                                    <textarea id="caption" value={captions[0] || ''} onChange={(e) => handleCaptionChange(0, e.target.value)} rows={3} className={inputStyle} placeholder="أضف تعليقًا وصفيًا..."></textarea>
+                                </div>
+                            </div>
+                        ) : (
+                            <div>
+                                {previews.length > 0 && (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                                        {previews.map((previewUrl, index) => (
+                                            <div key={index} className="relative group border dark:border-gray-600 rounded-lg p-2 space-y-2 bg-gray-50 dark:bg-gray-900">
+                                                <img src={previewUrl} alt={`معاينة ${index + 1}`} className="w-full h-32 object-cover rounded-md" />
+                                                <textarea value={captions[index] || ''} onChange={(e) => handleCaptionChange(index, e.target.value)} placeholder={`تعليق الصورة ${index + 1}`} rows={2} className={inputStyle} />
+                                                <button type="button" onClick={() => handleRemoveImage(index)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100" aria-label={`Remove image ${index + 1}`}><XIcon className="h-4 w-4" /></button>
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
+                                <div className={`w-full h-32 border-2 border-dashed rounded-lg flex flex-col justify-center items-center cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary-50 dark:bg-primary-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-primary'}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => fileInputRef.current?.click()}>
+                                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" multiple />
+                                    <div className="text-center text-gray-500 dark:text-gray-400"><PhotographIcon className="h-12 w-12 mx-auto" /><p>اسحب وأفلت الصور هنا، أو انقر للاختيار</p></div>
+                                </div>
                             </div>
-                        </div>
-                        <div>
-                            <label htmlFor="caption" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تعليق</label>
-                            <textarea id="caption" name="caption" value={caption} onChange={(e) => setCaption(e.target.value)} rows={3} className={inputStyle} placeholder="أضف تعليقًا وصفيًا..."></textarea>
-                        </div>
+                        )}
                     </div>
                     <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
@@ -270,7 +287,7 @@ const PatientGalleryPage: React.FC<PatientGalleryPageProps> = ({ patient, onBack
         fetchPhotos();
     }, [fetchPhotos]);
 
-    const handleSavePhoto = async (data: Omit<PatientPhoto, 'id'> | PatientPhoto) => {
+    const handleSavePhoto = async (data: PatientPhoto | CreatePatientPhotosPayload) => {
         if ('id' in data) {
             await api.patientPhotos.update(data.id, data);
         } else {
