@@ -1199,16 +1199,17 @@ const PatientSessionsPage: React.FC<{ patient: Patient; onBack: () => void; }> =
 interface AddPatientModalProps {
     onSave: (newPatient: Omit<Patient, 'id' | 'code'>) => Promise<void>;
     onClose: () => void;
-    doctors: User[]; // Pass doctors list for selection
+    doctors: User[];
+    user: User;
 }
 
-const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doctors }) => {
+const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doctors, user }) => {
     const [formData, setFormData] = useState({
         name: '',
         age: '',
         phone: '',
         notes: '',
-        doctorId: '',
+        doctorId: user.role === UserRole.Doctor ? user.id : '',
         gender: Gender.Male,
         isSmoker: false,
         isPregnant: false,
@@ -1265,13 +1266,15 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
                                 <option value={Gender.Female}>أنثى</option>
                             </select>
                         </div>
-                        <div className="md:col-span-2">
-                             <label htmlFor="doctorId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الطبيب المسؤول</label>
-                            <select id="doctorId" name="doctorId" value={formData.doctorId} onChange={handleChange} required className={inputStyle}>
-                                <option value="">اختر طبيب...</option>
-                                {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                            </select>
-                        </div>
+                        {user.role !== UserRole.Doctor && (
+                            <div className="md:col-span-2">
+                                <label htmlFor="doctorId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الطبيب المسؤول</label>
+                                <select id="doctorId" name="doctorId" value={formData.doctorId} onChange={handleChange} required className={inputStyle}>
+                                    <option value="">اختر طبيب...</option>
+                                    {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                </select>
+                            </div>
+                        )}
 
                         <div className="md:col-span-2"><label htmlFor="drugAllergyAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الحساسية الدوائية</label><textarea id="drugAllergyAdd" name="drugAllergy" value={formData.drugAllergy} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
                         <div className="md:col-span-2"><label htmlFor="chronicDiseasesAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأمراض المزمنة</label><textarea id="chronicDiseasesAdd" name="chronicDiseases" value={formData.chronicDiseases} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
@@ -1403,12 +1406,10 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user }) => {
                        className="w-full pl-3 pr-10 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                    />
                 </div>
-                {(user.role !== UserRole.Doctor) && (
-                    <button onClick={() => setIsAddingPatient(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
-                        <PlusIcon className="h-5 w-5 ml-2" />
-                        إضافة مريض
-                    </button>
-                )}
+                <button onClick={() => setIsAddingPatient(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
+                    <PlusIcon className="h-5 w-5 ml-2" />
+                    إضافة مريض
+                </button>
             </div>
             
             <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[200px]">
@@ -1449,7 +1450,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user }) => {
                     )
                 )}
             </div>
-            {isAddingPatient && <AddPatientModal onClose={() => setIsAddingPatient(false)} onSave={handleCreatePatient} doctors={doctors} />}
+            {isAddingPatient && <AddPatientModal onClose={() => setIsAddingPatient(false)} onSave={handleCreatePatient} doctors={doctors} user={user} />}
             {editingPatient && <EditPatientModal patient={editingPatient} onClose={() => setEditingPatient(null)} onSave={handleUpdatePatient} />}
             {deletingPatient && (
                 <ConfirmDeleteModal
