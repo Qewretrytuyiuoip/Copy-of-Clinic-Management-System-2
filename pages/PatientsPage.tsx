@@ -849,15 +849,19 @@ const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, on
     const [isSaving, setIsSaving] = useState(false);
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
+    const handleDoctorIdsChange = (doctorId: string) => {
+        setFormData(prev => {
+            const currentDoctorIds = prev.doctorIds;
+            const newDoctorIds = currentDoctorIds.includes(doctorId)
+                ? currentDoctorIds.filter(id => id !== doctorId)
+                : [...currentDoctorIds, doctorId];
+            return { ...prev, doctorIds: newDoctorIds };
+        });
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
-        if (name === 'doctorIds') {
-            const selectedOptions = (e.target as HTMLSelectElement).selectedOptions;
-            const values = Array.from(selectedOptions, option => option.value);
-            setFormData(prev => ({ ...prev, doctorIds: values }));
-            return;
-        }
+        
         if (type === 'checkbox') {
             const { checked } = e.target as HTMLInputElement;
             setFormData(prev => ({ ...prev, [name]: checked }));
@@ -913,10 +917,23 @@ const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, on
                             </select>
                         </div>
                         <div className="md:col-span-2">
-                            <label htmlFor="doctorIds" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأطباء المسؤولون</label>
-                            <select id="doctorIds" name="doctorIds" value={formData.doctorIds} onChange={handleChange} required multiple className={`${inputStyle} h-32`}>
-                                {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                            </select>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأطباء المسؤولون</label>
+                            <div className="mt-2 p-3 border border-gray-800 dark:border-gray-600 rounded-md h-32 overflow-y-auto space-y-2 bg-white dark:bg-gray-700">
+                                {doctors.map(doctor => (
+                                    <label key={doctor.id} className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.doctorIds.includes(doctor.id)}
+                                            onChange={() => handleDoctorIdsChange(doctor.id)}
+                                            className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary"
+                                        />
+                                        <div>
+                                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{doctor.name}</span>
+                                            <span className="text-xs text-gray-500 dark:text-gray-400 block">{doctor.specialty || 'لا يوجد تخصص'}</span>
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
                         <div className="md:col-span-2"><label htmlFor="drugAllergyEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الحساسية الدوائية</label><textarea id="drugAllergyEdit" name="drugAllergy" value={formData.drugAllergy} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
                         <div className="md:col-span-2"><label htmlFor="chronicDiseasesEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأمراض المزمنة</label><textarea id="chronicDiseasesEdit" name="chronicDiseases" value={formData.chronicDiseases} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
@@ -1247,14 +1264,19 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
     const [isSaving, setIsSaving] = useState(false);
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
+    const handleDoctorIdsChange = (doctorId: string) => {
+        setFormData(prev => {
+            const currentDoctorIds = prev.doctorIds;
+            const newDoctorIds = currentDoctorIds.includes(doctorId)
+                ? currentDoctorIds.filter(id => id !== doctorId)
+                : [...currentDoctorIds, doctorId];
+            return { ...prev, doctorIds: newDoctorIds };
+        });
+    };
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
-        if (name === 'doctorIds') {
-            const selectedOptions = (e.target as HTMLSelectElement).selectedOptions;
-            const values = Array.from(selectedOptions, option => option.value);
-            setFormData(prev => ({ ...prev, doctorIds: values }));
-            return;
-        }
+        
         if (type === 'checkbox') {
             const { checked } = e.target as HTMLInputElement;
             setFormData(prev => ({ ...prev, [name]: checked }));
@@ -1301,10 +1323,23 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
                             </select>
                         </div>
                         <div className="md:col-span-2">
-                            <label htmlFor="doctorIds" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأطباء المسؤولون</label>
-                            <select id="doctorIds" name="doctorIds" value={formData.doctorIds} onChange={handleChange} required multiple className={`${inputStyle} h-32`}>
-                                {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                            </select>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأطباء المسؤولون</label>
+                            <div className="mt-2 p-3 border border-gray-800 dark:border-gray-600 rounded-md h-32 overflow-y-auto space-y-2 bg-white dark:bg-gray-700">
+                                {doctors.map(doctor => (
+                                    <label key={doctor.id} className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.doctorIds.includes(doctor.id)}
+                                            onChange={() => handleDoctorIdsChange(doctor.id)}
+                                            className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary"
+                                        />
+                                        <div>
+                                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{doctor.name}</span>
+                                            <span className="text-xs text-gray-500 dark:text-gray-400 block">{doctor.specialty || 'لا يوجد تخصص'}</span>
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
 
                         <div className="md:col-span-2"><label htmlFor="drugAllergyAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الحساسية الدوائية</label><textarea id="drugAllergyAdd" name="drugAllergy" value={formData.drugAllergy} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
