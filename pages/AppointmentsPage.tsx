@@ -4,6 +4,24 @@ import { api } from '../services/api';
 import { PlusIcon, PencilIcon, TrashIcon, XIcon, EyeIcon, SearchIcon, CalendarIcon, ClockIcon } from '../components/Icons';
 import { CenteredLoadingSpinner } from '../components/LoadingSpinner';
 
+const formatTo12Hour = (time24: string): string => {
+    if (!time24 || !time24.includes(':')) {
+        return time24; // Return original if format is unexpected
+    }
+    try {
+        const [hours, minutes] = time24.split(':').map(Number);
+        const ampm = hours >= 12 ? 'مساءً' : 'صباحًا';
+        const hours12 = hours % 12 || 12; // Convert hour to 12-hour format
+        const paddedHours = hours12.toString().padStart(2, '0');
+        const paddedMinutes = minutes.toString().padStart(2, '0');
+        return `${paddedHours}:${paddedMinutes} ${ampm}`;
+    } catch (e) {
+        console.error("Failed to format time:", time24, e);
+        return time24;
+    }
+};
+
+
 // ===================================================================
 // ConfirmDeleteModal Component
 // ===================================================================
@@ -60,7 +78,7 @@ const ViewAppointmentModal: React.FC<ViewAppointmentModalProps> = ({ appointment
                     <div><p className="text-sm font-medium text-gray-500 dark:text-gray-400">المريض</p><p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{patientName}</p></div>
                     <div><p className="text-sm font-medium text-gray-500 dark:text-gray-400">الطبيب</p><p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{doctorName}</p></div>
                     <div><p className="text-sm font-medium text-gray-500 dark:text-gray-400">التاريخ</p><p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{new Date(appointment.date).toLocaleDateString()}</p></div>
-                    <div><p className="text-sm font-medium text-gray-500 dark:text-gray-400">الوقت</p><p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{appointment.time}</p></div>
+                    <div><p className="text-sm font-medium text-gray-500 dark:text-gray-400">الوقت</p><p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{formatTo12Hour(appointment.time)}</p></div>
                     {appointment.notes && (<div><p className="text-sm font-medium text-gray-500 dark:text-gray-400">ملاحظات</p><p className="text-md text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 p-2 rounded-md">{appointment.notes}</p></div>)}
                 </div>
                 <div className="flex justify-end p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700"><button onClick={onClose} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-700">إغلاق</button></div>
@@ -119,7 +137,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
     const [showNewPatientForm, setShowNewPatientForm] = useState(false);
     const [newPatientData, setNewPatientData] = useState({ name: '', phone: '' });
     
-    const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+    const [availableSlots, setAvailableSlots] = useState<{ value: string; label: string; }[]>([]);
     const [slotsLoading, setSlotsLoading] = useState(false);
     const [slotsMessage, setSlotsMessage] = useState('');
 
@@ -130,17 +148,16 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
             const newState = { ...prev, [name]: value };
 
             if (name === 'patientId') {
+                newState.time = ''; // Reset time
                 const selectedPatient = patients.find(p => p.id === value);
-                if (selectedPatient) {
-                    newState.doctorId = selectedPatient.doctorId;
-                } else {
+                // Reset doctor if not in the new patient's list
+                if (selectedPatient && !selectedPatient.doctorIds.includes(newState.doctorId)) {
                     newState.doctorId = '';
                 }
-                newState.time = '';
             }
 
             if (name === 'doctorId' || name === 'date') {
-                newState.time = '';
+                newState.time = ''; // Reset time
             }
             return newState;
         });
@@ -177,7 +194,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                     if(freeSlots.length === 0) {
                         setSlotsMessage('لا توجد أوقات متاحة في هذا اليوم.');
                     }
-                    setAvailableSlots(freeSlots);
+                    setAvailableSlots(freeSlots.map(slot => ({ value: slot, label: formatTo12Hour(slot) })));
 
                 } catch (error) {
                     console.error("Failed to fetch available slots:", error);
@@ -189,6 +206,14 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
         };
         fetchAvailableSlots();
     }, [formData.doctorId, formData.date, appointment?.id]);
+
+    const patientDoctors = useMemo(() => {
+        if (!formData.patientId) {
+            return doctors;
+        }
+        const selectedPatient = patients.find(p => p.id === formData.patientId);
+        return selectedPatient ? doctors.filter(d => selectedPatient.doctorIds.includes(d.id)) : [];
+    }, [formData.patientId, patients, doctors]);
 
 
     const handleNewPatientChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -212,7 +237,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                 const newPatient = await api.patients.create({
                     name: newPatientData.name,
                     phone: newPatientData.phone,
-                    doctorId: formData.doctorId,
+                    doctorIds: [formData.doctorId],
                     age: 0, 
                     notes: 'مريض جديد تم إنشاؤه من صفحة المواعيد',
                     gender: Gender.Male,
@@ -307,14 +332,13 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                                 </div>
                             )}
                         </div>
-                        <div>
+                        <div className="md:col-span-2">
                             <label htmlFor="doctorId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الطبيب</label>
                             <select id="doctorId" name="doctorId" value={formData.doctorId} onChange={handleChange} required className={inputStyle}>
                                 <option value="">اختر طبيب...</option>
-                                {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                {patientDoctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                             </select>
                         </div>
-                        <div></div> {/* Empty div for alignment */}
                         <div>
                             <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">التاريخ</label>
                             <div className="relative">
@@ -333,7 +357,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                                     <select id="time" name="time" value={formData.time} onChange={handleChange} required className={`${inputStyle} pr-10`} disabled={!formData.doctorId || !formData.date}>
                                         <option value="">اختر وقت...</option>
                                         {availableSlots.length > 0 ? (
-                                            availableSlots.map(slot => <option key={slot} value={slot}>{slot}</option>)
+                                            availableSlots.map(slot => <option key={slot.value} value={slot.value}>{slot.label}</option>)
                                         ) : (
                                             <option disabled>{slotsMessage || 'اختر طبيب وتاريخ'}</option>
                                         )}
@@ -376,7 +400,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user }) => {
     const [viewingAppointment, setViewingAppointment] = useState<Appointment | null>(null);
     const [deletingAppointment, setDeletingAppointment] = useState<Appointment | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeTab, setActiveTab] = useState<ActiveTab>('all');
+    const [activeTab, setActiveTab] = useState<ActiveTab>('today');
 
 
     const fetchData = useCallback(async (refreshPatients = false) => {
@@ -443,7 +467,6 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user }) => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
         const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
         endOfMonth.setHours(23, 59, 59, 999);
 
@@ -457,12 +480,12 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user }) => {
                     case 'today':
                         return appDate.getTime() === today.getTime();
                     case 'month':
-                        return appDate >= startOfMonth && appDate <= endOfMonth;
+                        return appDate > today && appDate <= endOfMonth;
                     case 'finished':
                         return appDate.getTime() < today.getTime();
                     case 'all':
                     default:
-                        return true;
+                        return appDate.getTime() >= today.getTime();
                 }
             })
             .filter(app =>
@@ -542,7 +565,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user }) => {
                                             <h3 className={`text-lg font-bold ${isFinished ? 'text-gray-600 dark:text-gray-400' : 'text-primary'}`}>{getPatientName(app.patientId)}</h3>
                                             <span className={`text-xs font-semibold px-2 py-1 rounded-full ${isFinished ? 'bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-300' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>{new Date(app.date).toLocaleDateString()}</span>
                                         </div>
-                                        <p className={`font-bold text-3xl my-2 ${isFinished ? 'text-gray-700 dark:text-gray-300' : 'text-gray-800 dark:text-gray-100'}`}>{app.time}</p>
+                                        <p className={`font-bold text-3xl my-2 ${isFinished ? 'text-gray-700 dark:text-gray-300' : 'text-gray-800 dark:text-gray-100'}`}>{formatTo12Hour(app.time)}</p>
                                         <p className={`text-sm ${isFinished ? 'text-gray-500 dark:text-gray-400' : 'text-gray-500 dark:text-gray-400'}`}>مع الطبيب: {getDoctorName(app.doctorId)}</p>
                                         {app.notes && <p className={`mt-2 text-sm p-2 rounded-md ${isFinished ? 'bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>ملاحظات: {app.notes}</p>}
                                     </div>

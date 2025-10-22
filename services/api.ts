@@ -5,8 +5,8 @@ import { API_BASE_URL } from '../config';
 
 export let MOCK_USERS: User[] = [
     { id: 'admin1', name: 'د. مدير', email: 'admin@example.com', role: UserRole.Admin, password: '1' },
-    { id: 'doc1', name: 'د. سميث', email: 'smith@clinic.com', role: UserRole.Doctor, password: '1' },
-    { id: 'doc2', name: 'د. جونز', email: 'jones@clinic.com', role: UserRole.Doctor, password: '1' },
+    { id: 'doc1', name: 'د. سميث', email: 'smith@clinic.com', role: UserRole.Doctor, password: '1', specialty: 'أسنان' },
+    { id: 'doc2', name: 'د. جونز', email: 'jones@clinic.com', role: UserRole.Doctor, password: '1', specialty: 'قلب' },
     { id: 'sec1', name: 'سارة كونور', email: 'sarah@clinic.com', role: UserRole.Secretary, password: '1' },
 ];
 
@@ -112,6 +112,7 @@ export const login = async (email: string, password: string): Promise<User | nul
                 name: userFromApi.name,
                 email: userFromApi.email,
                 role: userFromApi.role, // Assuming API role string matches UserRole enum
+                specialty: userFromApi.specialty,
             };
 
             if (data.token) {
@@ -178,6 +179,7 @@ const getAllUsers = async (forceRefresh: boolean = false): Promise<User[]> => {
             name: apiUser.name,
             email: apiUser.email,
             role: apiUser.role as UserRole,
+            specialty: apiUser.specialty,
         }));
         return allUsersCache;
     } catch (error) {
@@ -227,6 +229,9 @@ const createUserCRUD = (role: UserRole) => ({
             }
             formData.append('password', item.password);
             formData.append('role', item.role);
+            if (item.role === UserRole.Doctor && item.specialty) {
+                formData.append('specialty', item.specialty);
+            }
 
             const token = localStorage.getItem('authToken');
             if (!token) throw new Error("Authentication token not found.");
@@ -258,6 +263,7 @@ const createUserCRUD = (role: UserRole) => ({
                 name: createdApiUser.name,
                 email: createdApiUser.email,
                 role: createdApiUser.role as UserRole,
+                specialty: createdApiUser.specialty,
             };
 
             allUsersCache = null; // Invalidate cache after creation
@@ -282,6 +288,9 @@ const createUserCRUD = (role: UserRole) => ({
             // Only send password if a new one is provided and is not empty
             if (updates.password && updates.password.length > 0) {
                 formData.append('password', updates.password);
+            }
+            if (updates.specialty !== undefined) {
+                formData.append('specialty', updates.specialty);
             }
 
             const token = localStorage.getItem('authToken');
@@ -313,6 +322,7 @@ const createUserCRUD = (role: UserRole) => ({
                 name: updatedApiUser.name,
                 email: updatedApiUser.email,
                 role: updatedApiUser.role as UserRole,
+                specialty: updatedApiUser.specialty,
             };
             
             allUsersCache = null; // Invalidate cache after update
@@ -363,7 +373,7 @@ const mapApiPatientToPatient = (p: any): Patient => ({
     age: p.age,
     phone: p.phone,
     notes: p.notes ?? undefined,
-    doctorId: String(p.doctor_id),
+    doctorIds: p.doctors ? p.doctors.map((doc: any) => String(doc.id)) : [],
     gender: p.gender === 'female' ? Gender.Female : Gender.Male,
     isSmoker: !!p.is_smoker,
     isPregnant: !!p.is_pregnant,
@@ -563,7 +573,7 @@ export const api = {
                 formData.append('name', item.name);
                 formData.append('age', String(item.age));
                 formData.append('phone', item.phone);
-                formData.append('doctor_id', item.doctorId);
+                item.doctorIds.forEach(id => formData.append('doctor_ids[]', id));
                 formData.append('gender', item.gender);
                 formData.append('is_smoker', item.isSmoker ? '1' : '0');
                 formData.append('is_pregnant', item.isPregnant ? '1' : '0');
@@ -591,7 +601,9 @@ export const api = {
                 if (updates.name) formData.append('name', updates.name);
                 if (updates.age !== undefined) formData.append('age', String(updates.age));
                 if (updates.phone) formData.append('phone', updates.phone);
-                if (updates.doctorId) formData.append('doctor_id', updates.doctorId);
+                if (updates.doctorIds) {
+                    updates.doctorIds.forEach(docId => formData.append('doctor_ids[]', docId));
+                }
                 if (updates.gender) formData.append('gender', updates.gender);
                 if (updates.isSmoker !== undefined) formData.append('is_smoker', updates.isSmoker ? '1' : '0');
                 if (updates.isPregnant !== undefined) formData.append('is_pregnant', updates.isPregnant ? '1' : '0');

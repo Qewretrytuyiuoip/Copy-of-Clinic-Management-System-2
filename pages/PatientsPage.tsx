@@ -386,6 +386,7 @@ const PatientGalleryPage: React.FC<PatientGalleryPageProps> = ({ patient, onBack
 // ===================================================================
 interface PatientDetailsPageProps {
     patient: Patient;
+    doctors: User[];
     onBack: () => void;
 }
 
@@ -396,7 +397,11 @@ const DetailItem: React.FC<{ label: string; value?: string | number | null; chil
     </div>
 );
 
-const PatientDetailsPage: React.FC<PatientDetailsPageProps> = ({ patient, onBack }) => {
+const PatientDetailsPage: React.FC<PatientDetailsPageProps> = ({ patient, doctors, onBack }) => {
+    const patientDoctors = useMemo(() => {
+        return doctors.filter(d => patient.doctorIds.includes(d.id));
+    }, [patient, doctors]);
+    
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
@@ -421,6 +426,7 @@ const PatientDetailsPage: React.FC<PatientDetailsPageProps> = ({ patient, onBack
                 </div>
                 <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-5 sm:p-0">
                     <dl className="sm:divide-y sm:divide-gray-200 dark:sm:divide-gray-700">
+                        <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6"> <DetailItem label="الأطباء المسؤولون" value={patientDoctors.map(d => d.name).join(', ')} /> </div>
                         <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6"> <DetailItem label="العمر" value={patient.age} /> </div>
                         <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6"> <DetailItem label="الهاتف" value={patient.phone} /> </div>
                         <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6"> <DetailItem label="الجنس" value={patient.gender === Gender.Female ? 'أنثى' : 'ذكر'} /> </div>
@@ -607,24 +613,24 @@ interface AddSessionModalProps {
     onSave: (newSession: Omit<Session, 'id' | 'treatments'>) => Promise<void>;
     onClose: () => void;
     patientId: string;
-    doctorId: string;
+    doctors: User[];
 }
 
-const AddSessionModal: React.FC<AddSessionModalProps> = ({ onSave, onClose, patientId, doctorId }) => {
-    const [formData, setFormData] = useState({ date: new Date().toISOString().split('T')[0], notes: '' });
+const AddSessionModal: React.FC<AddSessionModalProps> = ({ onSave, onClose, patientId, doctors }) => {
+    const [formData, setFormData] = useState({ date: new Date().toISOString().split('T')[0], notes: '', doctorId: doctors.length === 1 ? doctors[0].id : '' });
     const [isSaving, setIsSaving] = useState(false);
     const inputStyle = "w-full px-3 py-2 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary text-black dark:text-white bg-white dark:bg-gray-700";
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.date) { alert('يرجى تحديد تاريخ الجلسة.'); return; }
+        if (!formData.date || !formData.doctorId) { alert('يرجى تحديد تاريخ الجلسة والطبيب.'); return; }
         setIsSaving(true);
-        await onSave({ date: new Date(formData.date).toISOString(), notes: formData.notes, patientId, doctorId });
+        await onSave({ date: new Date(formData.date).toISOString(), notes: formData.notes, patientId, doctorId: formData.doctorId });
         setIsSaving(false);
     };
 
@@ -634,6 +640,13 @@ const AddSessionModal: React.FC<AddSessionModalProps> = ({ onSave, onClose, pati
                 <div className="flex justify-between items-center p-4 border-b dark:border-gray-700"><h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">إضافة جلسة جديدة</h2><button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button></div>
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4">
+                        <div>
+                            <label htmlFor="doctorId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">طبيب الجلسة</label>
+                            <select id="doctorId" name="doctorId" value={formData.doctorId} onChange={handleChange} required className={inputStyle}>
+                                <option value="">-- اختر طبيب --</option>
+                                {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                            </select>
+                        </div>
                         <div><label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاريخ الجلسة</label><input type="date" id="date" name="date" value={formData.date} onChange={handleChange} required className={inputStyle} /></div>
                         <div><label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={4} className={inputStyle}></textarea></div>
                     </div>
@@ -817,9 +830,10 @@ interface EditPatientModalProps {
     patient: Patient;
     onSave: (updatedPatient: Patient) => Promise<void>;
     onClose: () => void;
+    doctors: User[];
 }
 
-const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, onClose }) => {
+const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, onClose, doctors }) => {
     const [formData, setFormData] = useState({
         name: patient.name,
         age: patient.age.toString(),
@@ -830,6 +844,7 @@ const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, on
         isPregnant: patient.isPregnant || false,
         drugAllergy: patient.drugAllergy || '',
         chronicDiseases: patient.chronicDiseases || '',
+        doctorIds: patient.doctorIds || [],
     });
     const [isSaving, setIsSaving] = useState(false);
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
@@ -837,6 +852,12 @@ const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, on
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
+        if (name === 'doctorIds') {
+            const selectedOptions = (e.target as HTMLSelectElement).selectedOptions;
+            const values = Array.from(selectedOptions, option => option.value);
+            setFormData(prev => ({ ...prev, doctorIds: values }));
+            return;
+        }
         if (type === 'checkbox') {
             const { checked } = e.target as HTMLInputElement;
             setFormData(prev => ({ ...prev, [name]: checked }));
@@ -862,6 +883,7 @@ const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, on
             isPregnant: formData.gender === Gender.Female ? formData.isPregnant : false,
             drugAllergy: formData.drugAllergy,
             chronicDiseases: formData.chronicDiseases,
+            doctorIds: formData.doctorIds,
         };
         await onSave(updatedPatientData);
         setIsSaving(false);
@@ -888,6 +910,12 @@ const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, on
                             <select id="gender" name="gender" value={formData.gender} onChange={handleChange} className={inputStyle}>
                                 <option value={Gender.Male}>ذكر</option>
                                 <option value={Gender.Female}>أنثى</option>
+                            </select>
+                        </div>
+                        <div className="md:col-span-2">
+                            <label htmlFor="doctorIds" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأطباء المسؤولون</label>
+                            <select id="doctorIds" name="doctorIds" value={formData.doctorIds} onChange={handleChange} required multiple className={`${inputStyle} h-32`}>
+                                {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                             </select>
                         </div>
                         <div className="md:col-span-2"><label htmlFor="drugAllergyEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الحساسية الدوائية</label><textarea id="drugAllergyEdit" name="drugAllergy" value={formData.drugAllergy} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
@@ -1101,7 +1129,7 @@ const SessionTreatmentsPage: React.FC<SessionTreatmentsPageProps> = ({ session: 
 // ===================================================================
 // PatientSessionsPage Component
 // ===================================================================
-const PatientSessionsPage: React.FC<{ patient: Patient; onBack: () => void; }> = ({ patient, onBack }) => {
+const PatientSessionsPage: React.FC<{ patient: Patient; onBack: () => void; doctors: User[] }> = ({ patient, onBack, doctors }) => {
     const [sessions, setSessions] = useState<Session[]>([]);
     const [loading, setLoading] = useState(true);
     const [viewingTreatmentsFor, setViewingTreatmentsFor] = useState<Session | null>(null);
@@ -1178,7 +1206,7 @@ const PatientSessionsPage: React.FC<{ patient: Patient; onBack: () => void; }> =
                     })}
                     </div>) : <p className="text-center text-gray-500 dark:text-gray-400 py-8">لا توجد جلسات مسجلة.</p>}
             </div>
-            {isAddingSession && <AddSessionModal onClose={() => setIsAddingSession(false)} onSave={handleCreateSession} patientId={patient.id} doctorId={patient.doctorId} />}
+            {isAddingSession && <AddSessionModal onClose={() => setIsAddingSession(false)} onSave={handleCreateSession} patientId={patient.id} doctors={doctors.filter(d => patient.doctorIds.includes(d.id))} />}
             {editingSession && <EditSessionModal session={editingSession} onClose={() => setEditingSession(null)} onSave={handleUpdateSession} />}
             {deletingSession && (
                 <ConfirmDeleteModal
@@ -1209,7 +1237,7 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
         age: '',
         phone: '',
         notes: '',
-        doctorId: user.role === UserRole.Doctor ? user.id : '',
+        doctorIds: user.role === UserRole.Doctor ? [user.id] : [],
         gender: Gender.Male,
         isSmoker: false,
         isPregnant: false,
@@ -1221,6 +1249,12 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
+        if (name === 'doctorIds') {
+            const selectedOptions = (e.target as HTMLSelectElement).selectedOptions;
+            const values = Array.from(selectedOptions, option => option.value);
+            setFormData(prev => ({ ...prev, doctorIds: values }));
+            return;
+        }
         if (type === 'checkbox') {
             const { checked } = e.target as HTMLInputElement;
             setFormData(prev => ({ ...prev, [name]: checked }));
@@ -1234,8 +1268,8 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.doctorId) {
-            alert("الرجاء اختيار طبيب.");
+        if (formData.doctorIds.length === 0) {
+            alert("الرجاء اختيار طبيب واحد على الأقل.");
             return;
         }
         setIsSaving(true);
@@ -1266,15 +1300,12 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
                                 <option value={Gender.Female}>أنثى</option>
                             </select>
                         </div>
-                        {user.role !== UserRole.Doctor && (
-                            <div className="md:col-span-2">
-                                <label htmlFor="doctorId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الطبيب المسؤول</label>
-                                <select id="doctorId" name="doctorId" value={formData.doctorId} onChange={handleChange} required className={inputStyle}>
-                                    <option value="">اختر طبيب...</option>
-                                    {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                </select>
-                            </div>
-                        )}
+                        <div className="md:col-span-2">
+                            <label htmlFor="doctorIds" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأطباء المسؤولون</label>
+                            <select id="doctorIds" name="doctorIds" value={formData.doctorIds} onChange={handleChange} required multiple className={`${inputStyle} h-32`}>
+                                {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                            </select>
+                        </div>
 
                         <div className="md:col-span-2"><label htmlFor="drugAllergyAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الحساسية الدوائية</label><textarea id="drugAllergyAdd" name="drugAllergy" value={formData.drugAllergy} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
                         <div className="md:col-span-2"><label htmlFor="chronicDiseasesAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأمراض المزمنة</label><textarea id="chronicDiseasesAdd" name="chronicDiseases" value={formData.chronicDiseases} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
@@ -1605,7 +1636,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user }) => {
         setLoading(true);
         let patientsData: Patient[];
         if (user.role === UserRole.Doctor) {
-            patientsData = await api.patients.getAll().then(pats => pats.filter(p => p.doctorId === user.id));
+            patientsData = await api.patients.getAll().then(pats => pats.filter(p => p.doctorIds.includes(user.id)));
         } else {
             patientsData = await api.patients.getAll();
         }
@@ -1652,7 +1683,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user }) => {
     };
     
     const handlePrintPatientData = (patient: Patient) => {
-    const doctor = doctors.find(d => d.id === patient.doctorId);
+    const patientDoctors = doctors.filter(d => patient.doctorIds.includes(d.id));
     const htmlContent = `
         <!DOCTYPE html>
         <html lang="ar" dir="rtl">
@@ -1775,9 +1806,9 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user }) => {
                             <span class="info-item-label">الجنس:</span>
                             <span class="info-item-value">${patient.gender === 'female' ? 'أنثى' : 'ذكر'}</span>
                         </div>
-                        <div class="info-item">
-                            <span class="info-item-label">الطبيب المسؤول:</span>
-                            <span class="info-item-value">${doctor ? doctor.name : 'غير محدد'}</span>
+                         <div class="info-item" style="grid-column: 1 / -1;">
+                            <span class="info-item-label">الأطباء المسؤولون:</span>
+                            <span class="info-item-value">${patientDoctors.length > 0 ? patientDoctors.map(d => d.name).join(', ') : 'غير محدد'}</span>
                         </div>
                     </div>
                 </div>
@@ -1837,7 +1868,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user }) => {
     }
 
     if (viewingPatient) {
-        return <PatientDetailsPage patient={viewingPatient} onBack={() => setViewingPatient(null)} />;
+        return <PatientDetailsPage patient={viewingPatient} doctors={doctors} onBack={() => setViewingPatient(null)} />;
     }
     
     if (viewingPhotosFor) {
@@ -1845,7 +1876,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user }) => {
     }
 
     if (viewingSessionsFor) {
-        return <PatientSessionsPage patient={viewingSessionsFor} onBack={() => setViewingSessionsFor(null)} />;
+        return <PatientSessionsPage patient={viewingSessionsFor} onBack={() => setViewingSessionsFor(null)} doctors={doctors} />;
     }
 
     return (
@@ -1917,7 +1948,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user }) => {
                 )}
             </div>
             {isAddingPatient && <AddPatientModal onClose={() => setIsAddingPatient(false)} onSave={handleCreatePatient} doctors={doctors} user={user} />}
-            {editingPatient && <EditPatientModal patient={editingPatient} onClose={() => setEditingPatient(null)} onSave={handleUpdatePatient} />}
+            {editingPatient && <EditPatientModal patient={editingPatient} onClose={() => setEditingPatient(null)} onSave={handleUpdatePatient} doctors={doctors} />}
             {deletingPatient && (
                 <ConfirmDeleteModal
                     title="حذف المريض"

@@ -18,9 +18,10 @@ interface HeaderProps {
 interface ConfirmLogoutModalProps {
     onConfirm: () => void;
     onCancel: () => void;
+    isLoggingOut: boolean;
 }
 
-const ConfirmLogoutModal: React.FC<ConfirmLogoutModalProps> = ({ onConfirm, onCancel }) => (
+const ConfirmLogoutModal: React.FC<ConfirmLogoutModalProps> = ({ onConfirm, onCancel, isLoggingOut }) => (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 transition-opacity" onClick={onCancel}>
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
             <div className="p-6">
@@ -33,10 +34,10 @@ const ConfirmLogoutModal: React.FC<ConfirmLogoutModalProps> = ({ onConfirm, onCa
                 </div>
             </div>
             <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex justify-center gap-4">
-                <button type="button" onClick={onConfirm} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                    نعم، تسجيل الخروج
+                <button type="button" onClick={onConfirm} disabled={isLoggingOut} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-red-400 disabled:cursor-not-allowed">
+                    {isLoggingOut ? 'جاري تسجيل الخروج...' : 'نعم، تسجيل الخروج'}
                 </button>
-                <button type="button" onClick={onCancel} className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                <button type="button" onClick={onCancel} disabled={isLoggingOut} className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed">
                     إلغاء
                 </button>
             </div>
@@ -48,10 +49,11 @@ const ConfirmLogoutModal: React.FC<ConfirmLogoutModalProps> = ({ onConfirm, onCa
 const Header: React.FC<HeaderProps> = ({ user, setSidebarOpen }) => {
     const { logout } = useAuth();
     const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-    const handleLogout = () => {
-        logout();
-        setIsLogoutModalOpen(false);
+    const handleLogout = async () => {
+        setIsLoggingOut(true);
+        await logout();
     };
 
     return (
@@ -84,7 +86,8 @@ const Header: React.FC<HeaderProps> = ({ user, setSidebarOpen }) => {
             {isLogoutModalOpen && (
                 <ConfirmLogoutModal
                     onConfirm={handleLogout}
-                    onCancel={() => setIsLogoutModalOpen(false)}
+                    onCancel={() => !isLoggingOut && setIsLogoutModalOpen(false)}
+                    isLoggingOut={isLoggingOut}
                 />
             )}
         </>

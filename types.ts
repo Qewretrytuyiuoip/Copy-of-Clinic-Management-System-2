@@ -19,6 +19,7 @@ export interface User {
     email: string;
     password?: string;
     role: UserRole;
+    specialty?: string;
 }
 
 export interface Treatment {
@@ -54,7 +55,7 @@ export interface Patient {
     age: number;
     phone: string;
     notes?: string;
-    doctorId: string;
+    doctorIds: string[];
     gender: Gender;
     isSmoker?: boolean;
     isPregnant?: boolean;

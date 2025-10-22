@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { User, Patient, Appointment } from '../../types';
 import { api } from '../../services/api';
 import { UserGroupIcon, CalendarIcon } from '../Icons';
+import { CenteredLoadingSpinner } from '../LoadingSpinner';
 
 interface DashboardDoctorProps {
     user: User;
@@ -22,40 +23,91 @@ const StatCard: React.FC<{ title: string; value: string | number; icon: React.El
     </div>
 );
 
+// Helper function to format time
+const formatTo12Hour = (time24: string): string => {
+    if (!time24 || !time24.includes(':')) {
+        return time24; // Return original if format is unexpected
+    }
+    try {
+        const [hours, minutes] = time24.split(':').map(Number);
+        const ampm = hours >= 12 ? 'مساءً' : 'صباحًا';
+        const hours12 = hours % 12 || 12; // Convert hour to 12-hour format
+        const paddedHours = hours12.toString().padStart(2, '0');
+        const paddedMinutes = minutes.toString().padStart(2, '0');
+        return `${paddedHours}:${paddedMinutes} ${ampm}`;
+    } catch (e) {
+        console.error("Failed to format time:", time24, e);
+        return time24;
+    }
+};
+
 
 const DashboardDoctor: React.FC<DashboardDoctorProps> = ({ user }) => {
     const [patientCount, setPatientCount] = useState(0);
-    const [appointments, setAppointments] = useState<Appointment[]>([]);
+    const [todaysAppointments, setTodaysAppointments] = useState<Appointment[]>([]);
+    const [patients, setPatients] = useState<Patient[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchData = async () => {
-            const myPatients = await api.patients.getAll();
-            setPatientCount(myPatients.filter(p => p.doctorId === user.id).length);
-            const allAppointments = await api.appointments.getAll();
-            setAppointments(allAppointments.filter(a => a.doctorId === user.id));
+            setLoading(true);
+            try {
+                const [allPatients, allAppointments] = await Promise.all([
+                    api.patients.getAll(),
+                    api.appointments.getAll()
+                ]);
+                
+                setPatients(allPatients); // Store all patients for name lookup
+
+                const myPatients = allPatients.filter(p => p.doctorIds.includes(user.id));
+                setPatientCount(myPatients.length);
+                
+                const today = new Date();
+                const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                
+                const myTodaysAppointments = allAppointments.filter(a => 
+                    a.doctorId === user.id && a.date === todayString
+                );
+                setTodaysAppointments(myTodaysAppointments.sort((a,b) => a.time.localeCompare(b.time)));
+            } catch (error) {
+                console.error("Failed to fetch doctor dashboard data:", error);
+            } finally {
+                setLoading(false);
+            }
         };
         fetchData();
     }, [user.id]);
+
+    const getPatientName = (patientId: string) => {
+        return patients.find(p => p.id === patientId)?.name || 'مريض غير معروف';
+    };
 
     return (
         <div>
             <div className="grid grid-cols-2 gap-4 sm:gap-6">
                 <StatCard title="مرضاي" value={patientCount} icon={UserGroupIcon} />
-                <StatCard title="المواعيد القادمة" value={appointments.length} icon={CalendarIcon} />
+                <StatCard title="مواعيد اليوم" value={todaysAppointments.length} icon={CalendarIcon} />
             </div>
              <div className="mt-8 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md">
                 <h2 className="text-xl font-semibold mb-4 dark:text-gray-100">جدول اليوم</h2>
-                {appointments.length > 0 ? (
-                    <ul className="dark:text-gray-200">
-                        {appointments.map(app => (
-                            <li key={app.id} className="border-b dark:border-gray-700 py-2 flex justify-between">
-                                <span>{app.time} - معرف المريض: {app.patientId}</span>
-                                <span className="text-gray-600 dark:text-gray-400">{app.notes}</span>
+                {loading ? (
+                    <CenteredLoadingSpinner />
+                ) : todaysAppointments.length > 0 ? (
+                    <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {todaysAppointments.map(app => (
+                            <li key={app.id} className="py-3 flex justify-between items-center">
+                                <div className="flex items-center space-x-4 rtl:space-x-reverse">
+                                    <div className="font-mono text-lg font-semibold text-primary dark:text-primary-300 w-28 text-center">{formatTo12Hour(app.time)}</div>
+                                    <div className="text-gray-900 dark:text-gray-100 font-medium">{getPatientName(app.patientId)}</div>
+                                </div>
+                                <div className="text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate" title={app.notes}>
+                                    {app.notes}
+                                </div>
                             </li>
                         ))}
                     </ul>
                 ) : (
-                    <p className="dark:text-gray-300">لا توجد مواعيد مجدولة لهذا اليوم.</p>
+                    <p className="dark:text-gray-300 text-center py-8">لا توجد مواعيد مجدولة لهذا اليوم.</p>
                 )}
             </div>
         </div>

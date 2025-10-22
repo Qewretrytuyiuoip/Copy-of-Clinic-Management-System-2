@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { User, Appointment, Patient } from '../../types';
 import { api } from '../../services/api';
 import { CalendarIcon, UserGroupIcon } from '../Icons';
+import { CenteredLoadingSpinner } from '../LoadingSpinner';
 
 interface DashboardSecretaryProps {
     user: User;
@@ -21,21 +22,46 @@ const StatCard: React.FC<{ title: string; value: string | number; icon: React.El
     </div>
 );
 
+const formatTo12Hour = (time24: string): string => {
+    if (!time24 || !time24.includes(':')) {
+        return time24;
+    }
+    try {
+        const [hours, minutes] = time24.split(':').map(Number);
+        const ampm = hours >= 12 ? 'مساءً' : 'صباحًا';
+        const hours12 = hours % 12 || 12;
+        const paddedHours = hours12.toString().padStart(2, '0');
+        const paddedMinutes = minutes.toString().padStart(2, '0');
+        return `${paddedHours}:${paddedMinutes} ${ampm}`;
+    } catch (e) {
+        console.error("Failed to format time:", time24, e);
+        return time24;
+    }
+};
+
 const DashboardSecretary: React.FC<DashboardSecretaryProps> = ({ user }) => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [patients, setPatients] = useState<Patient[]>([]);
     const [doctors, setDoctors] = useState<User[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchData = async () => {
-            const [apps, pats, docs] = await Promise.all([
-                api.appointments.getAll(),
-                api.patients.getAll(),
-                api.doctors.getAll(),
-            ]);
-            setAppointments(apps);
-            setPatients(pats);
-            setDoctors(docs);
+            setLoading(true);
+            try {
+                const [apps, pats, docs] = await Promise.all([
+                    api.appointments.getAll(),
+                    api.patients.getAll(),
+                    api.doctors.getAll(),
+                ]);
+                setAppointments(apps);
+                setPatients(pats);
+                setDoctors(docs);
+            } catch (error) {
+                console.error("Failed to fetch secretary dashboard data:", error);
+            } finally {
+                setLoading(false);
+            }
         };
         fetchData();
     }, []);
@@ -55,12 +81,14 @@ const DashboardSecretary: React.FC<DashboardSecretaryProps> = ({ user }) => {
     return (
         <div>
             <div className="grid grid-cols-2 gap-4 sm:gap-6">
-                <StatCard title="مواعيد اليوم" value={todaysAppointments.length} icon={CalendarIcon} />
-                <StatCard title="إجمالي المرضى" value={patients.length} icon={UserGroupIcon} />
+                <StatCard title="مواعيد اليوم" value={loading ? '...' : todaysAppointments.length} icon={CalendarIcon} />
+                <StatCard title="إجمالي المرضى" value={loading ? '...' : patients.length} icon={UserGroupIcon} />
             </div>
             <div className="mt-8 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md">
                 <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">جدول العيادة الكامل لهذا اليوم</h2>
-                 {todaysAppointments.length > 0 ? (
+                {loading ? (
+                    <CenteredLoadingSpinner />
+                ) : todaysAppointments.length > 0 ? (
                     <div className="overflow-x-auto">
                         <table className="w-full text-right text-gray-900 dark:text-gray-200">
                             <thead>
@@ -74,7 +102,7 @@ const DashboardSecretary: React.FC<DashboardSecretaryProps> = ({ user }) => {
                             <tbody>
                                 {todaysAppointments.sort((a,b) => a.time.localeCompare(b.time)).map(app => (
                                     <tr key={app.id} className="border-b dark:border-gray-700">
-                                        <td className="p-3 font-medium">{app.time}</td>
+                                        <td className="p-3 font-medium">{formatTo12Hour(app.time)}</td>
                                         <td className="p-3">{getPatientName(app.patientId)}</td>
                                         <td className="p-3">{getDoctorName(app.doctorId)}</td>
                                         <td className="p-3 text-gray-600 dark:text-gray-400">{app.notes}</td>
@@ -84,7 +112,7 @@ const DashboardSecretary: React.FC<DashboardSecretaryProps> = ({ user }) => {
                         </table>
                     </div>
                 ) : (
-                    <p className="dark:text-gray-300">لا توجد مواعيد مجدولة لهذا اليوم.</p>
+                    <p className="dark:text-gray-300 text-center py-8">لا توجد مواعيد مجدولة لهذا اليوم.</p>
                 )}
             </div>
         </div>
