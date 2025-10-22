@@ -13,6 +13,7 @@ import PaymentsPage from './pages/PaymentsPage';
 import DoctorSchedulePage from './pages/DoctorSchedulePage';
 import DoctorSettingsPage from './pages/DoctorSettingsPage';
 import TreatmentsSettingsPage from './pages/TreatmentsSettingsPage';
+import StatisticsPage from './pages/StatisticsPage';
 
 const AppContent: React.FC = () => {
     const { user } = useAuth();
@@ -38,6 +39,8 @@ const AppContent: React.FC = () => {
                  return (user.role === UserRole.Admin || user.role === UserRole.Secretary) ? <PaymentsPage user={user} /> : <div>الوصول مرفوض</div>;
             case 'treatments_settings':
                 return user.role === UserRole.Admin ? <TreatmentsSettingsPage /> : <div>الوصول مرفوض</div>;
+            case 'statistics':
+                return user.role === UserRole.Admin ? <StatisticsPage /> : <div>الوصول مرفوض</div>;
             case 'schedule':
                 return user.role === UserRole.Doctor ? <DoctorSchedulePage user={user} /> : <div>الوصول مرفوض</div>;
             case 'settings':

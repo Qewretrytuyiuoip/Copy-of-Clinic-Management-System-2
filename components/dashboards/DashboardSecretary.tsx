@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { User, Appointment, Patient } from '../../types';
 import { api } from '../../services/api';
 import { CalendarIcon, UserGroupIcon } from '../Icons';
@@ -43,15 +43,24 @@ const DashboardSecretary: React.FC<DashboardSecretaryProps> = ({ user }) => {
     const getPatientName = (id: string) => patients.find(p => p.id === id)?.name || 'غير معروف';
     const getDoctorName = (id: string) => doctors.find(d => d.id === id)?.name || 'غير معروف';
 
+    const todaysAppointments = useMemo(() => {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-11
+        const dd = String(today.getDate()).padStart(2, '0');
+        const todayString = `${yyyy}-${mm}-${dd}`;
+        return appointments.filter(app => app.date === todayString);
+    }, [appointments]);
+
     return (
         <div>
             <div className="grid grid-cols-2 gap-4 sm:gap-6">
-                <StatCard title="مواعيد اليوم" value={appointments.length} icon={CalendarIcon} />
+                <StatCard title="مواعيد اليوم" value={todaysAppointments.length} icon={CalendarIcon} />
                 <StatCard title="إجمالي المرضى" value={patients.length} icon={UserGroupIcon} />
             </div>
             <div className="mt-8 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md">
                 <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">جدول العيادة الكامل لهذا اليوم</h2>
-                 {appointments.length > 0 ? (
+                 {todaysAppointments.length > 0 ? (
                     <div className="overflow-x-auto">
                         <table className="w-full text-right text-gray-900 dark:text-gray-200">
                             <thead>
@@ -63,7 +72,7 @@ const DashboardSecretary: React.FC<DashboardSecretaryProps> = ({ user }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {appointments.sort((a,b) => a.time.localeCompare(b.time)).map(app => (
+                                {todaysAppointments.sort((a,b) => a.time.localeCompare(b.time)).map(app => (
                                     <tr key={app.id} className="border-b dark:border-gray-700">
                                         <td className="p-3 font-medium">{app.time}</td>
                                         <td className="p-3">{getPatientName(app.patientId)}</td>

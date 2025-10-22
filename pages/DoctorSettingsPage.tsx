@@ -73,32 +73,32 @@ const DoctorSettingsPage: React.FC<DoctorSettingsPageProps> = ({ user }) => {
         }
     };
 
-    const inputStyle = "mt-1 block w-full px-3 py-2 bg-white border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm text-black";
+    const inputStyle = "mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm text-black dark:text-white";
 
     return (
         <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">تواجدي</h1>
-            <div className="bg-white p-6 md:p-8 rounded-xl shadow-md max-w-3xl mx-auto min-h-[400px]">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">تواجدي</h1>
+            <div className="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-xl shadow-md max-w-3xl mx-auto min-h-[400px]">
                 {loading ? <CenteredLoadingSpinner /> : (
                     <form onSubmit={handleSubmit}>
                         <div className="space-y-4">
                             {schedule.map((daySchedule, index) => (
-                                <div key={index} className="p-4 border border-gray-200 rounded-lg transition-all duration-300 has-[:checked]:bg-primary-50 has-[:checked]:border-primary">
+                                <div key={index} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg transition-all duration-300 has-[:checked]:bg-primary-50 has-[:checked]:border-primary-300 dark:has-[:checked]:bg-primary-900/20 dark:has-[:checked]:border-primary-700">
                                     <div className="flex justify-between items-center">
                                         <label className="flex items-center space-x-3 cursor-pointer">
                                             <input
                                                 type="checkbox"
                                                 checked={daySchedule.isWorkDay}
                                                 onChange={() => handleDayToggle(index)}
-                                                className="h-5 w-5 rounded text-primary focus:ring-primary-500 border-gray-300"
+                                                className="h-5 w-5 rounded text-primary focus:ring-primary-500 border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 dark:focus:ring-offset-gray-800"
                                             />
-                                            <span className="font-semibold text-lg text-gray-800">{DAY_NAMES[index]}</span>
+                                            <span className="font-semibold text-lg text-gray-800 dark:text-gray-100">{DAY_NAMES[index]}</span>
                                         </label>
                                     </div>
                                     {daySchedule.isWorkDay && (
-                                        <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
-                                                <label htmlFor={`startTime-${index}`} className="block text-sm font-medium text-gray-700">وقت البدء</label>
+                                                <label htmlFor={`startTime-${index}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300">وقت البدء</label>
                                                 <input
                                                     type="time"
                                                     id={`startTime-${index}`}
@@ -109,7 +109,7 @@ const DoctorSettingsPage: React.FC<DoctorSettingsPageProps> = ({ user }) => {
                                                 />
                                             </div>
                                             <div>
-                                                <label htmlFor={`endTime-${index}`} className="block text-sm font-medium text-gray-700">وقت الانتهاء</label>
+                                                <label htmlFor={`endTime-${index}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300">وقت الانتهاء</label>
                                                 <input
                                                     type="time"
                                                     id={`endTime-${index}`}
@@ -134,7 +134,7 @@ const DoctorSettingsPage: React.FC<DoctorSettingsPageProps> = ({ user }) => {
                                 {saving ? 'جاري الحفظ...' : 'حفظ التواجد'}
                             </button>
                         </div>
-                        {feedback && <p className={`mt-4 text-center text-sm ${feedback.includes('فشل') ? 'text-red-600' : 'text-green-600'}`}>{feedback}</p>}
+                        {feedback && <p className={`mt-4 text-center text-sm ${feedback.includes('فشل') ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>{feedback}</p>}
                     </form>
                 )}
             </div>

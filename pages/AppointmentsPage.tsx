@@ -364,6 +364,8 @@ interface AppointmentsPageProps {
     user: User;
 }
 
+type ActiveTab = 'all' | 'today' | 'month' | 'finished';
+
 const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user }) => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [patients, setPatients] = useState<Patient[]>([]);
@@ -374,6 +376,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user }) => {
     const [viewingAppointment, setViewingAppointment] = useState<Appointment | null>(null);
     const [deletingAppointment, setDeletingAppointment] = useState<Appointment | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [activeTab, setActiveTab] = useState<ActiveTab>('all');
 
 
     const fetchData = useCallback(async (refreshPatients = false) => {
@@ -436,11 +439,54 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user }) => {
     const getPatientName = (id: string) => patients.find(p => p.id === id)?.name || 'مريض غير معروف';
     const getDoctorName = (id: string) => doctors.find(d => d.id === id)?.name || 'طبيب غير معروف';
 
-    const filteredAppointments = appointments.filter(app =>
-        getPatientName(app.patientId).toLowerCase().includes(searchTerm.toLowerCase()) ||
-        getDoctorName(app.doctorId).toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredAppointments = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        endOfMonth.setHours(23, 59, 59, 999);
+
+        return appointments
+            .filter(app => {
+                const appDate = new Date(app.date);
+                appDate.setMinutes(appDate.getMinutes() + appDate.getTimezoneOffset());
+                appDate.setHours(0, 0, 0, 0);
+                
+                switch (activeTab) {
+                    case 'today':
+                        return appDate.getTime() === today.getTime();
+                    case 'month':
+                        return appDate >= startOfMonth && appDate <= endOfMonth;
+                    case 'finished':
+                        return appDate.getTime() < today.getTime();
+                    case 'all':
+                    default:
+                        return true;
+                }
+            })
+            .filter(app =>
+                getPatientName(app.patientId).toLowerCase().includes(searchTerm.toLowerCase()) ||
+                getDoctorName(app.doctorId).toLowerCase().includes(searchTerm.toLowerCase())
+            )
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.time.localeCompare(b.time));
+    }, [appointments, patients, doctors, searchTerm, activeTab]);
+
+    const TabButton: React.FC<{ tab: ActiveTab; text: string; }> = ({ tab, text }) => {
+        const isActive = activeTab === tab;
+        return (
+            <button
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 text-sm font-semibold rounded-full transition-colors ${
+                    isActive
+                        ? 'bg-primary text-white shadow'
+                        : 'bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-600 border border-gray-200 dark:border-gray-600'
+                }`}
+            >
+                {text}
+            </button>
+        );
+    };
 
     return (
         <div>
@@ -466,22 +512,41 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user }) => {
                 )}
             </div>
 
+            <div className="mb-6 flex flex-wrap items-center gap-2">
+                <TabButton tab="all" text="كل المواعيد" />
+                <TabButton tab="today" text="مواعيد اليوم" />
+                <TabButton tab="month" text="هذا الشهر" />
+                <TabButton tab="finished" text="المنتهية" />
+            </div>
+
             <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[200px]">
                 {loading ? <CenteredLoadingSpinner /> : (
                     filteredAppointments.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {filteredAppointments.map(app => (
-                                <div key={app.id} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col transition-shadow hover:shadow-lg">
+                            {filteredAppointments.map(app => {
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                const appDate = new Date(app.date);
+                                appDate.setMinutes(appDate.getMinutes() + appDate.getTimezoneOffset());
+                                appDate.setHours(0, 0, 0, 0);
+                                const isFinished = appDate.getTime() < today.getTime();
+
+                                return (
+                                <div key={app.id} className={`border rounded-xl p-4 flex flex-col transition-shadow hover:shadow-lg ${
+                                    isFinished 
+                                    ? 'bg-gray-200 dark:bg-slate-900 opacity-75 border-gray-300 dark:border-gray-700' 
+                                    : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                                }`}>
                                     <div className="flex-grow">
                                         <div className="flex justify-between items-baseline">
-                                            <h3 className="text-lg font-bold text-primary">{getPatientName(app.patientId)}</h3>
-                                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full">{new Date(app.date).toLocaleDateString()}</span>
+                                            <h3 className={`text-lg font-bold ${isFinished ? 'text-gray-600 dark:text-gray-400' : 'text-primary'}`}>{getPatientName(app.patientId)}</h3>
+                                            <span className={`text-xs font-semibold px-2 py-1 rounded-full ${isFinished ? 'bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-300' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>{new Date(app.date).toLocaleDateString()}</span>
                                         </div>
-                                        <p className="text-gray-800 dark:text-gray-100 font-bold text-3xl my-2">{app.time}</p>
-                                        <p className="text-gray-500 dark:text-gray-400 text-sm">مع الطبيب: {getDoctorName(app.doctorId)}</p>
-                                        {app.notes && <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 p-2 rounded-md">ملاحظات: {app.notes}</p>}
+                                        <p className={`font-bold text-3xl my-2 ${isFinished ? 'text-gray-700 dark:text-gray-300' : 'text-gray-800 dark:text-gray-100'}`}>{app.time}</p>
+                                        <p className={`text-sm ${isFinished ? 'text-gray-500 dark:text-gray-400' : 'text-gray-500 dark:text-gray-400'}`}>مع الطبيب: {getDoctorName(app.doctorId)}</p>
+                                        {app.notes && <p className={`mt-2 text-sm p-2 rounded-md ${isFinished ? 'bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>ملاحظات: {app.notes}</p>}
                                     </div>
-                                     <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex items-center justify-end space-x-2">
+                                     <div className="mt-4 pt-4 border-t border-gray-300 dark:border-gray-600 flex items-center justify-end space-x-2">
                                         <button onClick={() => setViewingAppointment(app)} className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors text-sm p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="عرض">
                                             <EyeIcon className="h-4 w-4" />
                                             <span className="mr-1">عرض</span>
@@ -496,7 +561,8 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user }) => {
                                         </button>
                                     </div>
                                 </div>
-                            ))}
+                                )
+                            })}
                         </div>
                     ) : (
                          <p className="text-center text-gray-500 dark:text-gray-400 py-8">لم يتم العثور على مواعيد.</p>

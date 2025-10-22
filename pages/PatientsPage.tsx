@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { User, Patient, UserRole, Session, SessionTreatment, Treatment, Payment, Gender, PatientPhoto, ActivityLog, ActivityLogActionType, CreatePatientPhotosPayload } from '../types';
 import { api } from '../services/api';
-import { PlusIcon, PencilIcon, TrashIcon, XIcon, ClipboardListIcon, BeakerIcon, ArrowBackIcon, EyeIcon, CurrencyDollarIcon, CheckIcon, SearchIcon, PhotographIcon, ListBulletIcon } from '../components/Icons';
+import { PlusIcon, PencilIcon, TrashIcon, XIcon, ClipboardListIcon, BeakerIcon, ArrowBackIcon, EyeIcon, CurrencyDollarIcon, CheckIcon, SearchIcon, PhotographIcon, ListBulletIcon, DocumentTextIcon } from '../components/Icons';
 import LoadingSpinner, { CenteredLoadingSpinner } from '../components/LoadingSpinner';
 
 // ===================================================================
@@ -1302,6 +1302,285 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
     );
 };
 
+
+// ===================================================================
+// AddPaymentModalForPatient Component (NEW)
+// ===================================================================
+interface AddPaymentModalForPatientProps {
+    onSave: (newPayment: Omit<Payment, 'id'>) => Promise<void>;
+    onClose: () => void;
+    patient: Patient;
+}
+
+const AddPaymentModalForPatient: React.FC<AddPaymentModalForPatientProps> = ({ onSave, onClose, patient }) => {
+    const [formData, setFormData] = useState({ amount: '', date: new Date().toISOString().split('T')[0] });
+    const [isSaving, setIsSaving] = useState(false);
+    const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!formData.amount) {
+            alert('يرجى إدخال المبلغ.');
+            return;
+        }
+        setIsSaving(true);
+        await onSave({
+            patientId: patient.id,
+            amount: parseFloat(formData.amount),
+            date: formData.date
+        });
+        setIsSaving(false);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">إضافة دفعة لـ {patient.name}</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="p-6 space-y-4">
+                        <div>
+                            <label htmlFor="amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">المبلغ</label>
+                            <input type="number" step="0.01" id="amount" name="amount" value={formData.amount} onChange={handleChange} required className={inputStyle} placeholder="0.00" />
+                        </div>
+                        <div>
+                            <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">التاريخ</label>
+                            <input type="date" id="date" name="date" value={formData.date} onChange={handleChange} required className={inputStyle} />
+                        </div>
+                    </div>
+                    <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
+                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+// ===================================================================
+// EditPaymentModalForPatient Component (NEW)
+// ===================================================================
+interface EditPaymentModalForPatientProps {
+    payment: Payment;
+    onSave: (updatedPayment: Payment) => Promise<void>;
+    onClose: () => void;
+    patientName: string;
+}
+
+const EditPaymentModalForPatient: React.FC<EditPaymentModalForPatientProps> = ({ payment, onSave, onClose, patientName }) => {
+    const [formData, setFormData] = useState({ amount: payment.amount.toString(), date: payment.date });
+    const [isSaving, setIsSaving] = useState(false);
+    const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        await onSave({ ...payment, amount: parseFloat(formData.amount), date: formData.date });
+        setIsSaving(false);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">تعديل دفعة لـ {patientName}</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="p-6 space-y-4">
+                        <div>
+                            <label htmlFor="amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">المبلغ</label>
+                            <input type="number" step="0.01" id="amount" name="amount" value={formData.amount} onChange={handleChange} required className={inputStyle} />
+                        </div>
+                        <div>
+                            <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">التاريخ</label>
+                            <input type="date" id="date" name="date" value={formData.date} onChange={handleChange} required className={inputStyle} />
+                        </div>
+                    </div>
+                    <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
+                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+
+// ===================================================================
+// PatientPaymentsPage Component (NEW)
+// ===================================================================
+const PatientPaymentsPage: React.FC<{ patient: Patient; onBack: () => void; }> = ({ patient, onBack }) => {
+    const [payments, setPayments] = useState<Payment[]>([]);
+    const [stats, setStats] = useState({ totalPayments: 0, totalCost: 0, balance: 0 });
+    const [loading, setLoading] = useState(true);
+    const [paymentToDelete, setPaymentToDelete] = useState<Payment | null>(null);
+    const [isAddingPayment, setIsAddingPayment] = useState(false);
+    const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
+
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const [allPayments, allSessions] = await Promise.all([
+                api.payments.getAll(),
+                api.sessions.getAll()
+            ]);
+
+            const patientPayments = allPayments.filter(p => p.patientId === patient.id);
+            const patientSessions = allSessions.filter(s => s.patientId === patient.id);
+            setPayments(patientPayments.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+
+            const totalPayments = patientPayments.reduce((sum, p) => sum + p.amount, 0);
+            
+            const totalCost = patientSessions.reduce((sessionSum, s) => {
+                const treatmentsCost = s.treatments.reduce((treatmentSum, t) => {
+                    return treatmentSum + t.sessionPrice + (t.additionalCosts || 0);
+                }, 0);
+                return sessionSum + treatmentsCost;
+            }, 0);
+
+            setStats({
+                totalPayments,
+                totalCost,
+                balance: totalCost - totalPayments
+            });
+
+        } catch (error) {
+            console.error("Failed to fetch payment data:", error);
+            alert("فشل في تحميل البيانات المالية للمريض.");
+        } finally {
+            setLoading(false);
+        }
+    }, [patient.id]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    const handleCreatePayment = async (newPayment: Omit<Payment, 'id'>) => {
+        await api.payments.create(newPayment);
+        setIsAddingPayment(false);
+        await fetchData();
+    };
+
+    const handleUpdatePayment = async (updatedPayment: Payment) => {
+        await api.payments.update(updatedPayment.id, updatedPayment);
+        setEditingPayment(null);
+        await fetchData();
+    };
+
+    const confirmDeletePayment = async () => {
+        if (paymentToDelete) {
+            await api.payments.delete(paymentToDelete.id);
+            setPaymentToDelete(null);
+            await fetchData();
+        }
+    };
+    
+    const StatCard: React.FC<{ title: string; value: string; icon: React.ElementType; color: string; }> = ({ title, value, icon: Icon, color }) => (
+        <div className="p-4 sm:p-6 bg-white dark:bg-slate-800 rounded-xl shadow-md flex items-center space-x-4 rtl:space-x-reverse">
+            <div className="flex-shrink-0">
+                <div className={`p-3 bg-${color}-100 dark:bg-${color}-900/40 rounded-full`}>
+                    <Icon className={`h-6 w-6 text-${color}-600 dark:text-${color}-300`} />
+                </div>
+            </div>
+            <div>
+                <div className="text-lg sm:text-xl font-medium text-black dark:text-white">{value}</div>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
+            </div>
+        </div>
+    );
+    
+    return (
+        <div>
+            <div className="flex items-center gap-4 mb-6">
+                <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                    <ArrowBackIcon className="h-5 w-5" />
+                    <span>العودة</span>
+                </button>
+                <div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">الوضع المالي للمريض</h1>
+                    <p className="text-gray-500 dark:text-gray-400">{patient.name}</p>
+                </div>
+            </div>
+
+            {loading ? <CenteredLoadingSpinner /> : (
+            <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <StatCard title="إجمالي تكلفة العلاج" value={`$${stats.totalCost.toFixed(2)}`} icon={BeakerIcon} color="red" />
+                    <StatCard title="مجموع الدفعات" value={`$${stats.totalPayments.toFixed(2)}`} icon={CurrencyDollarIcon} color="green" />
+                    <StatCard title="الرصيد المتبقي" value={`$${stats.balance.toFixed(2)}`} icon={ListBulletIcon} color={stats.balance > 0 ? 'yellow' : 'blue'} />
+                </div>
+                
+                 <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">سجل الدفعات</h2>
+                        <button onClick={() => setIsAddingPayment(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
+                            <PlusIcon className="h-5 w-5 ml-2" />
+                            إضافة دفعة
+                        </button>
+                    </div>
+                    
+                    <div className="overflow-x-auto">
+                        {payments.length > 0 ? (
+                            <table className="w-full text-right">
+                                <thead className="bg-gray-50 dark:bg-gray-700">
+                                    <tr>
+                                        <th className="p-3 font-semibold text-gray-600 dark:text-gray-300">التاريخ</th>
+                                        <th className="p-3 font-semibold text-gray-600 dark:text-gray-300">المبلغ</th>
+                                        <th className="p-3 font-semibold text-gray-600 dark:text-gray-300 text-left">الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {payments.map(pay => (
+                                    <tr key={pay.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                        <td className="p-3 text-gray-800 dark:text-gray-100">{new Date(pay.date).toLocaleDateString()}</td>
+                                        <td className="p-3 font-medium text-green-600 dark:text-green-400">${pay.amount.toFixed(2)}</td>
+                                        <td className="p-3 text-left space-x-2 rtl:space-x-reverse">
+                                            <button onClick={() => setEditingPayment(pay)} className="text-blue-600 dark:text-blue-400 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
+                                            <button onClick={() => setPaymentToDelete(pay)} className="text-red-600 dark:text-red-400 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف"><TrashIcon className="h-5 w-5" /></button>
+                                        </td>
+                                    </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        ) : (
+                            <p className="text-center text-gray-500 dark:text-gray-400 py-8">لا توجد دفعات مسجلة لهذا المريض.</p>
+                        )}
+                    </div>
+                </div>
+            </>
+            )}
+
+            {isAddingPayment && <AddPaymentModalForPatient patient={patient} onSave={handleCreatePayment} onClose={() => setIsAddingPayment(false)} />}
+            {editingPayment && <EditPaymentModalForPatient payment={editingPayment} patientName={patient.name} onSave={handleUpdatePayment} onClose={() => setEditingPayment(null)} />}
+            {paymentToDelete && (
+                <ConfirmDeleteModal
+                    title="حذف الدفعة"
+                    message={`هل أنت متأكد من حذف دفعة بقيمة $${paymentToDelete.amount.toFixed(2)}؟`}
+                    onConfirm={confirmDeletePayment}
+                    onCancel={() => setPaymentToDelete(null)}
+                />
+            )}
+        </div>
+    );
+};
+
+
 // ===================================================================
 // Main PatientsPage Component
 // ===================================================================
@@ -1320,6 +1599,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [viewingPatient, setViewingPatient] = useState<Patient | null>(null);
     const [viewingPhotosFor, setViewingPhotosFor] = useState<Patient | null>(null);
+    const [viewingPaymentsFor, setViewingPaymentsFor] = useState<Patient | null>(null);
 
     const fetchPatients = useCallback(async () => {
         setLoading(true);
@@ -1371,10 +1651,190 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user }) => {
         }
     };
     
+    const handlePrintPatientData = (patient: Patient) => {
+    const doctor = doctors.find(d => d.id === patient.doctorId);
+    const htmlContent = `
+        <!DOCTYPE html>
+        <html lang="ar" dir="rtl">
+        <head>
+            <meta charset="UTF-8">
+            <title>تقرير المريض - ${patient.name}</title>
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
+                body {
+                    font-family: 'Tajawal', sans-serif;
+                    direction: rtl;
+                    margin: 0;
+                    padding: 20px;
+                    background-color: #fff;
+                    color: #333;
+                }
+                .report-container {
+                    max-width: 800px;
+                    margin: auto;
+                    border: 1px solid #eee;
+                    padding: 30px;
+                    box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+                }
+                .report-header {
+                    text-align: center;
+                    border-bottom: 2px solid #06b6d4;
+                    padding-bottom: 15px;
+                    margin-bottom: 20px;
+                }
+                .report-header h1 {
+                    font-size: 2em;
+                    color: #06b6d4;
+                    margin: 0;
+                }
+                .report-header p {
+                    font-size: 1.2em;
+                    margin: 5px 0 0;
+                }
+                .section {
+                    margin-bottom: 25px;
+                }
+                .section-title {
+                    font-size: 1.5em;
+                    font-weight: bold;
+                    color: #164e63;
+                    border-bottom: 1px solid #ccc;
+                    padding-bottom: 5px;
+                    margin-bottom: 15px;
+                }
+                .info-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                    gap: 15px;
+                }
+                .info-item {
+                    background-color: #f9f9f9;
+                    padding: 10px;
+                    border-radius: 5px;
+                }
+                .info-item-label {
+                    font-weight: bold;
+                    color: #555;
+                    display: block;
+                    margin-bottom: 5px;
+                }
+                .info-item-value {
+                    font-size: 1.1em;
+                }
+                .notes {
+                    background-color: #f9f9f9;
+                    padding: 15px;
+                    border-radius: 5px;
+                    white-space: pre-wrap; /* To respect newlines */
+                }
+                .boolean-value {
+                    font-weight: bold;
+                }
+                .true { color: #16a34a; }
+                .false { color: #dc2626; }
+                @media print {
+                    body {
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    .report-container {
+                        box-shadow: none;
+                        border: none;
+                        padding: 0;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="report-container">
+                <div class="report-header">
+                    <h1>كلينك برو</h1>
+                    <p>تقرير المريض</p>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">المعلومات الأساسية</h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-item-label">الاسم الكامل:</span>
+                            <span class="info-item-value">${patient.name}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-item-label">كود المريض:</span>
+                            <span class="info-item-value">${patient.code}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-item-label">العمر:</span>
+                            <span class="info-item-value">${patient.age}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-item-label">الهاتف:</span>
+                            <span class="info-item-value">${patient.phone}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-item-label">الجنس:</span>
+                            <span class="info-item-value">${patient.gender === 'female' ? 'أنثى' : 'ذكر'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-item-label">الطبيب المسؤول:</span>
+                            <span class="info-item-value">${doctor ? doctor.name : 'غير محدد'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">المعلومات الطبية</h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-item-label">مدخن:</span>
+                            <span class="info-item-value boolean-value ${patient.isSmoker ? 'true' : 'false'}">${patient.isSmoker ? 'نعم' : 'لا'}</span>
+                        </div>
+                        ${patient.gender === 'female' ? `
+                        <div class="info-item">
+                            <span class="info-item-label">حامل:</span>
+                            <span class="info-item-value boolean-value ${patient.isPregnant ? 'true' : 'false'}">${patient.isPregnant ? 'نعم' : 'لا'}</span>
+                        </div>` : ''}
+                    </div>
+                     <div class="info-item" style="grid-column: 1 / -1; margin-top: 15px;">
+                        <span class="info-item-label">الحساسية الدوائية:</span>
+                        <p class="info-item-value notes">${patient.drugAllergy || 'لا يوجد'}</p>
+                    </div>
+                     <div class="info-item" style="grid-column: 1 / -1; margin-top: 15px;">
+                        <span class="info-item-label">الأمراض المزمنة:</span>
+                        <p class="info-item-value notes">${patient.chronicDiseases || 'لا يوجد'}</p>
+                    </div>
+                </div>
+                
+                ${patient.notes ? `
+                <div class="section">
+                    <h2 class="section-title">ملاحظات عامة</h2>
+                    <p class="notes">${patient.notes}</p>
+                </div>` : ''}
+            </div>
+        </body>
+        </html>
+    `;
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+            printWindow.print();
+        }, 500);
+    } else {
+        alert('يرجى السماح بالنوافذ المنبثقة لطباعة التقرير.');
+    }
+};
+
     const filteredPatients = patients.filter(patient =>
         patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         patient.code.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    if (viewingPaymentsFor) {
+        return <PatientPaymentsPage patient={viewingPaymentsFor} onBack={() => setViewingPaymentsFor(null)} />;
+    }
 
     if (viewingPatient) {
         return <PatientDetailsPage patient={viewingPatient} onBack={() => setViewingPatient(null)} />;
@@ -1436,6 +1896,12 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user }) => {
                                          <button onClick={() => setViewingPhotosFor(patient)} className="flex items-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 p-1 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-sm" title="عرض الصور"><PhotographIcon className="h-4 w-4" /><span className="mr-1">الصور</span></button>
                                          {(user.role !== UserRole.Secretary) && (
                                             <button onClick={() => setViewingSessionsFor(patient)} className="flex items-center text-teal-600 dark:text-teal-400 hover:text-teal-800 p-1 rounded hover:bg-teal-100 dark:hover:bg-teal-900/40 text-sm"><ClipboardListIcon className="h-4 w-4" /><span className="mr-1">الجلسات</span></button>
+                                         )}
+                                         {user.role === UserRole.Admin && (
+                                            <>
+                                                <button onClick={() => setViewingPaymentsFor(patient)} className="flex items-center text-green-600 dark:text-green-400 hover:text-green-800 p-1 rounded hover:bg-green-100 dark:hover:bg-green-900/40 text-sm" title="الدفعات"><CurrencyDollarIcon className="h-4 w-4" /><span className="mr-1">الدفعات</span></button>
+                                                <button onClick={() => handlePrintPatientData(patient)} className="flex items-center text-red-500 dark:text-red-400 hover:text-red-700 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-sm" title="طباعة PDF"><DocumentTextIcon className="h-4 w-4" /><span className="mr-1">PDF</span></button>
+                                            </>
                                          )}
                                          <button onClick={() => setEditingPatient(patient)} className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 text-sm"><PencilIcon className="h-4 w-4" /><span className="mr-1">تعديل</span></button>
                                          <button onClick={() => setDeletingPatient(patient)} className="flex items-center text-red-600 dark:text-red-400 hover:text-red-800 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-sm"><TrashIcon className="h-4 w-4" /><span className="mr-1">حذف</span></button>

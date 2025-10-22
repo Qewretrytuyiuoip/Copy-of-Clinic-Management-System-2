@@ -71,12 +71,12 @@ const DoctorSchedulePage: React.FC<DoctorSchedulePageProps> = ({ user }) => {
     const FilterButton: React.FC<{ filter: DateFilter; text: string; }> = ({ filter, text }) => {
         const isActive = dateFilter === filter;
         return (
-            <button
+             <button
                 onClick={() => setDateFilter(filter)}
                 className={`px-4 py-2 text-sm font-semibold rounded-full transition-colors ${
                     isActive
                         ? 'bg-primary text-white shadow'
-                        : 'bg-white text-gray-700 hover:bg-gray-100 border'
+                        : 'bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-600 border border-gray-200 dark:border-gray-600'
                 }`}
             >
                 {text}
@@ -87,17 +87,17 @@ const DoctorSchedulePage: React.FC<DoctorSchedulePageProps> = ({ user }) => {
     return (
         <div>
             <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-800">جدولي</h1>
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">جدولي</h1>
                  <div className="relative w-full max-w-sm">
                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                       <SearchIcon className="w-5 h-5 text-gray-400" />
+                       <SearchIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
                    </div>
                    <input
                        type="text"
                        value={searchTerm}
                        onChange={(e) => setSearchTerm(e.target.value)}
                        placeholder="ابحث عن مريض..."
-                       className="w-full pl-3 pr-10 py-2 bg-white border border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black"
+                       className="w-full pl-3 pr-10 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                    />
                 </div>
             </div>
@@ -112,23 +112,23 @@ const DoctorSchedulePage: React.FC<DoctorSchedulePageProps> = ({ user }) => {
             <div className="min-h-[200px]">
                 {loading ? <CenteredLoadingSpinner /> : (
                     filteredAppointments.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {filteredAppointments.map(app => (
-                                <div key={app.id} className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col shadow-md transition-shadow hover:shadow-lg">
+                                <div key={app.id} className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col shadow-md transition-shadow hover:shadow-lg">
                                     <div className="flex-grow">
                                         <h3 className="text-xl font-bold text-primary">{getPatientName(app.patientId)}</h3>
-                                        <div className="mt-3 space-y-2 text-gray-700">
-                                            <p className="flex items-center"><CalendarIcon className="h-5 w-5 ml-2 text-gray-500" /> {new Date(app.date).toLocaleDateString()}</p>
-                                            <p className="flex items-center"><ClockIcon className="h-5 w-5 ml-2 text-gray-500" /> {app.time}</p>
+                                        <div className="mt-3 space-y-2 text-gray-700 dark:text-gray-300">
+                                            <p className="flex items-center"><CalendarIcon className="h-5 w-5 ml-2 text-gray-500 dark:text-gray-400" /> {new Date(app.date).toLocaleDateString()}</p>
+                                            <p className="flex items-center"><ClockIcon className="h-5 w-5 ml-2 text-gray-500 dark:text-gray-400" /> {app.time}</p>
                                         </div>
-                                        {app.notes && <p className="mt-4 text-sm text-gray-600 bg-gray-100 p-3 rounded-md border">ملاحظات: {app.notes}</p>}
+                                        {app.notes && <p className="mt-4 text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 p-3 rounded-md border dark:border-gray-600">ملاحظات: {app.notes}</p>}
                                     </div>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center text-gray-500 py-16 bg-white rounded-xl shadow-md">
-                            <h3 className="text-xl font-semibold">لا توجد مواعيد</h3>
+                        <div className="text-center text-gray-500 dark:text-gray-400 py-16 bg-white dark:bg-slate-800 rounded-xl shadow-md">
+                            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">لا توجد مواعيد</h3>
                             <p className="mt-2">لم يتم العثور على مواعيد تطابق الفلترة الحالية.</p>
                         </div>
                     )
