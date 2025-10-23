@@ -12,6 +12,7 @@ export const NAV_ITEMS = {
     { name: 'المدفوعات', icon: CurrencyDollarIcon, page: 'payments' },
     { name: 'اعدادات العلاج', icon: BeakerIcon, page: 'treatments_settings' },
     { name: 'الاحصائيات', icon: ClipboardListIcon, page: 'statistics' },
+    { name: 'إعدادات التطبيق', icon: CogIcon, page: 'application_settings' },
   ],
   [UserRole.Doctor]: [
     { name: 'لوحة التحكم', icon: HomeIcon, page: 'dashboard' },

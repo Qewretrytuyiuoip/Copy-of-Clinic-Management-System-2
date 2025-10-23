@@ -1,8 +1,8 @@
-
 import React, { Fragment } from 'react';
 import { User } from '../../types';
 import { NAV_ITEMS } from '../../constants';
 import { XIcon } from '../Icons';
+import { useAppSettings } from '../../hooks/useAppSettings';
 
 interface SidebarProps {
     user: User;
@@ -13,15 +13,23 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, sidebarOpen, setSidebarOpen }) => {
+    const { settings } = useAppSettings();
     const navItems = NAV_ITEMS[user.role];
 
     const handleNavigation = (page: string) => {
         setCurrentPage(page);
         setSidebarOpen(false);
     }
+    
+    const sidebarHeader = (
+        <div className="flex items-center justify-center h-20 border-b dark:border-gray-700 px-4">
+            {settings.appLogo && <img src={settings.appLogo} alt="App Logo" className="h-8 w-auto ml-2" />}
+            <h1 className="text-xl font-bold text-primary truncate">{settings.appName}</h1>
+        </div>
+    );
 
     const navLinks = (
-        <nav className="mt-8">
+        <nav className="mt-8 px-2">
             {navItems.map((item) => (
                 <a
                     key={item.name}
@@ -58,9 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
                             <XIcon className="h-6 w-6 text-white" aria-hidden="true" />
                         </button>
                     </div>
-                    <div className="flex items-center justify-center mt-8">
-                         <h1 className="text-2xl font-bold text-primary">كلينك برو</h1>
-                    </div>
+                    {sidebarHeader}
                     {navLinks}
                 </div>
                 <div className="w-14 flex-shrink-0" aria-hidden="true"></div>
@@ -69,9 +75,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
 
             {/* Desktop Sidebar */}
             <aside className="hidden lg:flex lg:flex-col w-64 bg-white dark:bg-slate-800 border-r dark:border-gray-700">
-                <div className="flex items-center justify-center h-20 border-b dark:border-gray-700">
-                    <h1 className="text-2xl font-bold text-primary">كلينك برو</h1>
-                </div>
+                {sidebarHeader}
                 <div className="flex-1 overflow-y-auto">
                    {navLinks}
                 </div>

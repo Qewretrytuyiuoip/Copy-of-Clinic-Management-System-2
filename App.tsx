@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { User, UserRole } from './types';
-import { AuthContext, AuthProvider, useAuth } from './hooks/useAuth';
+import { AuthProvider, useAuth } from './hooks/useAuth';
 import { ThemeProvider } from './hooks/useTheme';
+import { AppSettingsProvider } from './hooks/useAppSettings';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import Layout from './components/layout/Layout';
@@ -14,6 +15,7 @@ import DoctorSchedulePage from './pages/DoctorSchedulePage';
 import DoctorSettingsPage from './pages/DoctorSettingsPage';
 import TreatmentsSettingsPage from './pages/TreatmentsSettingsPage';
 import StatisticsPage from './pages/StatisticsPage';
+import ApplicationSettingsPage from './pages/ApplicationSettingsPage';
 
 const AppContent: React.FC = () => {
     const { user } = useAuth();
@@ -41,6 +43,8 @@ const AppContent: React.FC = () => {
                 return user.role === UserRole.Admin ? <TreatmentsSettingsPage /> : <div>الوصول مرفوض</div>;
             case 'statistics':
                 return user.role === UserRole.Admin ? <StatisticsPage /> : <div>الوصول مرفوض</div>;
+            case 'application_settings':
+                return user.role === UserRole.Admin ? <ApplicationSettingsPage /> : <div>الوصول مرفوض</div>;
             case 'schedule':
                 return user.role === UserRole.Doctor ? <DoctorSchedulePage user={user} /> : <div>الوصول مرفوض</div>;
             case 'settings':
@@ -60,11 +64,13 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
     return (
         <ThemeProvider>
-            <AuthProvider>
-                <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
-                    <AppContent />
-                </div>
-            </AuthProvider>
+            <AppSettingsProvider>
+                <AuthProvider>
+                    <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
+                        <AppContent />
+                    </div>
+                </AuthProvider>
+            </AppSettingsProvider>
         </ThemeProvider>
     );
 };

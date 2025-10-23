@@ -3,6 +3,7 @@ import { User, Patient, UserRole, Session, SessionTreatment, Treatment, Payment,
 import { api } from '../services/api';
 import { PlusIcon, PencilIcon, TrashIcon, XIcon, ClipboardListIcon, BeakerIcon, ArrowBackIcon, EyeIcon, CurrencyDollarIcon, CheckIcon, SearchIcon, PhotographIcon, ListBulletIcon, DocumentTextIcon } from '../components/Icons';
 import LoadingSpinner, { CenteredLoadingSpinner } from '../components/LoadingSpinner';
+import { useAppSettings } from '../hooks/useAppSettings';
 
 // ===================================================================
 // AddEditPhotoModal Component
@@ -1666,6 +1667,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user }) => {
     const [viewingPatient, setViewingPatient] = useState<Patient | null>(null);
     const [viewingPhotosFor, setViewingPhotosFor] = useState<Patient | null>(null);
     const [viewingPaymentsFor, setViewingPaymentsFor] = useState<Patient | null>(null);
+    const { settings } = useAppSettings();
 
     const fetchPatients = useCallback(async () => {
         setLoading(true);
@@ -1718,180 +1720,191 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user }) => {
     };
     
     const handlePrintPatientData = (patient: Patient) => {
-    const patientDoctors = doctors.filter(d => patient.doctorIds.includes(d.id));
-    const htmlContent = `
-        <!DOCTYPE html>
-        <html lang="ar" dir="rtl">
-        <head>
-            <meta charset="UTF-8">
-            <title>تقرير المريض - ${patient.name}</title>
-            <style>
-                @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
-                body {
-                    font-family: 'Tajawal', sans-serif;
-                    direction: rtl;
-                    margin: 0;
-                    padding: 20px;
-                    background-color: #fff;
-                    color: #333;
-                }
-                .report-container {
-                    max-width: 800px;
-                    margin: auto;
-                    border: 1px solid #eee;
-                    padding: 30px;
-                    box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
-                }
-                .report-header {
-                    text-align: center;
-                    border-bottom: 2px solid #06b6d4;
-                    padding-bottom: 15px;
-                    margin-bottom: 20px;
-                }
-                .report-header h1 {
-                    font-size: 2em;
-                    color: #06b6d4;
-                    margin: 0;
-                }
-                .report-header p {
-                    font-size: 1.2em;
-                    margin: 5px 0 0;
-                }
-                .section {
-                    margin-bottom: 25px;
-                }
-                .section-title {
-                    font-size: 1.5em;
-                    font-weight: bold;
-                    color: #164e63;
-                    border-bottom: 1px solid #ccc;
-                    padding-bottom: 5px;
-                    margin-bottom: 15px;
-                }
-                .info-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-                    gap: 15px;
-                }
-                .info-item {
-                    background-color: #f9f9f9;
-                    padding: 10px;
-                    border-radius: 5px;
-                }
-                .info-item-label {
-                    font-weight: bold;
-                    color: #555;
-                    display: block;
-                    margin-bottom: 5px;
-                }
-                .info-item-value {
-                    font-size: 1.1em;
-                }
-                .notes {
-                    background-color: #f9f9f9;
-                    padding: 15px;
-                    border-radius: 5px;
-                    white-space: pre-wrap; /* To respect newlines */
-                }
-                .boolean-value {
-                    font-weight: bold;
-                }
-                .true { color: #16a34a; }
-                .false { color: #dc2626; }
-                @media print {
+        const { appName, appLogo } = settings;
+        const patientDoctors = doctors.filter(d => patient.doctorIds.includes(d.id));
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html lang="ar" dir="rtl">
+            <head>
+                <meta charset="UTF-8">
+                <title>تقرير المريض - ${patient.name}</title>
+                <style>
+                    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
                     body {
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
+                        font-family: 'Tajawal', sans-serif;
+                        direction: rtl;
+                        margin: 0;
+                        padding: 20px;
+                        background-color: #fff;
+                        color: #333;
                     }
                     .report-container {
-                        box-shadow: none;
-                        border: none;
-                        padding: 0;
+                        max-width: 800px;
+                        margin: auto;
+                        border: 1px solid #eee;
+                        padding: 30px;
+                        box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
                     }
-                }
-            </style>
-        </head>
-        <body>
-            <div class="report-container">
-                <div class="report-header">
-                    <h1>كلينك برو</h1>
-                    <p>تقرير المريض</p>
+                    .report-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        border-bottom: 2px solid #06b6d4;
+                        padding-bottom: 15px;
+                        margin-bottom: 20px;
+                    }
+                    .report-header img {
+                        max-height: 60px;
+                        width: auto;
+                    }
+                    .report-header .title-block h1 {
+                        font-size: 2em;
+                        color: #06b6d4;
+                        margin: 0;
+                    }
+                    .report-header .title-block p {
+                        font-size: 1.2em;
+                        margin: 5px 0 0;
+                        color: #555;
+                    }
+                    .section {
+                        margin-bottom: 25px;
+                    }
+                    .section-title {
+                        font-size: 1.5em;
+                        font-weight: bold;
+                        color: #164e63;
+                        border-bottom: 1px solid #ccc;
+                        padding-bottom: 5px;
+                        margin-bottom: 15px;
+                    }
+                    .info-grid {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                        gap: 15px;
+                    }
+                    .info-item {
+                        background-color: #f9f9f9;
+                        padding: 10px;
+                        border-radius: 5px;
+                    }
+                    .info-item-label {
+                        font-weight: bold;
+                        color: #555;
+                        display: block;
+                        margin-bottom: 5px;
+                    }
+                    .info-item-value {
+                        font-size: 1.1em;
+                    }
+                    .notes {
+                        background-color: #f9f9f9;
+                        padding: 15px;
+                        border-radius: 5px;
+                        white-space: pre-wrap; /* To respect newlines */
+                    }
+                    .boolean-value {
+                        font-weight: bold;
+                    }
+                    .true { color: #16a34a; }
+                    .false { color: #dc2626; }
+                    @media print {
+                        body {
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
+                        }
+                        .report-container {
+                            box-shadow: none;
+                            border: none;
+                            padding: 0;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="report-container">
+                    <div class="report-header">
+                        <div class="title-block">
+                            <h1>${appName}</h1>
+                            <p>تقرير المريض</p>
+                        </div>
+                        ${appLogo ? `<img src="${appLogo}" alt="شعار التطبيق">` : ''}
+                    </div>
+    
+                    <div class="section">
+                        <h2 class="section-title">المعلومات الأساسية</h2>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-item-label">الاسم الكامل:</span>
+                                <span class="info-item-value">${patient.name}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-item-label">كود المريض:</span>
+                                <span class="info-item-value">${patient.code}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-item-label">العمر:</span>
+                                <span class="info-item-value">${patient.age}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-item-label">الهاتف:</span>
+                                <span class="info-item-value">${patient.phone}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-item-label">الجنس:</span>
+                                <span class="info-item-value">${patient.gender === 'female' ? 'أنثى' : 'ذكر'}</span>
+                            </div>
+                             <div class="info-item" style="grid-column: 1 / -1;">
+                                <span class="info-item-label">الأطباء المسؤولون:</span>
+                                <span class="info-item-value">${patientDoctors.length > 0 ? patientDoctors.map(d => d.name).join(', ') : 'غير محدد'}</span>
+                            </div>
+                        </div>
+                    </div>
+    
+                    <div class="section">
+                        <h2 class="section-title">المعلومات الطبية</h2>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-item-label">مدخن:</span>
+                                <span class="info-item-value boolean-value ${patient.isSmoker ? 'true' : 'false'}">${patient.isSmoker ? 'نعم' : 'لا'}</span>
+                            </div>
+                            ${patient.gender === 'female' ? `
+                            <div class="info-item">
+                                <span class="info-item-label">حامل:</span>
+                                <span class="info-item-value boolean-value ${patient.isPregnant ? 'true' : 'false'}">${patient.isPregnant ? 'نعم' : 'لا'}</span>
+                            </div>` : ''}
+                        </div>
+                         <div class="info-item" style="grid-column: 1 / -1; margin-top: 15px;">
+                            <span class="info-item-label">الحساسية الدوائية:</span>
+                            <p class="info-item-value notes">${patient.drugAllergy || 'لا يوجد'}</p>
+                        </div>
+                         <div class="info-item" style="grid-column: 1 / -1; margin-top: 15px;">
+                            <span class="info-item-label">الأمراض المزمنة:</span>
+                            <p class="info-item-value notes">${patient.chronicDiseases || 'لا يوجد'}</p>
+                        </div>
+                    </div>
+                    
+                    ${patient.notes ? `
+                    <div class="section">
+                        <h2 class="section-title">ملاحظات عامة</h2>
+                        <p class="notes">${patient.notes}</p>
+                    </div>` : ''}
                 </div>
-
-                <div class="section">
-                    <h2 class="section-title">المعلومات الأساسية</h2>
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <span class="info-item-label">الاسم الكامل:</span>
-                            <span class="info-item-value">${patient.name}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-item-label">كود المريض:</span>
-                            <span class="info-item-value">${patient.code}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-item-label">العمر:</span>
-                            <span class="info-item-value">${patient.age}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-item-label">الهاتف:</span>
-                            <span class="info-item-value">${patient.phone}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-item-label">الجنس:</span>
-                            <span class="info-item-value">${patient.gender === 'female' ? 'أنثى' : 'ذكر'}</span>
-                        </div>
-                         <div class="info-item" style="grid-column: 1 / -1;">
-                            <span class="info-item-label">الأطباء المسؤولون:</span>
-                            <span class="info-item-value">${patientDoctors.length > 0 ? patientDoctors.map(d => d.name).join(', ') : 'غير محدد'}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="section">
-                    <h2 class="section-title">المعلومات الطبية</h2>
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <span class="info-item-label">مدخن:</span>
-                            <span class="info-item-value boolean-value ${patient.isSmoker ? 'true' : 'false'}">${patient.isSmoker ? 'نعم' : 'لا'}</span>
-                        </div>
-                        ${patient.gender === 'female' ? `
-                        <div class="info-item">
-                            <span class="info-item-label">حامل:</span>
-                            <span class="info-item-value boolean-value ${patient.isPregnant ? 'true' : 'false'}">${patient.isPregnant ? 'نعم' : 'لا'}</span>
-                        </div>` : ''}
-                    </div>
-                     <div class="info-item" style="grid-column: 1 / -1; margin-top: 15px;">
-                        <span class="info-item-label">الحساسية الدوائية:</span>
-                        <p class="info-item-value notes">${patient.drugAllergy || 'لا يوجد'}</p>
-                    </div>
-                     <div class="info-item" style="grid-column: 1 / -1; margin-top: 15px;">
-                        <span class="info-item-label">الأمراض المزمنة:</span>
-                        <p class="info-item-value notes">${patient.chronicDiseases || 'لا يوجد'}</p>
-                    </div>
-                </div>
-                
-                ${patient.notes ? `
-                <div class="section">
-                    <h2 class="section-title">ملاحظات عامة</h2>
-                    <p class="notes">${patient.notes}</p>
-                </div>` : ''}
-            </div>
-        </body>
-        </html>
-    `;
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
-        printWindow.focus();
-        setTimeout(() => {
-            printWindow.print();
-        }, 500);
-    } else {
-        alert('يرجى السماح بالنوافذ المنبثقة لطباعة التقرير.');
-    }
-};
+            </body>
+            </html>
+        `;
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.document.write(htmlContent);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => {
+                printWindow.print();
+            }, 500);
+        } else {
+            alert('يرجى السماح بالنوافذ المنبثقة لطباعة التقرير.');
+        }
+    };
 
     const filteredPatients = patients.filter(patient =>
         patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

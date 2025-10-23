@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useAppSettings } from '../hooks/useAppSettings';
 
 const LoginPage: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -8,6 +9,7 @@ const LoginPage: React.FC = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const { login } = useAuth();
+    const { settings } = useAppSettings();
 
     useEffect(() => {
         const savedEmail = localStorage.getItem('rememberedEmail');
@@ -47,7 +49,7 @@ const LoginPage: React.FC = () => {
         <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
             <div className="w-full max-w-md p-8 space-y-8 bg-white dark:bg-slate-800 rounded-lg shadow-md">
                 <div className="text-center">
-                    <h1 className="text-4xl font-bold text-primary">كلينك برو</h1>
+                    <h1 className="text-4xl font-bold text-primary">{settings.appName}</h1>
                     <p className="mt-2 text-gray-600 dark:text-gray-300">مرحباً بعودتك! الرجاء تسجيل الدخول إلى حسابك.</p>
                 </div>
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
