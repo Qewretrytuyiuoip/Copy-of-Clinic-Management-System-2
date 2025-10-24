@@ -1,5 +1,8 @@
 import React, { createContext, useState, useContext, useEffect, useMemo, ReactNode } from 'react';
 
+// Define the default logo path
+const DEFAULT_LOGO_PATH = '/assets/logo.svg';
+
 interface AppSettings {
     appName: string;
     appLogo: string | null;
@@ -14,18 +17,24 @@ interface AppSettingsContextType {
 export const AppSettingsContext = createContext<AppSettingsContextType | undefined>(undefined);
 
 const getInitialSettings = (): AppSettings => {
+    const defaultSettings: AppSettings = {
+        appName: 'Sara dental clinic',
+        appLogo: DEFAULT_LOGO_PATH,
+    };
     try {
         const savedSettings = localStorage.getItem('appSettings');
         if (savedSettings) {
-            return JSON.parse(savedSettings);
+            const parsed = JSON.parse(savedSettings);
+             // This handles old localStorage values before the default logo existed.
+            if (parsed.appLogo === null || parsed.appLogo === './assets/logo.svg') {
+                parsed.appLogo = DEFAULT_LOGO_PATH;
+            }
+            return { ...defaultSettings, ...parsed };
         }
     } catch (error) {
         console.error("Could not parse app settings from localStorage", error);
     }
-    return {
-        appName: 'كلينك برو',
-        appLogo: null,
-    };
+    return defaultSettings;
 };
 
 export const AppSettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -45,7 +54,8 @@ export const AppSettingsProvider: React.FC<{ children: ReactNode }> = ({ childre
     };
 
     const setAppLogo = (logo: string | null) => {
-        setSettings(prev => ({ ...prev, appLogo: logo }));
+        // If logo is null, set to default path.
+        setSettings(prev => ({ ...prev, appLogo: logo ?? DEFAULT_LOGO_PATH }));
     };
 
     const value = useMemo(() => ({ settings, setAppName, setAppLogo }), [settings]);

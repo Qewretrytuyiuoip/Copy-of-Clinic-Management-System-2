@@ -5,8 +5,8 @@ import { API_BASE_URL } from '../config';
 
 export let MOCK_USERS: User[] = [
     { id: 'admin1', name: 'د. مدير', email: 'admin@example.com', role: UserRole.Admin, password: '1' },
-    { id: 'doc1', name: 'د. سميث', email: 'smith@clinic.com', role: UserRole.Doctor, password: '1', specialty: 'أسنان' },
-    { id: 'doc2', name: 'د. جونز', email: 'jones@clinic.com', role: UserRole.Doctor, password: '1', specialty: 'قلب' },
+    { id: 'doc1', name: 'د. سميث', email: 'smith@clinic.com', role: UserRole.Doctor, password: '1', specialty: 'أسنان', is_diagnosis_doctor: true },
+    { id: 'doc2', name: 'د. جونز', email: 'jones@clinic.com', role: UserRole.Doctor, password: '1', specialty: 'قلب', is_diagnosis_doctor: false },
     { id: 'sec1', name: 'سارة كونور', email: 'sarah@clinic.com', role: UserRole.Secretary, password: '1' },
 ];
 
@@ -180,6 +180,7 @@ const getAllUsers = async (forceRefresh: boolean = false): Promise<User[]> => {
             email: apiUser.email,
             role: apiUser.role as UserRole,
             specialty: apiUser.specialty,
+            is_diagnosis_doctor: !!apiUser.is_diagnosis_doctor,
         }));
         return allUsersCache;
     } catch (error) {
@@ -229,8 +230,13 @@ const createUserCRUD = (role: UserRole) => ({
             }
             formData.append('password', item.password);
             formData.append('role', item.role);
-            if (item.role === UserRole.Doctor && item.specialty) {
-                formData.append('specialty', item.specialty);
+            if (item.role === UserRole.Doctor) {
+                if (item.specialty) {
+                    formData.append('specialty', item.specialty);
+                }
+                if (item.is_diagnosis_doctor !== undefined) {
+                    formData.append('is_diagnosis_doctor', item.is_diagnosis_doctor ? '1' : '0');
+                }
             }
 
             const token = localStorage.getItem('authToken');
@@ -264,6 +270,7 @@ const createUserCRUD = (role: UserRole) => ({
                 email: createdApiUser.email,
                 role: createdApiUser.role as UserRole,
                 specialty: createdApiUser.specialty,
+                is_diagnosis_doctor: !!createdApiUser.is_diagnosis_doctor,
             };
 
             allUsersCache = null; // Invalidate cache after creation
@@ -292,6 +299,10 @@ const createUserCRUD = (role: UserRole) => ({
             if (updates.specialty !== undefined) {
                 formData.append('specialty', updates.specialty);
             }
+            if (updates.is_diagnosis_doctor !== undefined) {
+                formData.append('is_diagnosis_doctor', updates.is_diagnosis_doctor ? '1' : '0');
+            }
+
 
             const token = localStorage.getItem('authToken');
             if (!token) throw new Error("Authentication token not found.");
@@ -323,6 +334,7 @@ const createUserCRUD = (role: UserRole) => ({
                 email: updatedApiUser.email,
                 role: updatedApiUser.role as UserRole,
                 specialty: updatedApiUser.specialty,
+                is_diagnosis_doctor: !!updatedApiUser.is_diagnosis_doctor,
             };
             
             allUsersCache = null; // Invalidate cache after update

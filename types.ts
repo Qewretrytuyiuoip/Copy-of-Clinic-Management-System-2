@@ -20,6 +20,7 @@ export interface User {
     password?: string;
     role: UserRole;
     specialty?: string;
+    is_diagnosis_doctor?: boolean;
 }
 
 export interface Treatment {

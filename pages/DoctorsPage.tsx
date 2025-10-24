@@ -740,12 +740,12 @@ interface AddDoctorModalProps {
 }
 
 const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ onSave, onClose }) => {
-    const [formData, setFormData] = useState({ name: '', email: '', password: '', specialty: '' });
+    const [formData, setFormData] = useState({ name: '', email: '', password: '', specialty: '', is_diagnosis_doctor: false });
     const [isSaving, setIsSaving] = useState(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -786,6 +786,18 @@ const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ onSave, onClose }) => {
                             <label htmlFor="passwordAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">كلمة المرور</label>
                             <input type="password" id="passwordAdd" name="password" value={formData.password} onChange={handleChange} required className={inputStyle} />
                         </div>
+                        <div>
+                            <label className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="is_diagnosis_doctor"
+                                    checked={formData.is_diagnosis_doctor}
+                                    onChange={handleChange}
+                                    className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary"
+                                />
+                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">طبيب تشخيص</span>
+                            </label>
+                        </div>
                     </div>
                     <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
@@ -807,18 +819,18 @@ interface EditDoctorModalProps {
 }
 
 const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ doctor, onSave, onClose }) => {
-    const [formData, setFormData] = useState({ name: doctor.name, email: doctor.email, password: '', specialty: doctor.specialty || '' });
+    const [formData, setFormData] = useState({ name: doctor.name, email: doctor.email, password: '', specialty: doctor.specialty || '', is_diagnosis_doctor: doctor.is_diagnosis_doctor || false });
     const [isSaving, setIsSaving] = useState(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
-        const updates: Partial<User> = { name: formData.name, email: formData.email, specialty: formData.specialty };
+        const updates: Partial<User> = { name: formData.name, email: formData.email, specialty: formData.specialty, is_diagnosis_doctor: formData.is_diagnosis_doctor };
         if (formData.password) {
             updates.password = formData.password;
         }
@@ -841,6 +853,18 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ doctor, onSave, onClo
                         <div><label htmlFor="specialtyEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">التخصص</label><input type="text" id="specialtyEdit" name="specialty" value={formData.specialty} onChange={handleChange} required className={inputStyle} /></div>
                         <div><label htmlFor="emailEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">البريد الإلكتروني</label><input type="email" id="emailEdit" name="email" value={formData.email} onChange={handleChange} required className={inputStyle} /></div>
                         <div><label htmlFor="passwordEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">كلمة المرور (اتركها فارغة لعدم التغيير)</label><input type="password" id="passwordEdit" name="password" value={formData.password} onChange={handleChange} className={inputStyle} /></div>
+                        <div>
+                            <label className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="is_diagnosis_doctor"
+                                    checked={formData.is_diagnosis_doctor}
+                                    onChange={handleChange}
+                                    className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary"
+                                />
+                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">طبيب تشخيص</span>
+                            </label>
+                        </div>
                     </div>
                     <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
@@ -914,7 +938,14 @@ const DoctorsPage: React.FC = () => {
                                 <div key={doc.id} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col justify-between transition-shadow hover:shadow-lg">
                                     <div>
                                         <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{doc.name}</h3>
-                                        <p className="text-primary dark:text-primary-300 font-semibold mt-1">{doc.specialty}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <p className="text-primary dark:text-primary-300 font-semibold">{doc.specialty}</p>
+                                            {doc.is_diagnosis_doctor && (
+                                                <span className="px-2 py-0.5 bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300 text-xs font-bold rounded-full">
+                                                    طبيب تشخيص
+                                                </span>
+                                            )}
+                                        </div>
                                         <p className="text-gray-600 dark:text-gray-300 mt-2 text-sm">{doc.email}</p>
                                     </div>
                                     <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex flex-wrap items-center justify-end gap-x-2 gap-y-1">

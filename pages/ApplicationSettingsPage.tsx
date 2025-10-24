@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import { useAppSettings } from '../hooks/useAppSettings';
 import { PhotographIcon } from '../components/Icons';
 
+const DEFAULT_LOGO_PATH = '/assets/logo.svg';
+
 const ApplicationSettingsPage: React.FC = () => {
     const { settings, setAppName, setAppLogo } = useAppSettings();
     
@@ -22,28 +24,62 @@ const ApplicationSettingsPage: React.FC = () => {
 
     const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file && file.type.startsWith('image/')) {
+        if (!file) return;
+
+        const rasterTypes = ['image/jpeg', 'image/png', 'image/gif'];
+
+        if (rasterTypes.includes(file.type)) {
             const reader = new FileReader();
             reader.onloadend = () => {
-                setLogoPreview(reader.result as string);
-                setLogoFile(file); 
+                const result = reader.result as string;
+                
+                const img = new Image();
+                img.onload = () => {
+                    // إنشاء غلاف SVG للصورة النقطية لتلبية طلب تحويل الصيغة
+                    const svgContent = `<svg width="${img.width}" height="${img.height}" viewBox="0 0 ${img.width} ${img.height}" xmlns="http://www.w3.org/2000/svg"><image href="${result}" width="100%" height="100%"/></svg>`;
+                    // ترميز محتوى SVG لإنشاء عنوان URL للبيانات
+                    const base64Svg = btoa(unescape(encodeURIComponent(svgContent)));
+                    const svgDataUrl = `data:image/svg+xml;base64,${base64Svg}`;
+                    
+                    setLogoPreview(svgDataUrl);
+                    setLogoFile(file); // تجهيز الملف لتمكين زر الحفظ
+                };
+                img.onerror = () => {
+                     setLogoFeedback('فشل في معالجة الصورة.');
+                };
+                img.src = result;
             };
             reader.readAsDataURL(file);
+            setLogoFeedback('');
+        } else if (file.type === 'image/svg+xml') {
+            // إذا كان الملف SVG بالفعل، فاقرأه مباشرة
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                 setLogoPreview(reader.result as string);
+                 setLogoFile(file);
+            };
+            reader.readAsDataURL(file);
+            setLogoFeedback('');
+        } else {
+            setLogoFeedback('الرجاء اختيار ملف صورة صالح (JPG, PNG, GIF, SVG).');
         }
     };
 
     const handleLogoSave = (e: React.FormEvent) => {
         e.preventDefault();
-        setAppLogo(logoPreview);
-        setLogoFeedback('تم حفظ شعار التطبيق بنجاح!');
-        setTimeout(() => setLogoFeedback(''), 3000);
+        if (logoFile && logoPreview) {
+            setAppLogo(logoPreview);
+            setLogoFile(null); // مسح الملف المجهز، وتعطيل زر الحفظ
+            setLogoFeedback('تم حفظ شعار التطبيق بنجاح!');
+            setTimeout(() => setLogoFeedback(''), 3000);
+        }
     };
     
     const handleRemoveLogo = () => {
-        setLogoPreview(null);
+        setLogoPreview(DEFAULT_LOGO_PATH);
         setLogoFile(null);
-        setAppLogo(null);
-        setLogoFeedback('تمت إزالة الشعار.');
+        setAppLogo(DEFAULT_LOGO_PATH); // هذا يحفظ المسار الافتراضي في الإعدادات
+        setLogoFeedback('تمت استعادة الشعار الافتراضي.');
         setTimeout(() => setLogoFeedback(''), 3000);
     };
 
@@ -86,7 +122,7 @@ const ApplicationSettingsPage: React.FC = () => {
                      <form onSubmit={handleLogoSave} className="space-y-4">
                         <input
                             type="file"
-                            accept="image/*"
+                            accept="image/png, image/jpeg, image/gif, image/svg+xml"
                             ref={fileInputRef}
                             onChange={handleLogoChange}
                             className="hidden"
@@ -104,26 +140,26 @@ const ApplicationSettingsPage: React.FC = () => {
                                 </div>
                             )}
                         </div>
+                         {logoFeedback && <p className={`text-sm ${logoFeedback.includes('فشل') ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>{logoFeedback}</p>}
                         <div className="flex items-center justify-between flex-wrap gap-2">
                            <div className="flex items-center gap-2">
                              <button
                                 type="submit"
-                                disabled={!logoPreview}
+                                disabled={!logoFile}
                                 className="px-6 py-2 bg-primary text-white font-semibold rounded-lg shadow-md hover:bg-primary-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                             >
                                 حفظ الشعار
                             </button>
-                             {logoPreview && (
+                             {settings.appLogo !== DEFAULT_LOGO_PATH && (
                                  <button
                                     type="button"
                                     onClick={handleRemoveLogo}
                                     className="px-4 py-2 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors"
                                 >
-                                    إزالة
+                                    استعادة الافتراضي
                                 </button>
                              )}
                            </div>
-                           {logoFeedback && <p className="text-sm text-green-600 dark:text-green-400">{logoFeedback}</p>}
                         </div>
                      </form>
                 </div>
