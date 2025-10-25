@@ -31,16 +31,18 @@ const StatCard: React.FC<{ title: string; value: string; icon: React.ElementType
 );
 
 
-const StatisticsPage: React.FC = () => {
+const StatisticsPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => {
     const [patients, setPatients] = useState<Patient[]>([]);
     const [sessions, setSessions] = useState<Session[]>([]);
     const [payments, setPayments] = useState<Payment[]>([]);
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     
     const fetchData = useCallback(async () => {
         setLoading(true);
+        setFetchError(null);
         try {
             const [pats, sess, pays] = await Promise.all([
                 api.patients.getAll(),
@@ -51,8 +53,12 @@ const StatisticsPage: React.FC = () => {
             setSessions(sess);
             setPayments(pays);
         } catch (error) {
-            console.error("Failed to load statistics data:", error);
-            alert("فشل في تحميل بيانات الإحصائيات.");
+            if (error instanceof Error && error.message.includes('Failed to fetch')) {
+                setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');
+            } else {
+                setFetchError('حدث خطأ غير متوقع.');
+                console.error("Failed to load statistics data:", error);
+            }
         } finally {
             setLoading(false);
         }
@@ -60,7 +66,7 @@ const StatisticsPage: React.FC = () => {
 
     useEffect(() => {
         fetchData();
-    }, [fetchData]);
+    }, [fetchData, refreshTrigger]);
 
     const calculatedStats = useMemo(() => {
         let overallCosts = 0;
@@ -129,7 +135,9 @@ const StatisticsPage: React.FC = () => {
                 </div>
             </div>
             
-            {loading ? <CenteredLoadingSpinner /> : (
+            {loading ? <CenteredLoadingSpinner /> : fetchError ? (
+                <div className="text-center py-16 text-red-500 dark:text-red-400 bg-white dark:bg-slate-800 rounded-xl shadow-md"><p>{fetchError}</p></div>
+            ) : (
                 <>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-8">
                         <StatCard title="إجمالي تكاليف العلاج" value={`$${calculatedStats.overallCosts.toFixed(2)}`} icon={BeakerIcon} color="red" />

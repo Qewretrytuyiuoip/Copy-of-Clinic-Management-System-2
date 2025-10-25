@@ -584,13 +584,23 @@ export const api = {
                 return null;
             }
         },
-        create: async (item: Omit<Patient, 'id' | 'code'>): Promise<Patient> => {
+        create: async (item: Omit<Patient, 'id' | 'code'>, userId: string): Promise<Patient> => {
             try {
                 const formData = new FormData();
+                formData.append('user_id', userId);
                 formData.append('name', item.name);
                 formData.append('age', String(item.age));
                 formData.append('phone', item.phone);
-                item.doctorIds.forEach(id => formData.append('doctor_ids[]', id));
+                
+                // FIX: Backend requires an array of doctor IDs submitted under the 'doctor_ids[]' key.
+                // Reverting previous change from 'doctor_id' to support multiple doctors per patient.
+                if (item.doctorIds && item.doctorIds.length > 0) {
+                    item.doctorIds.forEach(docId => formData.append('doctor_ids[]', docId));
+                } else {
+                    // This should be caught by UI validation, but provides a fallback error.
+                    throw new Error("لا يمكن إنشاء مريض بدون طبيب مسؤول.");
+                }
+
                 formData.append('gender', item.gender);
                 formData.append('is_smoker', item.isSmoker ? '1' : '0');
                 formData.append('is_pregnant', item.isPregnant ? '1' : '0');
@@ -610,17 +620,21 @@ export const api = {
                 throw error;
             }
         },
-        update: async (id: string, updates: Partial<Patient>): Promise<Patient | null> => {
+        update: async (id: string, updates: Partial<Patient>, userId: string): Promise<Patient | null> => {
             try {
                 const formData = new FormData();
+                formData.append('user_id', userId);
                 formData.append('id', id);
                 
                 if (updates.name) formData.append('name', updates.name);
                 if (updates.age !== undefined) formData.append('age', String(updates.age));
                 if (updates.phone) formData.append('phone', updates.phone);
-                if (updates.doctorIds) {
+
+                // Send an array of doctor IDs for updates to support multiple doctors.
+                if (updates.doctorIds && updates.doctorIds.length > 0) {
                     updates.doctorIds.forEach(docId => formData.append('doctor_ids[]', docId));
                 }
+
                 if (updates.gender) formData.append('gender', updates.gender);
                 if (updates.isSmoker !== undefined) formData.append('is_smoker', updates.isSmoker ? '1' : '0');
                 if (updates.isPregnant !== undefined) formData.append('is_pregnant', updates.isPregnant ? '1' : '0');
@@ -646,9 +660,10 @@ export const api = {
                 throw error;
             }
         },
-        delete: async (id: string): Promise<boolean> => {
+        delete: async (id: string, userId: string): Promise<boolean> => {
             try {
                 const formData = new FormData();
+                formData.append('user_id', userId);
                 formData.append('id', id);
                 const responseData = await apiFetch('patients/delete', { method: 'POST', body: formData });
 

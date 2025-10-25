@@ -6,6 +6,7 @@ import { CenteredLoadingSpinner } from '../components/LoadingSpinner';
 
 interface PaymentsPageProps {
     user: User;
+    refreshTrigger: number;
 }
 
 // ===================================================================
@@ -183,10 +184,11 @@ const EditPaymentModal: React.FC<EditPaymentModalProps> = ({ payment, onSave, on
 };
 
 
-const PaymentsPage: React.FC<PaymentsPageProps> = ({ user }) => {
+const PaymentsPage: React.FC<PaymentsPageProps> = ({ user, refreshTrigger }) => {
     const [payments, setPayments] = useState<Payment[]>([]);
     const [patients, setPatients] = useState<Patient[]>([]);
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const [paymentToDelete, setPaymentToDelete] = useState<Payment | null>(null);
     const [isAddingPayment, setIsAddingPayment] = useState(false);
     const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
@@ -194,6 +196,7 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user }) => {
 
     const fetchData = useCallback(async () => {
         setLoading(true);
+        setFetchError(null);
         try {
             const [pays, pats] = await Promise.all([
                 api.payments.getAll(),
@@ -202,8 +205,12 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user }) => {
             setPayments(pays);
             setPatients(pats);
         } catch (error) {
-            console.error("Failed to fetch data:", error);
-            alert('فشل في تحميل البيانات.');
+            if (error instanceof Error && error.message.includes('Failed to fetch')) {
+                setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');
+            } else {
+                setFetchError('حدث خطأ غير متوقع.');
+                console.error("Failed to fetch data:", error);
+            }
         } finally {
             setLoading(false);
         }
@@ -211,7 +218,7 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user }) => {
 
     useEffect(() => {
         fetchData();
-    }, [fetchData]);
+    }, [fetchData, refreshTrigger]);
 
     const handleCreatePayment = async (newPaymentData: Omit<Payment, 'id'>) => {
         try {
@@ -278,7 +285,9 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user }) => {
             </div>
 
             <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[200px]">
-                {loading ? <CenteredLoadingSpinner /> : (
+                {loading ? <CenteredLoadingSpinner /> : fetchError ? (
+                     <div className="text-center py-16 text-red-500 dark:text-red-400"><p>{fetchError}</p></div>
+                ) : (
                     filteredPayments.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {filteredPayments.map(pay => (
@@ -316,7 +325,7 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user }) => {
                 />
             )}
             {paymentToDelete && (
-                <ConfirmDeleteModal
+                 <ConfirmDeleteModal
                     title="حذف الدفعة"
                     message={`هل أنت متأكد من حذف دفعة بقيمة $${paymentToDelete.amount.toFixed(2)} للمريض ${getPatientName(paymentToDelete.patientId)}؟`}
                     onConfirm={confirmDeletePayment}

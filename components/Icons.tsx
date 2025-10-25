@@ -144,7 +144,7 @@ export const MinusIcon: React.FC<IconProps> = ({ className }) => (
 
 export const ResetIcon: React.FC<IconProps> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.664 0l3.181-3.183m-11.664 0l-3.181-3.183a8.25 8.25 0 0111.664 0l3.181 3.183" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12c0 4.142-3.358 7.5-7.5 7.5S4.5 16.142 4.5 12 7.858 4.5 12 4.5c2.396 0 4.532 1.107 5.864 2.822M15 4.5v5.25h5.25" />
     </svg>
 );
 

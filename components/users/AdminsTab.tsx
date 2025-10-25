@@ -103,29 +103,41 @@ const SubManagerFormModal: React.FC<SubManagerFormModalProps> = ({ subManager, o
     );
 };
 
-const AdminsTab: React.FC = () => {
+const AdminsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => {
     const { user: loggedInUser } = useAuth();
     const [admins, setAdmins] = useState<User[]>([]);
     const [subManagers, setSubManagers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const [isAdding, setIsAdding] = useState(false);
     const [editingSubManager, setEditingSubManager] = useState<User | null>(null);
     const [deletingSubManager, setDeletingSubManager] = useState<User | null>(null);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
-        const [adminUsers, subManagerUsers] = await Promise.all([
-            api.admins.getAll(),
-            api.subManagers.getAll()
-        ]);
-        setAdmins(adminUsers);
-        setSubManagers(subManagerUsers);
-        setLoading(false);
+        setFetchError(null);
+        try {
+            const [adminUsers, subManagerUsers] = await Promise.all([
+                api.admins.getAll(),
+                api.subManagers.getAll()
+            ]);
+            setAdmins(adminUsers);
+            setSubManagers(subManagerUsers);
+        } catch (error) {
+            if (error instanceof Error && error.message.includes('Failed to fetch')) {
+                setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');
+            } else {
+                setFetchError('حدث خطأ غير متوقع.');
+                console.error("Failed to fetch admin users:", error);
+            }
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
     useEffect(() => {
         fetchData();
-    }, [fetchData]);
+    }, [fetchData, refreshTrigger]);
 
     const handleCreate = async (newSubManagerData: Omit<User, 'id' | 'role'>) => {
         await api.subManagers.create({ ...newSubManagerData, role: UserRole.SubManager });
@@ -182,7 +194,9 @@ const AdminsTab: React.FC = () => {
                 </button>
             </div>
             
-            {loading ? <CenteredLoadingSpinner /> : (
+            {loading ? <CenteredLoadingSpinner /> : fetchError ? (
+                 <div className="text-center py-16 text-red-500 dark:text-red-400"><p>{fetchError}</p></div>
+            ) : (
                  allManagers.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {allManagers.map(user => (

@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { User, Patient, Appointment } from '../../types';
 import { api } from '../../services/api';
 import { UserGroupIcon, CalendarIcon } from '../Icons';
@@ -7,6 +7,7 @@ import { CenteredLoadingSpinner } from '../LoadingSpinner';
 
 interface DashboardDoctorProps {
     user: User;
+    refreshTrigger: number;
 }
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ElementType }> = ({ title, value, icon: Icon }) => (
@@ -42,51 +43,63 @@ const formatTo12Hour = (time24: string): string => {
 };
 
 
-const DashboardDoctor: React.FC<DashboardDoctorProps> = ({ user }) => {
+const DashboardDoctor: React.FC<DashboardDoctorProps> = ({ user, refreshTrigger }) => {
     const [patientCount, setPatientCount] = useState(0);
     const [todaysAppointments, setTodaysAppointments] = useState<Appointment[]>([]);
     const [patients, setPatients] = useState<Patient[]>([]);
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
+
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        setFetchError(null);
+        try {
+            const [allPatients, allAppointments] = await Promise.all([
+                api.patients.getAll(),
+                api.appointments.getAll()
+            ]);
+            
+            setPatients(allPatients); // Store all patients for name lookup
+
+            const myPatients = allPatients.filter(p => p.doctorIds.includes(user.id));
+            setPatientCount(myPatients.length);
+            
+            const today = new Date();
+            const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            
+            const myTodaysAppointments = allAppointments.filter(a => 
+                a.doctorId === user.id && a.date === todayString
+            );
+            setTodaysAppointments(myTodaysAppointments.sort((a,b) => a.time.localeCompare(b.time)));
+        } catch (error) {
+            if (error instanceof Error && error.message.includes('Failed to fetch')) {
+                setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');
+            } else {
+                setFetchError('حدث خطأ غير متوقع.');
+                console.error("Failed to fetch doctor dashboard data:", error);
+            }
+        } finally {
+            setLoading(false);
+        }
+    }, [user.id]);
 
     useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-                const [allPatients, allAppointments] = await Promise.all([
-                    api.patients.getAll(),
-                    api.appointments.getAll()
-                ]);
-                
-                setPatients(allPatients); // Store all patients for name lookup
-
-                const myPatients = allPatients.filter(p => p.doctorIds.includes(user.id));
-                setPatientCount(myPatients.length);
-                
-                const today = new Date();
-                const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-                
-                const myTodaysAppointments = allAppointments.filter(a => 
-                    a.doctorId === user.id && a.date === todayString
-                );
-                setTodaysAppointments(myTodaysAppointments.sort((a,b) => a.time.localeCompare(b.time)));
-            } catch (error) {
-                console.error("Failed to fetch doctor dashboard data:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchData();
-    }, [user.id]);
+    }, [fetchData, refreshTrigger]);
 
     const getPatientName = (patientId: string) => {
         return patients.find(p => p.id === patientId)?.name || 'مريض غير معروف';
     };
 
+    if (fetchError) {
+        return <div className="text-center py-16 text-red-500 dark:text-red-400 bg-white dark:bg-slate-800 rounded-xl shadow-md"><p>{fetchError}</p></div>;
+    }
+
     return (
         <div>
             <div className="grid grid-cols-2 gap-4 sm:gap-6">
-                <StatCard title="مرضاي" value={patientCount} icon={UserGroupIcon} />
-                <StatCard title="مواعيد اليوم" value={todaysAppointments.length} icon={CalendarIcon} />
+                <StatCard title="مرضاي" value={loading ? '...' : patientCount} icon={UserGroupIcon} />
+                <StatCard title="مواعيد اليوم" value={loading ? '...' : todaysAppointments.length} icon={CalendarIcon} />
             </div>
              <div className="mt-8 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md">
                 <h2 className="text-xl font-semibold mb-4 dark:text-gray-100">جدول اليوم</h2>

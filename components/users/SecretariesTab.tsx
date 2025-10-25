@@ -156,9 +156,10 @@ const EditSecretaryModal: React.FC<EditSecretaryModalProps> = ({ secretary, onSa
 };
 
 
-const SecretariesTab: React.FC = () => {
+const SecretariesTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => {
     const [secretaries, setSecretaries] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const [isAddingSecretary, setIsAddingSecretary] = useState(false);
     const [editingSecretary, setEditingSecretary] = useState<User | null>(null);
     const [deletingSecretary, setDeletingSecretary] = useState<User | null>(null);
@@ -166,14 +167,25 @@ const SecretariesTab: React.FC = () => {
 
     const fetchSecretaries = useCallback(async () => {
         setLoading(true);
-        const allUsers = await api.secretaries.getAll();
-        setSecretaries(allUsers);
-        setLoading(false);
+        setFetchError(null);
+        try {
+            const allUsers = await api.secretaries.getAll();
+            setSecretaries(allUsers);
+        } catch (error) {
+            if (error instanceof Error && error.message.includes('Failed to fetch')) {
+                setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');
+            } else {
+                setFetchError('حدث خطأ غير متوقع.');
+                console.error("Failed to fetch secretaries:", error);
+            }
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
     useEffect(() => {
         fetchSecretaries();
-    }, [fetchSecretaries]);
+    }, [fetchSecretaries, refreshTrigger]);
 
     const handleCreateSecretary = async (newSecretaryData: Omit<User, 'id' | 'role'>) => {
         await api.secretaries.create({ ...newSecretaryData, role: UserRole.Secretary });
@@ -206,7 +218,9 @@ const SecretariesTab: React.FC = () => {
             </div>
             
             <div className="min-h-[200px]">
-                {loading ? <CenteredLoadingSpinner /> : (
+                {loading ? <CenteredLoadingSpinner /> : fetchError ? (
+                    <div className="text-center py-16 text-red-500 dark:text-red-400"><p>{fetchError}</p></div>
+                ) : (
                      secretaries.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {secretaries.map(sec => (

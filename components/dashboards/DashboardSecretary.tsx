@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { User, Appointment, Patient } from '../../types';
 import { api } from '../../services/api';
 import { CalendarIcon, UserGroupIcon } from '../Icons';
@@ -6,6 +6,7 @@ import { CenteredLoadingSpinner } from '../LoadingSpinner';
 
 interface DashboardSecretaryProps {
     user: User;
+    refreshTrigger: number;
 }
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ElementType }> = ({ title, value, icon: Icon }) => (
@@ -39,32 +40,40 @@ const formatTo12Hour = (time24: string): string => {
     }
 };
 
-const DashboardSecretary: React.FC<DashboardSecretaryProps> = ({ user }) => {
+const DashboardSecretary: React.FC<DashboardSecretaryProps> = ({ user, refreshTrigger }) => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [patients, setPatients] = useState<Patient[]>([]);
     const [doctors, setDoctors] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
+
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        setFetchError(null);
+        try {
+            const [apps, pats, docs] = await Promise.all([
+                api.appointments.getAll(),
+                api.patients.getAll(),
+                api.doctors.getAll(),
+            ]);
+            setAppointments(apps);
+            setPatients(pats);
+            setDoctors(docs);
+        } catch (error) {
+            if (error instanceof Error && error.message.includes('Failed to fetch')) {
+                setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');
+            } else {
+                setFetchError('حدث خطأ غير متوقع.');
+                console.error("Failed to fetch secretary dashboard data:", error);
+            }
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-                const [apps, pats, docs] = await Promise.all([
-                    api.appointments.getAll(),
-                    api.patients.getAll(),
-                    api.doctors.getAll(),
-                ]);
-                setAppointments(apps);
-                setPatients(pats);
-                setDoctors(docs);
-            } catch (error) {
-                console.error("Failed to fetch secretary dashboard data:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchData();
-    }, []);
+    }, [fetchData, refreshTrigger]);
 
     const getPatientName = (id: string) => patients.find(p => p.id === id)?.name || 'غير معروف';
     const getDoctorName = (id: string) => doctors.find(d => d.id === id)?.name || 'غير معروف';
@@ -77,6 +86,10 @@ const DashboardSecretary: React.FC<DashboardSecretaryProps> = ({ user }) => {
         const todayString = `${yyyy}-${mm}-${dd}`;
         return appointments.filter(app => app.date === todayString);
     }, [appointments]);
+    
+    if (fetchError) {
+        return <div className="text-center py-16 text-red-500 dark:text-red-400 bg-white dark:bg-slate-800 rounded-xl shadow-md"><p>{fetchError}</p></div>;
+    }
 
     return (
         <div>

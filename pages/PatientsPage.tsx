@@ -1760,8 +1760,9 @@ const PatientActivityLogPage: React.FC<{ patient: Patient; onBack: () => void; }
 // ===================================================================
 interface PatientsPageProps {
     user: User;
+    refreshTrigger: number;
 }
-const PatientsPage: React.FC<PatientsPageProps> = ({ user }) => {
+const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => {
     const [patients, setPatients] = useState<Patient[]>([]);
     const [doctors, setDoctors] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
@@ -1789,7 +1790,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user }) => {
 
     useEffect(() => {
         fetchAllData();
-    }, [fetchAllData]);
+    }, [fetchAllData, refreshTrigger]);
 
     const handlePrintReport = async (patient: Patient) => {
         setIsPrinting(patient.id);
@@ -1994,20 +1995,20 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user }) => {
     };
 
     const handleCreatePatient = async (newPatientData: Omit<Patient, 'id' | 'code'>) => {
-        await api.patients.create(newPatientData);
+        await api.patients.create(newPatientData, user.id);
         setIsAddingPatient(false);
         await fetchAllData();
     };
 
     const handleUpdatePatient = async (updatedPatient: Patient) => {
-        await api.patients.update(updatedPatient.id, updatedPatient);
+        await api.patients.update(updatedPatient.id, updatedPatient, user.id);
         setEditingPatient(null);
         await fetchAllData();
     };
 
     const confirmDeletePatient = async () => {
         if (deletingPatient) {
-            await api.patients.delete(deletingPatient.id);
+            await api.patients.delete(deletingPatient.id, user.id);
             setDeletingPatient(null);
             await fetchAllData();
         }

@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { User, Patient, Appointment, Payment, ActivityLog, ActivityLogActionType } from '../../types';
 import { api } from '../../services/api';
 import { CurrencyDollarIcon, UserGroupIcon, CalendarIcon, UsersIcon, PlusIcon, PencilIcon, TrashIcon, SearchIcon } from '../Icons';
@@ -7,6 +7,7 @@ import { CenteredLoadingSpinner } from '../LoadingSpinner';
 
 interface DashboardAdminProps {
     user: User;
+    refreshTrigger: number;
 }
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ElementType }> = ({ title, value, icon: Icon }) => (
@@ -38,18 +39,21 @@ const ActionIcon: React.FC<{ action: ActivityLogActionType }> = ({ action }) => 
 };
 
 
-const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user }) => {
+const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger }) => {
     const [stats, setStats] = useState({ doctors: 0, patients: 0, appointments: 0, revenue: 0 });
     const [allLogs, setAllLogs] = useState<ActivityLog[]>([]);
     const [filteredLogs, setFilteredLogs] = useState<ActivityLog[]>([]);
     const [patients, setPatients] = useState<Patient[]>([]);
     const [visibleCount, setVisibleCount] = useState(5);
-    const [loadingLogs, setLoadingLogs] = useState(true);
+    const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [dateFilter, setDateFilter] = useState('');
     
-    useEffect(() => {
-        const fetchData = async () => {
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        setFetchError(null);
+        try {
             const [doctors, fetchedPatients, appointments, payments, logs] = await Promise.all([
                 api.doctors.getAll(),
                 api.patients.getAll(),
@@ -66,10 +70,21 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user }) => {
             });
             setPatients(fetchedPatients);
             setAllLogs(logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
-            setLoadingLogs(false);
-        };
-        fetchData();
+        } catch (error) {
+            if (error instanceof Error && error.message.includes('Failed to fetch')) {
+                setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');
+            } else {
+                setFetchError('حدث خطأ غير متوقع.');
+                console.error("Failed to fetch admin dashboard data:", error);
+            }
+        } finally {
+            setLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData, refreshTrigger]);
 
     useEffect(() => {
         let logs = allLogs;
@@ -99,6 +114,11 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user }) => {
     const handleShowMore = () => {
         setVisibleCount(prev => prev + 5);
     };
+
+    if (loading) return <CenteredLoadingSpinner />;
+    if (fetchError) {
+        return <div className="text-center py-16 text-red-500 dark:text-red-400 bg-white dark:bg-slate-800 rounded-xl shadow-md"><p>{fetchError}</p></div>;
+    }
 
     return (
         <div>
@@ -130,40 +150,36 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user }) => {
                         className="px-3 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                     />
                 </div>
+                
+                {displayedLogs.length > 0 ? (
+                    <div className="space-y-4">
+                        {displayedLogs.map(log => (
+                            <div key={log.id} className="flex items-start space-x-4 rtl:space-x-reverse p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                                <ActionIcon action={log.actionType} />
+                                <div className="flex-grow">
+                                    <p className="text-sm text-gray-800 dark:text-gray-200">{log.description}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                        بواسطة {log.userName} &bull; {new Date(log.timestamp).toLocaleString('ar-SA', { dateStyle: 'medium', timeStyle: 'short' })}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-10 text-gray-500 dark:text-gray-400">
+                        <p>لا يوجد نشاط يطابق بحثك.</p>
+                    </div>
+                )}
 
-                {loadingLogs ? <CenteredLoadingSpinner /> : (
-                    <>
-                        {displayedLogs.length > 0 ? (
-                            <div className="space-y-4">
-                                {displayedLogs.map(log => (
-                                    <div key={log.id} className="flex items-start space-x-4 rtl:space-x-reverse p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50">
-                                        <ActionIcon action={log.actionType} />
-                                        <div className="flex-grow">
-                                            <p className="text-sm text-gray-800 dark:text-gray-200">{log.description}</p>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                بواسطة {log.userName} &bull; {new Date(log.timestamp).toLocaleString('ar-SA', { dateStyle: 'medium', timeStyle: 'short' })}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-center py-10 text-gray-500 dark:text-gray-400">
-                                <p>لا يوجد نشاط يطابق بحثك.</p>
-                            </div>
-                        )}
-
-                        {visibleCount < filteredLogs.length && (
-                            <div className="mt-6 text-center">
-                                <button
-                                    onClick={handleShowMore}
-                                    className="px-6 py-2 bg-primary text-white font-semibold rounded-lg shadow-md hover:bg-primary-700 transition-colors"
-                                >
-                                    عرض المزيد
-                                </button>
-                            </div>
-                        )}
-                    </>
+                {visibleCount < filteredLogs.length && (
+                    <div className="mt-6 text-center">
+                        <button
+                            onClick={handleShowMore}
+                            className="px-6 py-2 bg-primary text-white font-semibold rounded-lg shadow-md hover:bg-primary-700 transition-colors"
+                        >
+                            عرض المزيد
+                        </button>
+                    </div>
                 )}
             </div>
         </div>

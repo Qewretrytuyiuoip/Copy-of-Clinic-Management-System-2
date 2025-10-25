@@ -6,16 +6,19 @@ import { CenteredLoadingSpinner } from '../components/LoadingSpinner';
 
 interface DoctorSettingsPageProps {
     user: User;
+    refreshTrigger: number;
 }
 
-const DoctorSettingsPage: React.FC<DoctorSettingsPageProps> = ({ user }) => {
+const DoctorSettingsPage: React.FC<DoctorSettingsPageProps> = ({ user, refreshTrigger }) => {
     const [schedule, setSchedule] = useState<DaySchedule[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [feedback, setFeedback] = useState('');
+    const [fetchError, setFetchError] = useState<string | null>(null);
 
     const fetchAvailability = useCallback(async () => {
         setLoading(true);
+        setFetchError(null);
         try {
             const data = await api.doctorSchedules.getForDoctor(user.id);
     
@@ -31,8 +34,12 @@ const DoctorSettingsPage: React.FC<DoctorSettingsPageProps> = ({ user }) => {
     
             setSchedule(fullSchedule);
         } catch (error) {
-            console.error("Could not fetch schedule", error);
-            setFeedback('فشل في تحميل الجدول الزمني.');
+            if (error instanceof Error && error.message.includes('Failed to fetch')) {
+                setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');
+            } else {
+                setFetchError('حدث خطأ غير متوقع.');
+                console.error("Could not fetch schedule", error);
+            }
         } finally {
             setLoading(false);
         }
@@ -40,7 +47,7 @@ const DoctorSettingsPage: React.FC<DoctorSettingsPageProps> = ({ user }) => {
 
     useEffect(() => {
         fetchAvailability();
-    }, [fetchAvailability]);
+    }, [fetchAvailability, refreshTrigger]);
 
     const handleDayToggle = (dayIndex: number) => {
         setSchedule(prev => prev.map((day, index) =>
@@ -79,7 +86,9 @@ const DoctorSettingsPage: React.FC<DoctorSettingsPageProps> = ({ user }) => {
         <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">تواجدي</h1>
             <div className="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-xl shadow-md max-w-3xl mx-auto min-h-[400px]">
-                {loading ? <CenteredLoadingSpinner /> : (
+                {loading ? <CenteredLoadingSpinner /> : fetchError ? (
+                    <div className="text-center py-16 text-red-500 dark:text-red-400"><p>{fetchError}</p></div>
+                ) : (
                     <form onSubmit={handleSubmit}>
                         <div className="space-y-4">
                             {schedule.map((daySchedule, index) => (

@@ -11,10 +11,11 @@ interface LayoutProps {
     user: User;
     currentPage: string;
     setCurrentPage: (page: string) => void;
+    onRefresh: () => void;
     children: React.ReactNode;
 }
 
-const Layout: React.FC<LayoutProps> = ({ user, currentPage, setCurrentPage, children }) => {
+const Layout: React.FC<LayoutProps> = ({ user, currentPage, setCurrentPage, onRefresh, children }) => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { loginSuccessMessage, setLoginSuccessMessage } = useAuth();
 
@@ -64,7 +65,7 @@ const Layout: React.FC<LayoutProps> = ({ user, currentPage, setCurrentPage, chil
                 setSidebarOpen={setSidebarOpen}
             />
             <div className="flex-1 flex flex-col overflow-hidden">
-                <Header user={user} setSidebarOpen={setSidebarOpen} />
+                <Header user={user} setSidebarOpen={setSidebarOpen} onRefresh={onRefresh} />
                 <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-gray-900 p-4 md:p-6 pb-20 lg:pb-6">
                     {children}
                 </main>

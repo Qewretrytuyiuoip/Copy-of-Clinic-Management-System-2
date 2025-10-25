@@ -6,6 +6,7 @@ import { SearchIcon, CalendarIcon, ClockIcon } from '../components/Icons';
 
 interface DoctorSchedulePageProps {
     user: User;
+    refreshTrigger: number;
 }
 
 const formatTo12Hour = (time24: string): string => {
@@ -27,29 +28,41 @@ const formatTo12Hour = (time24: string): string => {
 
 type DateFilter = 'all' | 'today' | 'week' | 'month' | 'finished';
 
-const DoctorSchedulePage: React.FC<DoctorSchedulePageProps> = ({ user }) => {
+const DoctorSchedulePage: React.FC<DoctorSchedulePageProps> = ({ user, refreshTrigger }) => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [patients, setPatients] = useState<Patient[]>([]);
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [dateFilter, setDateFilter] = useState<DateFilter>('today');
 
     const fetchData = useCallback(async () => {
         setLoading(true);
-        const [allAppointments, allPatients] = await Promise.all([
-            api.appointments.getAll(),
-            api.patients.getAll(),
-        ]);
-        
-        const myAppointments = allAppointments.filter(app => app.doctorId === user.id);
-        setAppointments(myAppointments);
-        setPatients(allPatients); // Keep all patients for name lookup
-        setLoading(false);
+        setFetchError(null);
+        try {
+            const [allAppointments, allPatients] = await Promise.all([
+                api.appointments.getAll(),
+                api.patients.getAll(),
+            ]);
+            
+            const myAppointments = allAppointments.filter(app => app.doctorId === user.id);
+            setAppointments(myAppointments);
+            setPatients(allPatients); // Keep all patients for name lookup
+        } catch (error) {
+            if (error instanceof Error && error.message.includes('Failed to fetch')) {
+                setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');
+            } else {
+                setFetchError('حدث خطأ غير متوقع.');
+                console.error("Failed to fetch schedule data:", error);
+            }
+        } finally {
+            setLoading(false);
+        }
     }, [user.id]);
 
     useEffect(() => {
         fetchData();
-    }, [fetchData]);
+    }, [fetchData, refreshTrigger]);
 
     const getPatientName = (id: string) => patients.find(p => p.id === id)?.name || 'غير معروف';
 
@@ -173,7 +186,9 @@ const DoctorSchedulePage: React.FC<DoctorSchedulePageProps> = ({ user }) => {
             </div>
 
             <div className="min-h-[200px]">
-                {loading ? <CenteredLoadingSpinner /> : (
+                {loading ? <CenteredLoadingSpinner /> : fetchError ? (
+                     <div className="text-center py-16 text-red-500 dark:text-red-400 bg-white dark:bg-slate-800 rounded-xl shadow-md"><p>{fetchError}</p></div>
+                ) : (
                     filteredAppointments.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {filteredAppointments.map(app => (

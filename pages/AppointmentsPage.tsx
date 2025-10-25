@@ -254,7 +254,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                     isSmoker: newPatientData.isSmoker,
                     isPregnant: newPatientData.gender === Gender.Female ? newPatientData.isPregnant : false,
                     notes: 'مريض جديد تم إنشاؤه من صفحة المواعيد',
-                });
+                }, user.id);
                 patientIdForAppointment = newPatient.id;
                 refreshPatientsList = true;
             } catch (error) {
@@ -422,15 +422,17 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
 // ===================================================================
 interface AppointmentsPageProps {
     user: User;
+    refreshTrigger: number;
 }
 
 type ActiveTab = 'all' | 'today' | 'month' | 'finished';
 
-const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user }) => {
+const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigger }) => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [patients, setPatients] = useState<Patient[]>([]);
     const [doctors, setDoctors] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const [isAddingAppointment, setIsAddingAppointment] = useState(false);
     const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
     const [viewingAppointment, setViewingAppointment] = useState<Appointment | null>(null);
@@ -441,6 +443,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user }) => {
 
     const fetchData = useCallback(async (refreshPatients = false) => {
         setLoading(true);
+        setFetchError(null);
         try {
             const appointmentPromise = api.appointments.getAll();
             const doctorsPromise = api.doctors.getAll();
@@ -452,8 +455,12 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user }) => {
             setDoctors(docs);
             setPatients(pats);
         } catch (error) {
-            console.error("Failed to fetch data:", error);
-            alert(`فشل تحميل البيانات: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+             if (error instanceof Error && error.message.includes('Failed to fetch')) {
+                setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');
+            } else {
+                setFetchError('حدث خطأ غير متوقع.');
+                console.error("Failed to fetch data:", error);
+            }
         } finally {
             setLoading(false);
         }
@@ -461,7 +468,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user }) => {
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [fetchData, refreshTrigger]);
 
     const handleSaveAppointment = async (data: Omit<Appointment, 'id'> | Appointment, refreshPatients: boolean) => {
         try {
@@ -579,7 +586,9 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user }) => {
             </div>
 
             <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[200px]">
-                {loading ? <CenteredLoadingSpinner /> : (
+                {loading ? <CenteredLoadingSpinner /> : fetchError ? (
+                    <div className="text-center py-16 text-red-500 dark:text-red-400"><p>{fetchError}</p></div>
+                ) : (
                     filteredAppointments.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {filteredAppointments.map(app => {
@@ -603,62 +612,49 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user }) => {
                                         </div>
                                         <p className={`font-bold text-3xl my-2 ${isFinished ? 'text-gray-700 dark:text-gray-300' : 'text-gray-800 dark:text-gray-100'}`}>{formatTo12Hour(app.time)}</p>
                                         <p className={`text-sm ${isFinished ? 'text-gray-500 dark:text-gray-400' : 'text-gray-500 dark:text-gray-400'}`}>مع الطبيب: {getDoctorName(app.doctorId)}</p>
-                                        {app.notes && <p className={`mt-2 text-sm p-2 rounded-md ${isFinished ? 'bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>ملاحظات: {app.notes}</p>}
+                                        {app.notes && <p className={`mt-2 text-sm p-2 rounded-md ${isFinished ? 'bg-gray-300 dark:bg-gray-800 text-gray-700 dark:text-gray-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>{app.notes}</p>}
                                     </div>
-                                     <div className="mt-4 pt-4 border-t border-gray-300 dark:border-gray-600 flex items-center justify-end space-x-2">
-                                        <button onClick={() => setViewingAppointment(app)} className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors text-sm p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="عرض">
-                                            <EyeIcon className="h-4 w-4" />
-                                            <span className="mr-1">عرض</span>
-                                        </button>
-                                        <button onClick={() => setEditingAppointment(app)} className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 transition-colors text-sm p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل">
-                                            <PencilIcon className="h-4 w-4" />
-                                            <span className="mr-1">تعديل</span>
-                                        </button>
-                                        <button onClick={() => setDeletingAppointment(app)} className="flex items-center text-red-600 dark:text-red-400 hover:text-red-800 transition-colors text-sm p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40" title="إلغاء">
-                                            <TrashIcon className="h-4 w-4" />
-                                            <span className="mr-1">إلغاء</span>
-                                        </button>
+                                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex items-center justify-end space-x-2">
+                                        <button onClick={() => setViewingAppointment(app)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="عرض التفاصيل"><EyeIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" /></button>
+                                        {(user.role === UserRole.Admin || user.role === UserRole.Secretary) && !isFinished && (
+                                            <>
+                                                <button onClick={() => setEditingAppointment(app)} className="p-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
+                                                <button onClick={() => setDeletingAppointment(app)} className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف"><TrashIcon className="h-5 w-5" /></button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                                 )
                             })}
                         </div>
                     ) : (
-                         <p className="text-center text-gray-500 dark:text-gray-400 py-8">لم يتم العثور على مواعيد.</p>
+                        <p className="text-center text-gray-500 dark:text-gray-400 py-16">لا توجد مواعيد تطابق الفلترة الحالية.</p>
                     )
                 )}
             </div>
-
             {(isAddingAppointment || editingAppointment) && (
                 <AppointmentFormModal 
                     key={editingAppointment?.id || 'add'}
                     appointment={editingAppointment || undefined}
-                    onClose={() => { setIsAddingAppointment(false); setEditingAppointment(null); }} 
-                    onSave={handleSaveAppointment}
                     patients={patients}
                     doctors={doctors}
+                    onSave={handleSaveAppointment}
+                    onClose={() => { setIsAddingAppointment(false); setEditingAppointment(null); }}
                     user={user}
                 />
             )}
-            {viewingAppointment && (
-                <ViewAppointmentModal 
-                    appointment={viewingAppointment}
-                    onClose={() => setViewingAppointment(null)}
-                    patientName={getPatientName(viewingAppointment.patientId)}
-                    doctorName={getDoctorName(viewingAppointment.doctorId)}
-                />
-            )}
+            {viewingAppointment && <ViewAppointmentModal appointment={viewingAppointment} patientName={getPatientName(viewingAppointment.patientId)} doctorName={getDoctorName(viewingAppointment.doctorId)} onClose={() => setViewingAppointment(null)} />}
             {deletingAppointment && (
                 <ConfirmDeleteModal
-                    title="إلغاء الموعد"
-                    message={`هل أنت متأكد من رغبتك في إلغاء موعد المريض ${getPatientName(deletingAppointment.patientId)}؟`}
+                    title="حذف موعد"
+                    message={`هل أنت متأكد من حذف موعد ${getPatientName(deletingAppointment.patientId)}؟`}
                     onConfirm={confirmDeleteAppointment}
                     onCancel={() => setDeletingAppointment(null)}
                 />
             )}
-
         </div>
     );
 };
 
+// FIX: Add default export to make the component importable in App.tsx.
 export default AppointmentsPage;

@@ -6,20 +6,24 @@ import { UserGroupIcon, UsersIcon } from '../components/Icons';
 import { useAuth } from '../hooks/useAuth';
 import { UserRole } from '../types';
 
-const UsersPage: React.FC = () => {
+interface UsersPageProps {
+    refreshTrigger: number;
+}
+
+const UsersPage: React.FC<UsersPageProps> = ({ refreshTrigger }) => {
     const [activeTab, setActiveTab] = useState('doctors');
     const { user } = useAuth();
 
     const renderTabContent = () => {
         switch (activeTab) {
             case 'doctors':
-                return <DoctorsTab />;
+                return <DoctorsTab refreshTrigger={refreshTrigger} />;
             case 'secretaries':
-                return <SecretariesTab />;
+                return <SecretariesTab refreshTrigger={refreshTrigger} />;
             case 'admins':
-                return <AdminsTab />;
+                return <AdminsTab refreshTrigger={refreshTrigger} />;
             default:
-                return <DoctorsTab />;
+                return <DoctorsTab refreshTrigger={refreshTrigger} />;
         }
     };
 

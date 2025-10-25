@@ -115,9 +115,10 @@ const TreatmentFormModal: React.FC<TreatmentFormModalProps> = ({ treatment, onSa
 // ===================================================================
 // Main TreatmentsSettingsPage Component
 // ===================================================================
-const TreatmentsSettingsPage: React.FC = () => {
+const TreatmentsSettingsPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => {
     const [treatments, setTreatments] = useState<Treatment[]>([]);
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const [isAdding, setIsAdding] = useState(false);
     const [editingTreatment, setEditingTreatment] = useState<Treatment | null>(null);
     const [deletingTreatment, setDeletingTreatment] = useState<Treatment | null>(null);
@@ -125,14 +126,25 @@ const TreatmentsSettingsPage: React.FC = () => {
 
     const fetchTreatments = useCallback(async () => {
         setLoading(true);
-        const data = await api.treatmentSettings.getAll();
-        setTreatments(data);
-        setLoading(false);
+        setFetchError(null);
+        try {
+            const data = await api.treatmentSettings.getAll();
+            setTreatments(data);
+        } catch (error) {
+             if (error instanceof Error && error.message.includes('Failed to fetch')) {
+                setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');
+            } else {
+                setFetchError('حدث خطأ غير متوقع.');
+                console.error("Failed to fetch treatments:", error);
+            }
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
     useEffect(() => {
         fetchTreatments();
-    }, [fetchTreatments]);
+    }, [fetchTreatments, refreshTrigger]);
 
     const handleSave = async (data: Omit<Treatment, 'id'> | Treatment) => {
         try {
@@ -192,7 +204,9 @@ const TreatmentsSettingsPage: React.FC = () => {
             </div>
             
             <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[200px]">
-                {loading ? <CenteredLoadingSpinner /> : (
+                {loading ? <CenteredLoadingSpinner /> : fetchError ? (
+                    <div className="text-center py-16 text-red-500 dark:text-red-400"><p>{fetchError}</p></div>
+                ) : (
                      filteredTreatments.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {filteredTreatments.map(t => (

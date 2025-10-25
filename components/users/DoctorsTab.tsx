@@ -190,23 +190,35 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ doctor, onSave, onClo
     );
 };
 
-const DoctorsTab: React.FC = () => {
+const DoctorsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => {
     const [doctors, setDoctors] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const [isAddingDoctor, setIsAddingDoctor] = useState(false);
     const [editingDoctor, setEditingDoctor] = useState<User | null>(null);
     const [deletingDoctor, setDeletingDoctor] = useState<User | null>(null);
 
     const fetchDoctors = useCallback(async () => {
         setLoading(true);
-        const allUsers = await api.doctors.getAll();
-        setDoctors(allUsers);
-        setLoading(false);
+        setFetchError(null);
+        try {
+            const allUsers = await api.doctors.getAll();
+            setDoctors(allUsers);
+        } catch (error) {
+             if (error instanceof Error && error.message.includes('Failed to fetch')) {
+                setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');
+            } else {
+                setFetchError('حدث خطأ غير متوقع.');
+                console.error("Failed to fetch doctors:", error);
+            }
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
     useEffect(() => {
         fetchDoctors();
-    }, [fetchDoctors]);
+    }, [fetchDoctors, refreshTrigger]);
 
     const handleCreateDoctor = async (newDoctorData: Omit<User, 'id' | 'role'>) => {
         await api.doctors.create({ ...newDoctorData, role: UserRole.Doctor });
@@ -239,7 +251,9 @@ const DoctorsTab: React.FC = () => {
             </div>
             
             <div className="min-h-[200px]">
-                {loading ? <CenteredLoadingSpinner /> : (
+                {loading ? <CenteredLoadingSpinner /> : fetchError ? (
+                     <div className="text-center py-16 text-red-500 dark:text-red-400"><p>{fetchError}</p></div>
+                ) : (
                      doctors.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {doctors.map(doc => (

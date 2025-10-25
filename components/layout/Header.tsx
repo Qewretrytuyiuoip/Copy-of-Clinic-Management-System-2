@@ -3,13 +3,14 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { User } from '../../types';
-import { LogoutIcon, MenuIcon } from '../Icons';
+import { LogoutIcon, MenuIcon, ResetIcon } from '../Icons';
 import { ROLE_NAMES } from '../../constants';
 import ThemeToggleButton from '../ThemeToggleButton';
 
 interface HeaderProps {
     user: User;
     setSidebarOpen: (open: boolean) => void;
+    onRefresh: () => void;
 }
 
 // ===================================================================
@@ -46,7 +47,7 @@ const ConfirmLogoutModal: React.FC<ConfirmLogoutModalProps> = ({ onConfirm, onCa
 );
 
 
-const Header: React.FC<HeaderProps> = ({ user, setSidebarOpen }) => {
+const Header: React.FC<HeaderProps> = ({ user, setSidebarOpen, onRefresh }) => {
     const { logout } = useAuth();
     const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -70,6 +71,13 @@ const Header: React.FC<HeaderProps> = ({ user, setSidebarOpen }) => {
                 </div>
                 <div className="flex items-center">
                     <ThemeToggleButton />
+                    <button
+                        onClick={onRefresh}
+                        className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-800 focus:ring-primary"
+                        aria-label="إعادة تحميل البيانات"
+                    >
+                        <ResetIcon className="h-6 w-6" />
+                    </button>
                     <div className="text-left ml-4">
                         <p className="font-semibold text-gray-800 dark:text-gray-100">{user.name}</p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">{ROLE_NAMES[user.role]}</p>

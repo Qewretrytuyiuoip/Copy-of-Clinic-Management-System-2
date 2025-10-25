@@ -18,6 +18,11 @@ import StatisticsPage from './pages/StatisticsPage';
 const AppContent: React.FC = () => {
     const { user } = useAuth();
     const [currentPage, setCurrentPage] = useState('dashboard');
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+    const handleRefresh = () => {
+        setRefreshTrigger(prev => prev + 1);
+    };
 
     if (!user) {
         return <LoginPage />;
@@ -26,30 +31,30 @@ const AppContent: React.FC = () => {
     const renderPage = () => {
         switch (currentPage) {
             case 'dashboard':
-                return <DashboardPage user={user} />;
+                return <DashboardPage user={user} refreshTrigger={refreshTrigger} />;
             case 'patients':
-                return <PatientsPage user={user} />;
+                return <PatientsPage user={user} refreshTrigger={refreshTrigger} />;
             case 'users':
-                return (user.role === UserRole.Admin || user.role === UserRole.SubManager) ? <UsersPage /> : <div>الوصول مرفوض</div>;
+                return (user.role === UserRole.Admin || user.role === UserRole.SubManager) ? <UsersPage refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;
             case 'appointments':
-                return <AppointmentsPage user={user} />;
+                return <AppointmentsPage user={user} refreshTrigger={refreshTrigger} />;
             case 'payments':
-                 return (user.role === UserRole.Admin || user.role === UserRole.Secretary || user.role === UserRole.SubManager) ? <PaymentsPage user={user} /> : <div>الوصول مرفوض</div>;
+                 return (user.role === UserRole.Admin || user.role === UserRole.Secretary || user.role === UserRole.SubManager) ? <PaymentsPage user={user} refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;
             case 'treatments_settings':
-                return (user.role === UserRole.Admin || user.role === UserRole.SubManager) ? <TreatmentsSettingsPage /> : <div>الوصول مرفوض</div>;
+                return (user.role === UserRole.Admin || user.role === UserRole.SubManager) ? <TreatmentsSettingsPage refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;
             case 'statistics':
-                return (user.role === UserRole.Admin || user.role === UserRole.SubManager) ? <StatisticsPage /> : <div>الوصول مرفوض</div>;
+                return (user.role === UserRole.Admin || user.role === UserRole.SubManager) ? <StatisticsPage refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;
             case 'schedule':
-                return user.role === UserRole.Doctor ? <DoctorSchedulePage user={user} /> : <div>الوصول مرفوض</div>;
+                return user.role === UserRole.Doctor ? <DoctorSchedulePage user={user} refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;
             case 'settings':
-                return user.role === UserRole.Doctor ? <DoctorSettingsPage user={user} /> : <div>الوصول مرفوض</div>;
+                return user.role === UserRole.Doctor ? <DoctorSettingsPage user={user} refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;
             default:
-                return <DashboardPage user={user} />;
+                return <DashboardPage user={user} refreshTrigger={refreshTrigger} />;
         }
     };
     
     return (
-        <Layout user={user} currentPage={currentPage} setCurrentPage={setCurrentPage}>
+        <Layout user={user} currentPage={currentPage} setCurrentPage={setCurrentPage} onRefresh={handleRefresh}>
             {renderPage()}
         </Layout>
     );
