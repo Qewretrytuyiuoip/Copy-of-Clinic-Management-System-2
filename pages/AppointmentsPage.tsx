@@ -135,7 +135,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
     });
     const [isSaving, setIsSaving] = useState(false);
     const [showNewPatientForm, setShowNewPatientForm] = useState(false);
-    const [newPatientData, setNewPatientData] = useState({ name: '', phone: '' });
+    const [newPatientData, setNewPatientData] = useState({ name: '', phone: '', age: '', gender: Gender.Male, isSmoker: false, isPregnant: false });
     
     const [availableSlots, setAvailableSlots] = useState<{ value: string; label: string; }[]>([]);
     const [slotsLoading, setSlotsLoading] = useState(false);
@@ -216,9 +216,20 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
     }, [formData.patientId, patients, doctors]);
 
 
-    const handleNewPatientChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setNewPatientData(prev => ({ ...prev, [name]: value }));
+    const handleNewPatientChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value, type } = e.target;
+        setNewPatientData(prev => {
+            const updatedState = {
+                ...prev,
+                [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
+            };
+    
+            if (name === 'gender' && value === Gender.Male) {
+                updatedState.isPregnant = false;
+            }
+            
+            return updatedState;
+        });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -228,8 +239,8 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
         let refreshPatientsList = false;
     
         if (showNewPatientForm) {
-            if (!newPatientData.name || !newPatientData.phone || !formData.doctorId) {
-                alert('يرجى ملء اسم المريض الجديد ورقم هاتفه واختيار طبيب.');
+            if (!newPatientData.name || !newPatientData.phone || !newPatientData.age || !formData.doctorId) {
+                alert('يرجى ملء اسم المريض الجديد ورقم هاتفه وعمره واختيار طبيب.');
                 setIsSaving(false);
                 return;
             }
@@ -238,9 +249,11 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                     name: newPatientData.name,
                     phone: newPatientData.phone,
                     doctorIds: [formData.doctorId],
-                    age: 0, 
+                    age: parseInt(newPatientData.age, 10) || 0,
+                    gender: newPatientData.gender,
+                    isSmoker: newPatientData.isSmoker,
+                    isPregnant: newPatientData.gender === Gender.Female ? newPatientData.isPregnant : false,
                     notes: 'مريض جديد تم إنشاؤه من صفحة المواعيد',
-                    gender: Gender.Male,
                 });
                 patientIdForAppointment = newPatient.id;
                 refreshPatientsList = true;
@@ -309,6 +322,29 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                                         <div>
                                             <label htmlFor="newPatientPhone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">هاتف المريض</label>
                                             <input type="tel" id="newPatientPhone" name="phone" value={newPatientData.phone} onChange={handleNewPatientChange} required className={inputStyle} placeholder="رقم الهاتف" />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="newPatientAge" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">العمر</label>
+                                            <input type="number" id="newPatientAge" name="age" value={newPatientData.age} onChange={handleNewPatientChange} required className={inputStyle} placeholder="العمر" />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="newPatientGender" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الجنس</label>
+                                            <select id="newPatientGender" name="gender" value={newPatientData.gender} onChange={handleNewPatientChange} className={inputStyle}>
+                                                <option value={Gender.Male}>ذكر</option>
+                                                <option value={Gender.Female}>أنثى</option>
+                                            </select>
+                                        </div>
+                                        <div className="md:col-span-2 flex items-center space-x-4 pt-2">
+                                            <label className="flex items-center cursor-pointer">
+                                                <input type="checkbox" name="isSmoker" checked={newPatientData.isSmoker} onChange={handleNewPatientChange} className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary" />
+                                                <span className="mr-2 text-sm text-gray-700 dark:text-gray-300">مدخن</span>
+                                            </label>
+                                            {newPatientData.gender === Gender.Female && (
+                                                <label className="flex items-center cursor-pointer">
+                                                    <input type="checkbox" name="isPregnant" checked={newPatientData.isPregnant} onChange={handleNewPatientChange} className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary" />
+                                                    <span className="mr-2 text-sm text-gray-700 dark:text-gray-300">حامل</span>
+                                                </label>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

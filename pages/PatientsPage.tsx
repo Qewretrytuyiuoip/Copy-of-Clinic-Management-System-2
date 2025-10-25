@@ -851,22 +851,17 @@ const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, on
     const [isSaving, setIsSaving] = useState(false);
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
     
-    const canSelectMultipleDoctors = user.role === UserRole.Admin || (user.role === UserRole.Doctor && user.is_diagnosis_doctor);
+    const isSecretary = user.role === UserRole.Secretary;
     const canEditDoctors = user.role === UserRole.Admin || user.role === UserRole.Secretary || (user.role === UserRole.Doctor && user.is_diagnosis_doctor);
 
 
     const handleDoctorIdsChange = (doctorId: string) => {
         setFormData(prev => {
-            if (canSelectMultipleDoctors) {
-                const currentDoctorIds = prev.doctorIds;
-                const newDoctorIds = currentDoctorIds.includes(doctorId)
-                    ? currentDoctorIds.filter(id => id !== doctorId)
-                    : [...currentDoctorIds, doctorId];
-                return { ...prev, doctorIds: newDoctorIds };
-            } else {
-                // Single-select logic for Secretary
-                return { ...prev, doctorIds: [doctorId] };
-            }
+            const currentDoctorIds = prev.doctorIds;
+            const newDoctorIds = currentDoctorIds.includes(doctorId)
+                ? currentDoctorIds.filter(id => id !== doctorId)
+                : [...currentDoctorIds, doctorId];
+            return { ...prev, doctorIds: newDoctorIds };
         });
     };
 
@@ -913,10 +908,12 @@ const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, on
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 max-h-[70vh] overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">كود المريض</label>
-                            <p className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-600 dark:text-gray-400">{patient.code}</p>
-                        </div>
+                         {!isSecretary && (
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">كود المريض</label>
+                                <p className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-600 dark:text-gray-400">{patient.code}</p>
+                            </div>
+                         )}
                          <div><label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الاسم</label><input type="text" id="name" name="name" value={formData.name} onChange={handleChange} required className={inputStyle} /></div>
                          <div><label htmlFor="age" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">العمر</label><input type="number" id="age" name="age" value={formData.age} onChange={handleChange} required className={inputStyle} /></div>
                          <div><label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الهاتف</label><input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleChange} required className={inputStyle} /></div>
@@ -927,12 +924,9 @@ const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, on
                                 <option value={Gender.Female}>أنثى</option>
                             </select>
                         </div>
-                        {canEditDoctors && (
+                        {canEditDoctors && !isSecretary && (
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأطباء المسؤولون</label>
-                                {user.role === UserRole.Secretary && (
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">يمكنك اختيار طبيب واحد فقط.</p>
-                                )}
                                 <div className="mt-2 p-3 border border-gray-800 dark:border-gray-600 rounded-md h-32 overflow-y-auto space-y-2 bg-white dark:bg-gray-700">
                                     {doctors.map(doctor => (
                                         <label key={doctor.id} className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
@@ -951,9 +945,13 @@ const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, on
                                 </div>
                             </div>
                         )}
-                        <div className="md:col-span-2"><label htmlFor="drugAllergyEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الحساسية الدوائية</label><textarea id="drugAllergyEdit" name="drugAllergy" value={formData.drugAllergy} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
-                        <div className="md:col-span-2"><label htmlFor="chronicDiseasesEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأمراض المزمنة</label><textarea id="chronicDiseasesEdit" name="chronicDiseases" value={formData.chronicDiseases} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
-                        <div className="md:col-span-2"><label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات عامة</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                        {!isSecretary && (
+                            <>
+                                <div className="md:col-span-2"><label htmlFor="drugAllergyEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الحساسية الدوائية</label><textarea id="drugAllergyEdit" name="drugAllergy" value={formData.drugAllergy} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                                <div className="md:col-span-2"><label htmlFor="chronicDiseasesEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأمراض المزمنة</label><textarea id="chronicDiseasesEdit" name="chronicDiseases" value={formData.chronicDiseases} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                                <div className="md:col-span-2"><label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات عامة</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                            </>
+                        )}
                         <div className="md:col-span-2 flex items-center space-x-4 pt-2">
                            <label className="flex items-center cursor-pointer">
                                 <input type="checkbox" name="isSmoker" checked={formData.isSmoker} onChange={handleChange} className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary" />
@@ -1280,21 +1278,17 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
     const [isSaving, setIsSaving] = useState(false);
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
     
+    const isSecretary = user.role === UserRole.Secretary;
     const canSelectMultipleDoctors = user.role === UserRole.Admin || (user.role === UserRole.Doctor && user.is_diagnosis_doctor);
     const canEditDoctors = user.role === UserRole.Admin || user.role === UserRole.Secretary || (user.role === UserRole.Doctor && user.is_diagnosis_doctor);
 
     const handleDoctorIdsChange = (doctorId: string) => {
         setFormData(prev => {
-            if (canSelectMultipleDoctors) {
-                const currentDoctorIds = prev.doctorIds;
-                const newDoctorIds = currentDoctorIds.includes(doctorId)
-                    ? currentDoctorIds.filter(id => id !== doctorId)
-                    : [...currentDoctorIds, doctorId];
-                return { ...prev, doctorIds: newDoctorIds };
-            } else {
-                // Single-select logic for Secretary
-                return { ...prev, doctorIds: [doctorId] };
-            }
+            const currentDoctorIds = prev.doctorIds;
+            const newDoctorIds = currentDoctorIds.includes(doctorId)
+                ? currentDoctorIds.filter(id => id !== doctorId)
+                : [...currentDoctorIds, doctorId];
+            return { ...prev, doctorIds: newDoctorIds };
         });
     };
 
@@ -1348,32 +1342,48 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
                         </div>
                         {canEditDoctors && (
                             <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأطباء المسؤولون</label>
-                                {user.role === UserRole.Secretary && (
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1 mb-1">يمكنك اختيار طبيب واحد فقط.</p>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الطبيب المسؤول</label>
+                                {isSecretary ? (
+                                    <select
+                                        name="doctorIds"
+                                        value={formData.doctorIds[0] || ''}
+                                        onChange={(e) => setFormData(prev => ({...prev, doctorIds: [e.target.value]}))}
+                                        required
+                                        className={inputStyle}
+                                    >
+                                        <option value="">-- اختر طبيب --</option>
+                                        {doctors.map(doctor => (
+                                            <option key={doctor.id} value={doctor.id}>{doctor.name}</option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <div className="mt-2 p-3 border border-gray-800 dark:border-gray-600 rounded-md h-32 overflow-y-auto space-y-2 bg-white dark:bg-gray-700">
+                                        {doctors.map(doctor => (
+                                            <label key={doctor.id} className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.doctorIds.includes(doctor.id)}
+                                                    onChange={() => handleDoctorIdsChange(doctor.id)}
+                                                    className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary"
+                                                />
+                                                <div>
+                                                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{doctor.name}</span>
+                                                    <span className="text-xs text-gray-500 dark:text-gray-400 block">{doctor.specialty || 'لا يوجد تخصص'}</span>
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
                                 )}
-                                <div className="mt-2 p-3 border border-gray-800 dark:border-gray-600 rounded-md h-32 overflow-y-auto space-y-2 bg-white dark:bg-gray-700">
-                                    {doctors.map(doctor => (
-                                        <label key={doctor.id} className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
-                                            <input
-                                                type="checkbox"
-                                                checked={formData.doctorIds.includes(doctor.id)}
-                                                onChange={() => handleDoctorIdsChange(doctor.id)}
-                                                className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary"
-                                            />
-                                            <div>
-                                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{doctor.name}</span>
-                                                <span className="text-xs text-gray-500 dark:text-gray-400 block">{doctor.specialty || 'لا يوجد تخصص'}</span>
-                                            </div>
-                                        </label>
-                                    ))}
-                                </div>
                             </div>
                         )}
 
-                        <div className="md:col-span-2"><label htmlFor="drugAllergyAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الحساسية الدوائية</label><textarea id="drugAllergyAdd" name="drugAllergy" value={formData.drugAllergy} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
-                        <div className="md:col-span-2"><label htmlFor="chronicDiseasesAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأمراض المزمنة</label><textarea id="chronicDiseasesAdd" name="chronicDiseases" value={formData.chronicDiseases} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
-                        <div className="md:col-span-2"><label htmlFor="notesAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات عامة</label><textarea id="notesAdd" name="notes" value={formData.notes} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                        {!isSecretary && (
+                            <>
+                                <div className="md:col-span-2"><label htmlFor="drugAllergyAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الحساسية الدوائية</label><textarea id="drugAllergyAdd" name="drugAllergy" value={formData.drugAllergy} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                                <div className="md:col-span-2"><label htmlFor="chronicDiseasesAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأمراض المزمنة</label><textarea id="chronicDiseasesAdd" name="chronicDiseases" value={formData.chronicDiseases} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                                <div className="md:col-span-2"><label htmlFor="notesAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات عامة</label><textarea id="notesAdd" name="notes" value={formData.notes} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                            </>
+                        )}
                         <div className="md:col-span-2 flex items-center space-x-4 pt-2">
                            <label className="flex items-center cursor-pointer">
                                 <input type="checkbox" name="isSmoker" checked={formData.isSmoker} onChange={handleChange} className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary" />
@@ -2108,19 +2118,31 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user }) => {
                                     </div>
                                     <div className="mt-4 pt-4 border-t dark:border-gray-600 flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
                                         <button onClick={() => viewDetails(p, 'details')} className="flex items-center text-gray-600 dark:text-gray-300 hover:text-primary p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-sm" title="عرض التفاصيل"><EyeIcon className="h-4 w-4" /><span className="mr-1">التفاصيل</span></button>
-                                        <button onClick={() => viewDetails(p, 'sessions')} className="flex items-center text-teal-600 dark:text-teal-400 hover:text-teal-800 p-1 rounded hover:bg-teal-100 dark:hover:bg-teal-900/40 text-sm"><ClipboardListIcon className="h-4 w-4" /><span className="mr-1">الجلسات</span></button>
-                                        <button onClick={() => viewDetails(p, 'payments')} className="flex items-center text-green-600 dark:text-green-400 hover:text-green-800 p-1 rounded hover:bg-green-100 dark:hover:bg-green-900/40 text-sm"><CurrencyDollarIcon className="h-4 w-4" /><span className="mr-1">المالية</span></button>
+                                        {user.role !== UserRole.Secretary && (
+                                            <button onClick={() => viewDetails(p, 'sessions')} className="flex items-center text-teal-600 dark:text-teal-400 hover:text-teal-800 p-1 rounded hover:bg-teal-100 dark:hover:bg-teal-900/40 text-sm"><ClipboardListIcon className="h-4 w-4" /><span className="mr-1">الجلسات</span></button>
+                                        )}
                                         <button onClick={() => viewDetails(p, 'gallery')} className="flex items-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 p-1 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-sm"><PhotographIcon className="h-4 w-4" /><span className="mr-1">الصور</span></button>
-                                        <button onClick={() => viewDetails(p, 'activity')} className="flex items-center text-orange-600 dark:text-orange-400 hover:text-orange-800 p-1 rounded hover:bg-orange-100 dark:hover:bg-orange-900/40 text-sm"><ListBulletIcon className="h-4 w-4" /><span className="mr-1">السجل</span></button>
-                                        <button 
-                                            onClick={() => handlePrintReport(p)} 
-                                            disabled={isPrinting === p.id}
-                                            className="flex items-center text-red-600 dark:text-red-400 hover:text-red-800 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-sm disabled:opacity-50 disabled:cursor-wait" 
-                                            title="طباعة تقرير"
-                                        >
-                                            {isPrinting === p.id ? <LoadingSpinner className="h-4 w-4" /> : <DocumentTextIcon className="h-4 w-4" />}
-                                            <span className="mr-1">طباعة</span>
-                                        </button>
+                                        
+                                        {user.role !== UserRole.Doctor && (
+                                            <button onClick={() => viewDetails(p, 'payments')} className="flex items-center text-green-600 dark:text-green-400 hover:text-green-800 p-1 rounded hover:bg-green-100 dark:hover:bg-green-900/40 text-sm"><CurrencyDollarIcon className="h-4 w-4" /><span className="mr-1">المالية</span></button>
+                                        )}
+                                        
+                                        {(user.role === UserRole.Admin || user.role === UserRole.SubManager) && (
+                                            <button onClick={() => viewDetails(p, 'activity')} className="flex items-center text-orange-600 dark:text-orange-400 hover:text-orange-800 p-1 rounded hover:bg-orange-100 dark:hover:bg-orange-900/40 text-sm"><ListBulletIcon className="h-4 w-4" /><span className="mr-1">السجل</span></button>
+                                        )}
+                                        
+                                        {user.role !== UserRole.Doctor && (
+                                            <button 
+                                                onClick={() => handlePrintReport(p)} 
+                                                disabled={isPrinting === p.id}
+                                                className="flex items-center text-red-600 dark:text-red-400 hover:text-red-800 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-sm disabled:opacity-50 disabled:cursor-wait" 
+                                                title="طباعة تقرير"
+                                            >
+                                                {isPrinting === p.id ? <LoadingSpinner className="h-4 w-4" /> : <DocumentTextIcon className="h-4 w-4" />}
+                                                <span className="mr-1">طباعة</span>
+                                            </button>
+                                        )}
+
                                         {(user.role === UserRole.Admin || user.role === UserRole.Secretary) && (
                                             <>
                                                 <button onClick={() => setEditingPatient(p)} className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 text-sm"><PencilIcon className="h-4 w-4" /><span className="mr-1">تعديل</span></button>
