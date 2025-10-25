@@ -11,10 +11,8 @@ import UsersPage from './pages/UsersPage';
 import AppointmentsPage from './pages/AppointmentsPage';
 import PaymentsPage from './pages/PaymentsPage';
 import DoctorSchedulePage from './pages/DoctorSchedulePage';
-import DoctorSettingsPage from './pages/DoctorSettingsPage';
-import TreatmentsSettingsPage from './pages/TreatmentsSettingsPage';
 import StatisticsPage from './pages/StatisticsPage';
-import ProfilePage from './pages/DoctorsPage'; // Re-use DoctorsPage file for ProfilePage
+import ProfilePage from './pages/ProfilePage';
 
 const AppContent: React.FC = () => {
     const { user } = useAuth();
@@ -41,16 +39,12 @@ const AppContent: React.FC = () => {
                 return <AppointmentsPage user={user} refreshTrigger={refreshTrigger} />;
             case 'payments':
                  return (user.role === UserRole.Admin || user.role === UserRole.Secretary || user.role === UserRole.SubManager) ? <PaymentsPage user={user} refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;
-            case 'treatments_settings':
-                return (user.role === UserRole.Admin || user.role === UserRole.SubManager) ? <TreatmentsSettingsPage refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;
             case 'statistics':
                 return (user.role === UserRole.Admin || user.role === UserRole.SubManager) ? <StatisticsPage refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;
             case 'schedule':
                 return user.role === UserRole.Doctor ? <DoctorSchedulePage user={user} refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;
-            case 'settings':
-                return user.role === UserRole.Doctor ? <DoctorSettingsPage user={user} refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;
             case 'profile':
-                return <ProfilePage />;
+                return <ProfilePage refreshTrigger={refreshTrigger} />;
             default:
                 return <DashboardPage user={user} refreshTrigger={refreshTrigger} />;
         }

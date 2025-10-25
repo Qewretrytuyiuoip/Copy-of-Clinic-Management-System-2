@@ -10,7 +10,6 @@ export const NAV_ITEMS = {
     { name: 'المرضى', icon: UserGroupIcon, page: 'patients' },
     { name: 'المواعيد', icon: CalendarIcon, page: 'appointments' },
     { name: 'المدفوعات', icon: CurrencyDollarIcon, page: 'payments' },
-    { name: 'اعدادات العلاج', icon: BeakerIcon, page: 'treatments_settings' },
     { name: 'الاحصائيات', icon: ClipboardListIcon, page: 'statistics' },
   ],
   [UserRole.SubManager]: [
@@ -20,7 +19,6 @@ export const NAV_ITEMS = {
     { name: 'المرضى', icon: UserGroupIcon, page: 'patients' },
     { name: 'المواعيد', icon: CalendarIcon, page: 'appointments' },
     { name: 'المدفوعات', icon: CurrencyDollarIcon, page: 'payments' },
-    { name: 'اعدادات العلاج', icon: BeakerIcon, page: 'treatments_settings' },
     { name: 'الاحصائيات', icon: ClipboardListIcon, page: 'statistics' },
   ],
   [UserRole.Doctor]: [
@@ -28,7 +26,6 @@ export const NAV_ITEMS = {
     { name: 'لوحة التحكم', icon: HomeIcon, page: 'dashboard' },
     { name: 'مرضاي', icon: UserGroupIcon, page: 'patients' },
     { name: 'جدولي', icon: CalendarIcon, page: 'schedule' },
-    { name: 'الإعدادات', icon: CogIcon, page: 'settings' },
   ],
   [UserRole.Secretary]: [
     { name: 'الملف الشخصي', icon: UserCircleIcon, page: 'profile' },

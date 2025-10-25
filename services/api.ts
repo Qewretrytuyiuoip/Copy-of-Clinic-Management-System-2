@@ -1111,17 +1111,40 @@ export const api = {
         },
     },
     activityLogs: {
-        getAll: async (): Promise<ActivityLog[]> => {
+        getAll: async (params: { page: number; per_page: number; search?: string; date?: string; }): Promise<{logs: ActivityLog[], hasMore: boolean}> => {
             try {
-                const apiLogs = await apiFetch('activity_logs/all', { method: 'POST' });
-                if (!Array.isArray(apiLogs)) {
-                    console.error('Expected an array of activity logs from API, but got:', apiLogs);
-                    return [];
+                const formData = new FormData();
+                formData.append('page', String(params.page));
+                formData.append('per_page', String(params.per_page));
+                if (params.search) {
+                    formData.append('search', params.search);
                 }
-                return apiLogs.map(mapApiActivityLog);
+                if (params.date) {
+                    formData.append('date', params.date);
+                }
+
+                const apiResponse = await apiFetch('activity_logs/all', { method: 'POST', body: formData });
+                
+                // The paginated response is an object like { logs: { data: [], current_page: 1, last_page: 5 } }
+                const paginatedData = apiResponse.logs;
+                
+                if (!paginatedData || typeof paginatedData !== 'object' || !Array.isArray(paginatedData.data)) {
+                    console.error('Expected a paginated object with a "logs.data" array from API, but got:', apiResponse);
+                    // Fallback for cases where the API might just return an array directly
+                    if (Array.isArray(apiResponse)) {
+                        return { logs: apiResponse.map(mapApiActivityLog), hasMore: false };
+                    }
+                    return { logs: [], hasMore: false };
+                }
+                
+                const logs = paginatedData.data.map(mapApiActivityLog);
+                return {
+                    logs,
+                    hasMore: paginatedData.current_page < paginatedData.last_page,
+                };
             } catch (error) {
                 console.error("Failed to fetch activity logs:", error);
-                return [];
+                throw error;
             }
         },
     },

@@ -1,6 +1,7 @@
 
-import React, { useEffect, useState, useCallback } from 'react';
-import { User, Patient, Appointment, Payment, ActivityLog, ActivityLogActionType } from '../../types';
+
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { User, Appointment, Payment, ActivityLog, ActivityLogActionType } from '../../types';
 import { api } from '../../services/api';
 import { CurrencyDollarIcon, UserGroupIcon, CalendarIcon, UsersIcon, PlusIcon, PencilIcon, TrashIcon, SearchIcon } from '../Icons';
 import { CenteredLoadingSpinner } from '../LoadingSpinner';
@@ -38,38 +39,52 @@ const ActionIcon: React.FC<{ action: ActivityLogActionType }> = ({ action }) => 
     }
 };
 
+const LOGS_PER_PAGE = 5;
 
 const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger }) => {
     const [stats, setStats] = useState({ doctors: 0, patients: 0, appointments: 0, revenue: 0 });
-    const [allLogs, setAllLogs] = useState<ActivityLog[]>([]);
-    const [filteredLogs, setFilteredLogs] = useState<ActivityLog[]>([]);
-    const [patients, setPatients] = useState<Patient[]>([]);
-    const [visibleCount, setVisibleCount] = useState(5);
+    const [logs, setLogs] = useState<ActivityLog[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [fetchError, setFetchError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [dateFilter, setDateFilter] = useState('');
-    
+    const isInitialMount = useRef(true);
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         setFetchError(null);
         try {
-            const [doctors, fetchedPatients, appointments, payments, logs] = await Promise.all([
+            const [doctors, fetchedPatients, appointments, payments] = await Promise.all([
                 api.doctors.getAll(),
                 api.patients.getAll(),
                 api.appointments.getAll(),
                 api.payments.getAll(),
-                api.activityLogs.getAll()
             ]);
+            
             const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
+
+            const today = new Date();
+            const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            const todaysAppointmentsCount = appointments.filter(a => a.date === todayString).length;
+
             setStats({
                 doctors: doctors.length,
                 patients: fetchedPatients.length,
-                appointments: appointments.length,
+                appointments: todaysAppointmentsCount,
                 revenue: totalRevenue
             });
-            setPatients(fetchedPatients);
-            setAllLogs(logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+
+            // Fetch first page of logs
+            const logData = await api.activityLogs.getAll({ page: 1, per_page: LOGS_PER_PAGE, search: '', date: '' });
+            setLogs(logData.logs);
+            setHasMore(logData.hasMore);
+            setCurrentPage(1);
+            setSearchTerm('');
+            setDateFilter('');
+
         } catch (error) {
             if (error instanceof Error && error.message.includes('Failed to fetch')) {
                 setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');
@@ -79,6 +94,7 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger })
             }
         } finally {
             setLoading(false);
+            isInitialMount.current = false;
         }
     }, []);
 
@@ -86,37 +102,44 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger })
         fetchData();
     }, [fetchData, refreshTrigger]);
 
-    useEffect(() => {
-        let logs = allLogs;
+     useEffect(() => {
+        if (isInitialMount.current) return;
 
-        if (dateFilter) {
-            logs = logs.filter(log => log.timestamp.startsWith(dateFilter));
+        const handler = setTimeout(async () => {
+            setLoading(true);
+            try {
+                const { logs: newLogs, hasMore: newHasMore } = await api.activityLogs.getAll({ page: 1, per_page: LOGS_PER_PAGE, search: searchTerm, date: dateFilter });
+                setLogs(newLogs);
+                setHasMore(newHasMore);
+                setCurrentPage(1);
+            } catch (err) {
+                 setFetchError('فشل في جلب سجل النشاط.');
+            } finally {
+                setLoading(false);
+            }
+        }, 500); // Debounce search
+
+        return () => clearTimeout(handler);
+    }, [searchTerm, dateFilter]);
+
+    const handleShowMore = async () => {
+        if (loadingMore || !hasMore) return;
+        setLoadingMore(true);
+        try {
+            const nextPage = currentPage + 1;
+            const { logs: newLogs, hasMore: newHasMore } = await api.activityLogs.getAll({ page: nextPage, per_page: LOGS_PER_PAGE, search: searchTerm, date: dateFilter });
+            setLogs(prev => [...prev, ...newLogs]);
+            setHasMore(newHasMore);
+            setCurrentPage(nextPage);
+        } catch(err) {
+            setFetchError('فشل في تحميل المزيد من السجلات.');
+        } finally {
+            setLoadingMore(false);
         }
-
-        if (searchTerm) {
-            const lowerCaseSearch = searchTerm.toLowerCase();
-            logs = logs.filter(log => {
-                const patient = patients.find(p => p.id === log.patientId);
-                return (
-                    log.description.toLowerCase().includes(lowerCaseSearch) ||
-                    log.userName.toLowerCase().includes(lowerCaseSearch) ||
-                    (patient && patient.name.toLowerCase().includes(lowerCaseSearch))
-                );
-            });
-        }
-
-        setFilteredLogs(logs);
-        setVisibleCount(5); // Reset visible count on filter change
-    }, [searchTerm, dateFilter, allLogs, patients]);
-
-    const displayedLogs = filteredLogs.slice(0, visibleCount);
-
-    const handleShowMore = () => {
-        setVisibleCount(prev => prev + 5);
     };
 
-    if (loading) return <CenteredLoadingSpinner />;
-    if (fetchError) {
+    if (loading && logs.length === 0) return <CenteredLoadingSpinner />;
+    if (fetchError && logs.length === 0) {
         return <div className="text-center py-16 text-red-500 dark:text-red-400 bg-white dark:bg-slate-800 rounded-xl shadow-md"><p>{fetchError}</p></div>;
     }
 
@@ -151,9 +174,9 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger })
                     />
                 </div>
                 
-                {displayedLogs.length > 0 ? (
+                {loading && logs.length === 0 ? <CenteredLoadingSpinner /> : logs.length > 0 ? (
                     <div className="space-y-4">
-                        {displayedLogs.map(log => (
+                        {logs.map(log => (
                             <div key={log.id} className="flex items-start space-x-4 rtl:space-x-reverse p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50">
                                 <ActionIcon action={log.actionType} />
                                 <div className="flex-grow">
@@ -170,14 +193,16 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger })
                         <p>لا يوجد نشاط يطابق بحثك.</p>
                     </div>
                 )}
+                {fetchError && <p className="text-center text-sm text-red-500 mt-4">{fetchError}</p>}
 
-                {visibleCount < filteredLogs.length && (
+                {hasMore && (
                     <div className="mt-6 text-center">
                         <button
                             onClick={handleShowMore}
-                            className="px-6 py-2 bg-primary text-white font-semibold rounded-lg shadow-md hover:bg-primary-700 transition-colors"
+                            disabled={loadingMore}
+                            className="px-6 py-2 bg-primary text-white font-semibold rounded-lg shadow-md hover:bg-primary-700 transition-colors disabled:bg-primary-300 disabled:cursor-not-allowed"
                         >
-                            عرض المزيد
+                            {loadingMore ? 'جاري التحميل...' : 'عرض المزيد'}
                         </button>
                     </div>
                 )}

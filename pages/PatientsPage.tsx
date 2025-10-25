@@ -1695,8 +1695,10 @@ const PatientActivityLogPage: React.FC<{ patient: Patient; onBack: () => void; }
 
     const fetchLogs = useCallback(async () => {
         setLoading(true);
-        const allLogs = await api.activityLogs.getAll();
-        setLogs(allLogs.filter(log => log.patientId === patient.id).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+        // FIX: The `api.activityLogs.getAll` method requires pagination parameters and returns an object with a `logs` property.
+        // A large per_page value is used here to fetch all logs for the patient, and the response is handled correctly.
+        const response = await api.activityLogs.getAll({ page: 1, per_page: 9999 });
+        setLogs(response.logs.filter(log => log.patientId === patient.id).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
         setLoading(false);
     }, [patient.id]);
 
