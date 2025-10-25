@@ -63,6 +63,7 @@ export interface Patient {
     isPregnant?: boolean;
     drugAllergy?: string;
     chronicDiseases?: string;
+    createdAt: string;
 }
 
 export interface Appointment {

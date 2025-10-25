@@ -68,12 +68,18 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onSave, onClose, pati
             return;
         }
         setIsSaving(true);
-        await onSave({
-            patientId: formData.patientId,
-            amount: parseFloat(formData.amount),
-            date: formData.date
-        });
-        setIsSaving(false);
+        try {
+            await onSave({
+                patientId: formData.patientId,
+                amount: parseFloat(formData.amount),
+                date: formData.date
+            });
+        } catch (error) {
+            // onSave will throw, so we catch it here, alert, and allow user to retry.
+            alert(`فشل الحفظ: ${error instanceof Error ? error.message : "خطأ غير معروف"}`);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
@@ -139,12 +145,17 @@ const EditPaymentModal: React.FC<EditPaymentModalProps> = ({ payment, onSave, on
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
-        await onSave({
-            ...payment,
-            ...formData,
-            amount: parseFloat(formData.amount),
-        });
-        setIsSaving(false);
+        try {
+            await onSave({
+                ...payment,
+                ...formData,
+                amount: parseFloat(formData.amount),
+            });
+        } catch(error) {
+            alert(`فشل التعديل: ${error instanceof Error ? error.message : "خطأ غير معروف"}`);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
@@ -221,37 +232,26 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user, refreshTrigger }) => 
     }, [fetchData, refreshTrigger]);
 
     const handleCreatePayment = async (newPaymentData: Omit<Payment, 'id'>) => {
-        try {
-            await api.payments.create(newPaymentData);
-            setIsAddingPayment(false);
-            await fetchData();
-        } catch (error) {
-            console.error("Failed to create payment:", error);
-            alert(`فشل إضافة الدفعة: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
-        }
+        await api.payments.create(newPaymentData);
+        setIsAddingPayment(false);
+        await fetchData();
     };
 
     const handleUpdatePayment = async (updatedPayment: Payment) => {
-        try {
-            await api.payments.update(updatedPayment.id, updatedPayment);
-            setEditingPayment(null);
-            await fetchData();
-        } catch (error) {
-            console.error("Failed to update payment:", error);
-            alert(`فشل تعديل الدفعة: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
-        }
+        await api.payments.update(updatedPayment.id, updatedPayment);
+        setEditingPayment(null);
+        await fetchData();
     };
 
     const confirmDeletePayment = async () => {
         if (paymentToDelete) {
             try {
                 await api.payments.delete(paymentToDelete.id);
+                setPaymentToDelete(null);
+                await fetchData();
             } catch (error) {
                 console.error("Failed to delete payment:", error);
                 alert(`فشل حذف الدفعة: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
-            } finally {
-                setPaymentToDelete(null);
-                await fetchData();
             }
         }
     };

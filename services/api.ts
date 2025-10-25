@@ -2,6 +2,18 @@
 import { User, UserRole, Patient, Treatment, Session, Appointment, Payment, DoctorAvailability, SessionTreatment, Gender, DaySchedule, PatientPhoto, ActivityLog, ActivityLogActionType, CreatePatientPhotosPayload } from '../types';
 import { API_BASE_URL } from '../config';
 
+export class ApiError extends Error {
+  status: number;
+  errors?: Record<string, string[]>;
+
+  constructor(message: string, status: number, errors?: Record<string, string[]>) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.errors = errors;
+  }
+}
+
 // --- MOCK DATABASE ---
 
 export let MOCK_USERS: User[] = [
@@ -49,30 +61,29 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
 
     if (!response.ok) {
         let errorMessage = `خطأ في الخادم: ${response.status} ${response.statusText}`;
+        let validationErrors: Record<string, string[]> | undefined;
         try {
-            // Try to parse a structured JSON error from the server
             const errorData = await response.json();
             if (errorData.message) {
                 errorMessage = errorData.message;
-                // If there are validation errors, append them
-                if (errorData.errors) {
-                    const validationErrors = Object.values(errorData.errors).flat().join('\n');
-                    errorMessage += `\n\nالتفاصيل:\n${validationErrors}`;
+            }
+            if (errorData.errors) {
+                validationErrors = errorData.errors;
+            } else if (typeof errorData === 'object' && !Array.isArray(errorData) && errorData !== null) {
+                const firstKey = Object.keys(errorData)[0];
+                if (firstKey && Array.isArray(errorData[firstKey])) {
+                    validationErrors = errorData;
+                    errorMessage = "خطأ في التحقق من البيانات";
                 }
-            } else {
-                // If it's JSON but not in the expected format, stringify it
-                errorMessage = JSON.stringify(errorData);
             }
         } catch (e) {
-            // If the response is not JSON, use the raw text
             const errorText = await response.text();
             if (errorText) {
                 errorMessage = errorText;
             }
         }
-        console.error(`API call to ${endpoint} failed with status ${response.status}:`, errorMessage);
-        // Throw the detailed error message to be caught by the UI
-        throw new Error(errorMessage);
+        console.error(`API call to ${endpoint} failed with status ${response.status}:`, errorMessage, validationErrors);
+        throw new ApiError(errorMessage, response.status, validationErrors);
     }
 
     return response.json();
@@ -224,159 +235,105 @@ const createUserCRUD = (role: UserRole) => ({
     },
     getById: (id: string) => simulateDelay(MOCK_USERS.find(item => item.id === id && item.role === role) || null),
     create: async (item: Omit<User, 'id'>): Promise<User> => {
-        try {
-            const formData = new FormData();
-            formData.append('name', item.name);
-            formData.append('email', item.email);
-            if (!item.password) {
-                throw new Error("Password is required to create a new user.");
-            }
-            formData.append('password', item.password);
-            formData.append('role', item.role);
-            if (item.role === UserRole.Doctor) {
-                if (item.specialty) {
-                    formData.append('specialty', item.specialty);
-                }
-                if (item.is_diagnosis_doctor !== undefined) {
-                    formData.append('is_diagnosis_doctor', item.is_diagnosis_doctor ? '1' : '0');
-                }
-            }
-
-            const token = localStorage.getItem('authToken');
-            if (!token) throw new Error("Authentication token not found.");
-
-            const response = await fetch(`${API_BASE_URL}users/add`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: formData,
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Failed to create user: ${errorText}`);
-            }
-
-            const responseData = await response.json();
-            const createdApiUser = responseData.data;
-
-            if (!createdApiUser || !createdApiUser.id) {
-                console.error("Invalid API response after creating user. Full response:", responseData);
-                const errorMessage = responseData.message || "Invalid API response after creating user.";
-                throw new Error(errorMessage);
-            }
-
-            const newUser: User = {
-                id: String(createdApiUser.id),
-                name: createdApiUser.name,
-                email: createdApiUser.email,
-                role: createdApiUser.role as UserRole,
-                specialty: createdApiUser.specialty,
-                is_diagnosis_doctor: !!createdApiUser.is_diagnosis_doctor,
-            };
-
-            allUsersCache = null; // Invalidate cache after creation
-            return newUser;
-        } catch (error) {
-            console.error("Failed to create user via API:", error);
-            throw error;
+        const formData = new FormData();
+        formData.append('name', item.name);
+        formData.append('email', item.email);
+        if (!item.password) {
+            throw new Error("Password is required to create a new user.");
         }
+        formData.append('password', item.password);
+        formData.append('role', item.role);
+        if (item.role === UserRole.Doctor) {
+            if (item.specialty) {
+                formData.append('specialty', item.specialty);
+            }
+            if (item.is_diagnosis_doctor !== undefined) {
+                formData.append('is_diagnosis_doctor', item.is_diagnosis_doctor ? '1' : '0');
+            }
+        }
+
+        const responseData = await apiFetch('users/add', {
+            method: 'POST',
+            body: formData,
+        });
+
+        const createdApiUser = responseData.data;
+
+        if (!createdApiUser || !createdApiUser.id) {
+            console.error("Invalid API response after creating user. Full response:", responseData);
+            const errorMessage = responseData.message || "Invalid API response after creating user.";
+            throw new Error(errorMessage);
+        }
+
+        const newUser: User = {
+            id: String(createdApiUser.id),
+            name: createdApiUser.name,
+            email: createdApiUser.email,
+            role: createdApiUser.role as UserRole,
+            specialty: createdApiUser.specialty,
+            is_diagnosis_doctor: !!createdApiUser.is_diagnosis_doctor,
+        };
+
+        allUsersCache = null; // Invalidate cache after creation
+        return newUser;
     },
     update: async (id: string, updates: Partial<User>): Promise<User | null> => {
-        try {
-            const formData = new FormData();
-            formData.append('id', id);
+        const formData = new FormData();
+        formData.append('id', id);
 
-            // Only append fields that are being updated
-            if (updates.name) {
-                formData.append('name', updates.name);
-            }
-            if (updates.email) {
-                formData.append('email', updates.email);
-            }
-            // Only send password if a new one is provided and is not empty
-            if (updates.password && updates.password.length > 0) {
-                formData.append('password', updates.password);
-            }
-            if (updates.specialty !== undefined) {
-                formData.append('specialty', updates.specialty);
-            }
-            if (updates.is_diagnosis_doctor !== undefined) {
-                formData.append('is_diagnosis_doctor', updates.is_diagnosis_doctor ? '1' : '0');
-            }
-
-
-            const token = localStorage.getItem('authToken');
-            if (!token) throw new Error("Authentication token not found.");
-
-            const response = await fetch(`${API_BASE_URL}users/edit`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: formData,
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Failed to update user: ${errorText}`);
-            }
-
-            const responseData = await response.json();
-            const updatedApiUser = responseData.data;
-
-            if (!updatedApiUser || !updatedApiUser.id) {
-                console.error("Invalid API response after updating user. Full response:", responseData);
-                throw new Error(responseData.message || "Invalid API response after updating user.");
-            }
-
-            const updatedUser: User = {
-                id: String(updatedApiUser.id),
-                name: updatedApiUser.name,
-                email: updatedApiUser.email,
-                role: updatedApiUser.role as UserRole,
-                specialty: updatedApiUser.specialty,
-                is_diagnosis_doctor: !!updatedApiUser.is_diagnosis_doctor,
-            };
-            
-            allUsersCache = null; // Invalidate cache after update
-            return updatedUser;
-
-        } catch (error) {
-            console.error(`Failed to update user with ID ${id} via API:`, error);
-            throw error;
+        // Only append fields that are being updated
+        if (updates.name) {
+            formData.append('name', updates.name);
         }
+        if (updates.email) {
+            formData.append('email', updates.email);
+        }
+        // Only send password if a new one is provided and is not empty
+        if (updates.password && updates.password.length > 0) {
+            formData.append('password', updates.password);
+        }
+        if (updates.specialty !== undefined) {
+            formData.append('specialty', updates.specialty);
+        }
+        if (updates.is_diagnosis_doctor !== undefined) {
+            formData.append('is_diagnosis_doctor', updates.is_diagnosis_doctor ? '1' : '0');
+        }
+
+        const responseData = await apiFetch('users/edit', {
+            method: 'POST',
+            body: formData,
+        });
+
+        const updatedApiUser = responseData.data;
+
+        if (!updatedApiUser || !updatedApiUser.id) {
+            console.error("Invalid API response after updating user. Full response:", responseData);
+            throw new Error(responseData.message || "Invalid API response after updating user.");
+        }
+
+        const updatedUser: User = {
+            id: String(updatedApiUser.id),
+            name: updatedApiUser.name,
+            email: updatedApiUser.email,
+            role: updatedApiUser.role as UserRole,
+            specialty: updatedApiUser.specialty,
+            is_diagnosis_doctor: !!updatedApiUser.is_diagnosis_doctor,
+        };
+        
+        allUsersCache = null; // Invalidate cache after update
+        return updatedUser;
     },
     delete: async (id: string): Promise<boolean> => {
-        try {
-            const formData = new FormData();
-            formData.append('id', id);
+        const formData = new FormData();
+        formData.append('id', id);
 
-            const token = localStorage.getItem('authToken');
-            if (!token) {
-                throw new Error("Authentication token not found.");
-            }
+        await apiFetch('users/delete', {
+            method: 'POST',
+            body: formData,
+        });
 
-            const response = await fetch(`${API_BASE_URL}users/delete`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: formData,
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Failed to delete user: ${errorText}`);
-            }
-
-            allUsersCache = null; // Invalidate cache on successful deletion
-            return true;
-        } catch (error) {
-            console.error(`Failed to delete user with ID ${id} via API:`, error);
-            throw error; // Re-throw to be handled by the UI
-        }
+        allUsersCache = null; // Invalidate cache on successful deletion
+        return true;
     },
 });
 
@@ -394,6 +351,7 @@ const mapApiPatientToPatient = (p: any): Patient => ({
     isPregnant: !!p.is_pregnant,
     drugAllergy: p.drug_allergy ?? undefined,
     chronicDiseases: p.chronic_diseases ?? undefined,
+    createdAt: p.created_at,
 });
 
 const mapApiPaymentToPayment = (p: any): Payment => ({

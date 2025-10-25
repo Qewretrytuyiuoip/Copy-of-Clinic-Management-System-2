@@ -1,14 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { User, UserRole, Patient, Session, SessionTreatment, Treatment } from '../../types';
-import { api } from '../../services/api';
-import { PlusIcon, PencilIcon, TrashIcon, XIcon, ClipboardListIcon, BeakerIcon, ArrowBackIcon, EyeIcon, CheckIcon, UserGroupIcon } from '../../components/Icons';
+import { User, UserRole } from '../../types';
+import { api, ApiError } from '../../services/api';
+import { PlusIcon, PencilIcon, TrashIcon, XIcon, UserGroupIcon } from '../../components/Icons';
 import { CenteredLoadingSpinner } from '../../components/LoadingSpinner';
-import LoadingSpinner from '../../components/LoadingSpinner';
-
-
-// ===================================================================
-// Re-usable Modals and Sub-Pages (Copied from PatientsPage for encapsulation)
-// ===================================================================
 
 // ===================================================================
 // ConfirmDeleteModal Component
@@ -56,10 +50,18 @@ interface AddDoctorModalProps {
 const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ onSave, onClose }) => {
     const [formData, setFormData] = useState({ name: '', email: '', password: '', specialty: '', is_diagnosis_doctor: false });
     const [isSaving, setIsSaving] = useState(false);
+    const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type, checked } = e.target;
         setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+        if (validationErrors[name]) {
+            setValidationErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[name];
+                return newErrors;
+            });
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -69,8 +71,17 @@ const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ onSave, onClose }) => {
             return;
         }
         setIsSaving(true);
-        await onSave(formData);
-        setIsSaving(false);
+        setValidationErrors({});
+        try {
+            await onSave(formData);
+        } catch (error) {
+            setIsSaving(false);
+            if (error instanceof ApiError && error.errors) {
+                setValidationErrors(error.errors);
+            } else {
+                alert(`فشل في إنشاء الطبيب: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+            }
+        }
     };
     
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
@@ -95,6 +106,9 @@ const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ onSave, onClose }) => {
                         <div>
                             <label htmlFor="emailAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">البريد الإلكتروني</label>
                             <input type="email" id="emailAdd" name="email" value={formData.email} onChange={handleChange} required className={inputStyle} />
+                             {validationErrors.email && (
+                                <p className="mt-1 text-sm text-red-600 dark:text-red-400">هذا الايميل موجود بالفعل</p>
+                            )}
                         </div>
                         <div>
                             <label htmlFor="passwordAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">كلمة المرور</label>
@@ -135,21 +149,38 @@ interface EditDoctorModalProps {
 const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ doctor, onSave, onClose }) => {
     const [formData, setFormData] = useState({ name: doctor.name, email: doctor.email, password: '', specialty: doctor.specialty || '', is_diagnosis_doctor: doctor.is_diagnosis_doctor || false });
     const [isSaving, setIsSaving] = useState(false);
+    const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type, checked } = e.target;
         setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+        if (validationErrors[name]) {
+            setValidationErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[name];
+                return newErrors;
+            });
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
-        const updates: Partial<User> = { name: formData.name, email: formData.email, specialty: formData.specialty, is_diagnosis_doctor: formData.is_diagnosis_doctor };
-        if (formData.password) {
-            updates.password = formData.password;
+        setValidationErrors({});
+        try {
+            const updates: Partial<User> = { name: formData.name, email: formData.email, specialty: formData.specialty, is_diagnosis_doctor: formData.is_diagnosis_doctor };
+            if (formData.password) {
+                updates.password = formData.password;
+            }
+            await onSave({ ...doctor, ...updates });
+        } catch (error) {
+            setIsSaving(false);
+            if (error instanceof ApiError && error.errors) {
+                setValidationErrors(error.errors);
+            } else {
+                alert(`فشل في تعديل الطبيب: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+            }
         }
-        await onSave({ ...doctor, ...updates });
-        setIsSaving(false);
     };
     
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
@@ -165,7 +196,13 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ doctor, onSave, onClo
                     <div className="p-6 space-y-4">
                         <div><label htmlFor="nameEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الاسم</label><input type="text" id="nameEdit" name="name" value={formData.name} onChange={handleChange} required className={inputStyle} /></div>
                         <div><label htmlFor="specialtyEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">التخصص</label><input type="text" id="specialtyEdit" name="specialty" value={formData.specialty} onChange={handleChange} required className={inputStyle} /></div>
-                        <div><label htmlFor="emailEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">البريد الإلكتروني</label><input type="email" id="emailEdit" name="email" value={formData.email} onChange={handleChange} required className={inputStyle} /></div>
+                        <div>
+                            <label htmlFor="emailEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">البريد الإلكتروني</label>
+                            <input type="email" id="emailEdit" name="email" value={formData.email} onChange={handleChange} required className={inputStyle} />
+                            {validationErrors.email && (
+                                <p className="mt-1 text-sm text-red-600 dark:text-red-400">هذا الايميل موجود بالفعل</p>
+                            )}
+                        </div>
                         <div><label htmlFor="passwordEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">كلمة المرور (اتركها فارغة لعدم التغيير)</label><input type="password" id="passwordEdit" name="password" value={formData.password} onChange={handleChange} className={inputStyle} /></div>
                         <div>
                             <label className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer">
@@ -221,22 +258,36 @@ const DoctorsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
     }, [fetchDoctors, refreshTrigger]);
 
     const handleCreateDoctor = async (newDoctorData: Omit<User, 'id' | 'role'>) => {
-        await api.doctors.create({ ...newDoctorData, role: UserRole.Doctor });
-        setIsAddingDoctor(false);
-        await fetchDoctors();
+        try {
+            await api.doctors.create({ ...newDoctorData, role: UserRole.Doctor });
+            setIsAddingDoctor(false);
+            await fetchDoctors();
+        } catch (error) {
+            console.error("Failed to create doctor:", error);
+            throw error;
+        }
     };
     
     const handleUpdateDoctor = async (updatedDoctor: User) => {
-        await api.doctors.update(updatedDoctor.id, updatedDoctor);
-        setEditingDoctor(null);
-        await fetchDoctors();
+        try {
+            await api.doctors.update(updatedDoctor.id, updatedDoctor);
+            setEditingDoctor(null);
+            await fetchDoctors();
+        } catch (error) {
+            console.error("Failed to update doctor:", error);
+            throw error;
+        }
     };
 
     const confirmDeleteDoctor = async () => {
         if (deletingDoctor) {
-            await api.doctors.delete(deletingDoctor.id);
-            setDeletingDoctor(null);
-            await fetchDoctors();
+            try {
+                await api.doctors.delete(deletingDoctor.id);
+                setDeletingDoctor(null);
+                await fetchDoctors();
+            } catch(error) {
+                 alert(`فشل حذف الطبيب: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+            }
         }
     };
     

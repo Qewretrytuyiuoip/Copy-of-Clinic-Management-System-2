@@ -1171,7 +1171,9 @@ const PatientSessionsPage: React.FC<{ patient: Patient; onBack: () => void; doct
     const fetchSessions = useCallback(async () => {
         setLoading(true);
         const allSessions = await api.sessions.getAll();
-        setSessions(allSessions.filter(s => s.patientId === patient.id));
+        const patientSessions = allSessions.filter(s => s.patientId === patient.id);
+        patientSessions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setSessions(patientSessions);
         setLoading(false);
     }, [patient.id]);
 
@@ -1783,7 +1785,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
             api.patients.getAll(),
             api.doctors.getAll(),
         ]);
-        setPatients(pats);
+        setPatients(pats.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         setDoctors(docs);
         setLoading(false);
     }, []);

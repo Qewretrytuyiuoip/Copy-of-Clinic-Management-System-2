@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { User, UserRole } from '../../types';
-import { api } from '../../services/api';
+import { api, ApiError } from '../../services/api';
 import { PlusIcon, PencilIcon, TrashIcon, XIcon } from '../../components/Icons';
 import { CenteredLoadingSpinner } from '../../components/LoadingSpinner';
 
@@ -50,10 +50,18 @@ interface AddSecretaryModalProps {
 const AddSecretaryModal: React.FC<AddSecretaryModalProps> = ({ onSave, onClose }) => {
     const [formData, setFormData] = useState({ name: '', email: '', password: '' });
     const [isSaving, setIsSaving] = useState(false);
+    const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+         if (validationErrors[name]) {
+            setValidationErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[name];
+                return newErrors;
+            });
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -63,8 +71,17 @@ const AddSecretaryModal: React.FC<AddSecretaryModalProps> = ({ onSave, onClose }
             return;
         }
         setIsSaving(true);
-        await onSave(formData);
-        setIsSaving(false);
+        setValidationErrors({});
+        try {
+            await onSave(formData);
+        } catch (error) {
+            setIsSaving(false);
+            if (error instanceof ApiError && error.errors) {
+                setValidationErrors(error.errors);
+            } else {
+                alert(`فشل في إنشاء السكرتير: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+            }
+        }
     };
     
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
@@ -85,6 +102,9 @@ const AddSecretaryModal: React.FC<AddSecretaryModalProps> = ({ onSave, onClose }
                         <div>
                             <label htmlFor="emailAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">البريد الإلكتروني</label>
                             <input type="email" id="emailAdd" name="email" value={formData.email} onChange={handleChange} required className={inputStyle} />
+                            {validationErrors.email && (
+                                <p className="mt-1 text-sm text-red-600 dark:text-red-400">هذا الايميل موجود بالفعل</p>
+                            )}
                         </div>
                         <div>
                             <label htmlFor="passwordAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">كلمة المرور</label>
@@ -113,21 +133,38 @@ interface EditSecretaryModalProps {
 const EditSecretaryModal: React.FC<EditSecretaryModalProps> = ({ secretary, onSave, onClose }) => {
     const [formData, setFormData] = useState({ name: secretary.name, email: secretary.email, password: '' });
     const [isSaving, setIsSaving] = useState(false);
+    const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+        if (validationErrors[name]) {
+            setValidationErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[name];
+                return newErrors;
+            });
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
-        const updates: Partial<User> = { name: formData.name, email: formData.email };
-        if (formData.password) {
-            updates.password = formData.password;
+        setValidationErrors({});
+        try {
+            const updates: Partial<User> = { name: formData.name, email: formData.email };
+            if (formData.password) {
+                updates.password = formData.password;
+            }
+            await onSave({ ...secretary, ...updates });
+        } catch (error) {
+            setIsSaving(false);
+            if (error instanceof ApiError && error.errors) {
+                setValidationErrors(error.errors);
+            } else {
+                alert(`فشل في تعديل السكرتير: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+            }
         }
-        await onSave({ ...secretary, ...updates });
-        setIsSaving(false);
     };
     
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
@@ -142,7 +179,13 @@ const EditSecretaryModal: React.FC<EditSecretaryModalProps> = ({ secretary, onSa
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4">
                         <div><label htmlFor="nameEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الاسم</label><input type="text" id="nameEdit" name="name" value={formData.name} onChange={handleChange} required className={inputStyle} /></div>
-                        <div><label htmlFor="emailEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">البريد الإلكتروني</label><input type="email" id="emailEdit" name="email" value={formData.email} onChange={handleChange} required className={inputStyle} /></div>
+                        <div>
+                            <label htmlFor="emailEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">البريد الإلكتروني</label>
+                            <input type="email" id="emailEdit" name="email" value={formData.email} onChange={handleChange} required className={inputStyle} />
+                            {validationErrors.email && (
+                                <p className="mt-1 text-sm text-red-600 dark:text-red-400">هذا الايميل موجود بالفعل</p>
+                            )}
+                        </div>
                         <div><label htmlFor="passwordEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">كلمة المرور (اتركها فارغة لعدم التغيير)</label><input type="password" id="passwordEdit" name="password" value={formData.password} onChange={handleChange} className={inputStyle} /></div>
                     </div>
                     <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
@@ -188,22 +231,36 @@ const SecretariesTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
     }, [fetchSecretaries, refreshTrigger]);
 
     const handleCreateSecretary = async (newSecretaryData: Omit<User, 'id' | 'role'>) => {
-        await api.secretaries.create({ ...newSecretaryData, role: UserRole.Secretary });
-        setIsAddingSecretary(false);
-        await fetchSecretaries();
+        try {
+            await api.secretaries.create({ ...newSecretaryData, role: UserRole.Secretary });
+            setIsAddingSecretary(false);
+            await fetchSecretaries();
+        } catch (error) {
+            console.error("Failed to create secretary:", error);
+            throw error;
+        }
     };
     
     const handleUpdateSecretary = async (updatedSecretary: User) => {
-        await api.secretaries.update(updatedSecretary.id, updatedSecretary);
-        setEditingSecretary(null);
-        await fetchSecretaries();
+        try {
+            await api.secretaries.update(updatedSecretary.id, updatedSecretary);
+            setEditingSecretary(null);
+            await fetchSecretaries();
+        } catch (error) {
+            console.error("Failed to update secretary:", error);
+            throw error;
+        }
     };
 
     const confirmDeleteSecretary = async () => {
         if (deletingSecretary) {
-            await api.secretaries.delete(deletingSecretary.id);
-            setDeletingSecretary(null);
-            await fetchSecretaries();
+            try {
+                await api.secretaries.delete(deletingSecretary.id);
+                setDeletingSecretary(null);
+                await fetchSecretaries();
+            } catch (error) {
+                alert(`فشل حذف السكرتير: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+            }
         }
     };
 

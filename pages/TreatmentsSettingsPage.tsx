@@ -63,17 +63,21 @@ const TreatmentFormModal: React.FC<TreatmentFormModalProps> = ({ treatment, onSa
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
-        const dataToSave = {
-            name: formData.name,
-            price: parseFloat(formData.price) || 0,
-            notes: formData.notes,
-        };
-        if (treatment) {
-            await onSave({ ...treatment, ...dataToSave });
-        } else {
-            await onSave(dataToSave);
+        try {
+            const dataToSave = {
+                name: formData.name,
+                price: parseFloat(formData.price) || 0,
+                notes: formData.notes,
+            };
+            if (treatment) {
+                await onSave({ ...treatment, ...dataToSave });
+            } else {
+                await onSave(dataToSave);
+            }
+        } catch (error) {
+            alert(`فشل الحفظ: ${error instanceof Error ? error.message : "خطأ غير معروف"}`);
+            setIsSaving(false); // only reset on error, so modal stays open
         }
-        setIsSaving(false);
     };
     
     const isEditMode = !!treatment;
@@ -150,16 +154,15 @@ const TreatmentsSettingsPage: React.FC<{ refreshTrigger: number }> = ({ refreshT
         try {
             if ('id' in data) {
                 await api.treatmentSettings.update(data.id, data);
-                setEditingTreatment(null);
             } else {
                 await api.treatmentSettings.create(data);
-                setIsAdding(false);
             }
+            setIsAdding(false);
+            setEditingTreatment(null);
             await fetchTreatments();
         } catch (error) {
-            const action = 'id' in data ? 'تحديث' : 'إنشاء';
-            console.error(`Failed to ${action} treatment:`, error);
-            alert(`فشل ${action} العلاج: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+            console.error(`Failed to save treatment:`, error);
+            throw error;
         }
     };
 
@@ -167,12 +170,11 @@ const TreatmentsSettingsPage: React.FC<{ refreshTrigger: number }> = ({ refreshT
         if (deletingTreatment) {
             try {
                 await api.treatmentSettings.delete(deletingTreatment.id);
+                setDeletingTreatment(null);
+                await fetchTreatments();
             } catch (error) {
                 console.error("Failed to delete treatment:", error);
                 alert(`فشل حذف العلاج: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
-            } finally {
-                setDeletingTreatment(null);
-                await fetchTreatments();
             }
         }
     };

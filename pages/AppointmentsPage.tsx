@@ -235,16 +235,15 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
-        let patientIdForAppointment = formData.patientId;
-        let refreshPatientsList = false;
-    
-        if (showNewPatientForm) {
-            if (!newPatientData.name || !newPatientData.phone || !newPatientData.age || !formData.doctorId) {
-                alert('يرجى ملء اسم المريض الجديد ورقم هاتفه وعمره واختيار طبيب.');
-                setIsSaving(false);
-                return;
-            }
-            try {
+        try {
+            let patientIdForAppointment = formData.patientId;
+            let refreshPatientsList = false;
+        
+            if (showNewPatientForm) {
+                if (!newPatientData.name || !newPatientData.phone || !newPatientData.age || !formData.doctorId) {
+                    throw new Error('يرجى ملء اسم المريض الجديد ورقم هاتفه وعمره واختيار طبيب.');
+                }
+                // FIX: Add 'createdAt' property to the object to satisfy the 'Omit<Patient, "id" | "code">' type.
                 const newPatient = await api.patients.create({
                     name: newPatientData.name,
                     phone: newPatientData.phone,
@@ -254,38 +253,33 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                     isSmoker: newPatientData.isSmoker,
                     isPregnant: newPatientData.gender === Gender.Female ? newPatientData.isPregnant : false,
                     notes: 'مريض جديد تم إنشاؤه من صفحة المواعيد',
+                    createdAt: new Date().toISOString(),
                 }, user.id);
                 patientIdForAppointment = newPatient.id;
                 refreshPatientsList = true;
-            } catch (error) {
-                console.error("فشل في إنشاء مريض جديد:", error);
-                alert('فشل في إنشاء المريض الجديد.');
-                setIsSaving(false);
-                return;
             }
-        }
+        
+            if (!patientIdForAppointment) {
+                throw new Error('يرجى اختيار مريض.');
+            }
     
-        if (!patientIdForAppointment) {
-            alert('يرجى اختيار مريض.');
+            if(!formData.time) {
+                throw new Error('يرجى اختيار وقت للموعد.');
+            }
+        
+            const appointmentData = {
+                ...formData,
+                patientId: patientIdForAppointment,
+                createdBy: user.id,
+            };
+        
+            const dataToSave = appointment ? { ...appointment, ...appointmentData } : appointmentData;
+            await onSave(dataToSave, refreshPatientsList);
+        } catch (error) {
+            alert(`فشل الحفظ: ${error instanceof Error ? error.message : "خطأ غير معروف"}`);
+        } finally {
             setIsSaving(false);
-            return;
         }
-
-        if(!formData.time) {
-            alert('يرجى اختيار وقت للموعد.');
-            setIsSaving(false);
-            return;
-        }
-    
-        const appointmentData = {
-            ...formData,
-            patientId: patientIdForAppointment,
-            createdBy: user.id,
-        };
-    
-        const dataToSave = appointment ? { ...appointment, ...appointmentData } : appointmentData;
-        await onSave(dataToSave, refreshPatientsList);
-        setIsSaving(false);
     };
 
     const isEditMode = !!appointment;
@@ -478,14 +472,13 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
             } else {
                 await api.appointments.create(dataWithUser);
             }
-        } catch (error) {
-            const action = 'id' in data ? 'تعديل' : 'إضافة';
-            console.error(`Failed to ${action} appointment:`, error);
-            alert(`فشل ${action} الموعد: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
-        } finally {
             setIsAddingAppointment(false);
             setEditingAppointment(null);
             await fetchData(refreshPatients);
+        } catch (error) {
+            // Error is now handled inside the modal's handleSubmit
+            console.error(`Failed to save appointment:`, error);
+            throw error; // Re-throw to be caught by the modal
         }
     };
 
@@ -493,12 +486,11 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
         if (deletingAppointment) {
             try {
                 await api.appointments.delete(deletingAppointment.id);
+                setDeletingAppointment(null);
+                await fetchData();
             } catch (error) {
                 console.error("Failed to delete appointment:", error);
                 alert(`فشل حذف الموعد: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
-            } finally {
-                setDeletingAppointment(null);
-                await fetchData();
             }
         }
     };
