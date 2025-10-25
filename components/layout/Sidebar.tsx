@@ -13,8 +13,8 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, sidebarOpen, setSidebarOpen }) => {
-    const { settings } = useAppSettings();
     const navItems = NAV_ITEMS[user.role];
+    const { settings } = useAppSettings();
 
     const handleNavigation = (page: string) => {
         setCurrentPage(page);
@@ -22,8 +22,8 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
     }
     
     const sidebarHeader = (
-        <div className="flex items-center justify-center h-20 border-b dark:border-gray-700 px-4">
-            {settings.appLogo && <img src={settings.appLogo} alt="App Logo" className="h-8 w-auto ml-2" />}
+        <div className="flex items-center justify-center h-20 border-b dark:border-gray-700 px-4 space-x-2 rtl:space-x-reverse">
+            <img src={settings.appLogo} alt="شعار التطبيق" className="h-10 w-10" />
             <h1 className="text-xl font-bold text-primary truncate">{settings.appName}</h1>
         </div>
     );

@@ -1,35 +1,34 @@
 import React, { createContext, useState, useContext, useEffect, useMemo, ReactNode } from 'react';
 
-// Define the default logo path
-const DEFAULT_LOGO_PATH = '/assets/logo.svg';
-
+// FIX: Added appLogo to the AppSettings interface to support logo customization.
 interface AppSettings {
     appName: string;
-    appLogo: string | null;
+    appLogo: string;
 }
 
+// FIX: Added setAppLogo to the context type to allow updating the application logo.
 interface AppSettingsContextType {
     settings: AppSettings;
     setAppName: (name: string) => void;
-    setAppLogo: (logo: string | null) => void;
+    setAppLogo: (logo: string) => void;
 }
 
 export const AppSettingsContext = createContext<AppSettingsContextType | undefined>(undefined);
 
 const getInitialSettings = (): AppSettings => {
+    // FIX: Added appLogo to the default settings and load it from localStorage.
     const defaultSettings: AppSettings = {
         appName: 'Sara dental clinic',
-        appLogo: DEFAULT_LOGO_PATH,
+        appLogo: '/assets/logo.svg',
     };
     try {
         const savedSettings = localStorage.getItem('appSettings');
         if (savedSettings) {
             const parsed = JSON.parse(savedSettings);
-             // This handles old localStorage values before the default logo existed.
-            if (parsed.appLogo === null || parsed.appLogo === './assets/logo.svg') {
-                parsed.appLogo = DEFAULT_LOGO_PATH;
-            }
-            return { ...defaultSettings, ...parsed };
+            return { 
+                appName: parsed.appName || defaultSettings.appName,
+                appLogo: parsed.appLogo || defaultSettings.appLogo
+            };
         }
     } catch (error) {
         console.error("Could not parse app settings from localStorage", error);
@@ -53,11 +52,12 @@ export const AppSettingsProvider: React.FC<{ children: ReactNode }> = ({ childre
         setSettings(prev => ({ ...prev, appName: name }));
     };
 
-    const setAppLogo = (logo: string | null) => {
-        // If logo is null, set to default path.
-        setSettings(prev => ({ ...prev, appLogo: logo ?? DEFAULT_LOGO_PATH }));
+    // FIX: Implemented setAppLogo to update the logo in the application state.
+    const setAppLogo = (logo: string) => {
+        setSettings(prev => ({ ...prev, appLogo: logo }));
     };
 
+    // FIX: Provided setAppLogo through the context value.
     const value = useMemo(() => ({ settings, setAppName, setAppLogo }), [settings]);
 
     return React.createElement(AppSettingsContext.Provider, { value }, children);

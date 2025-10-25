@@ -832,9 +832,10 @@ interface EditPatientModalProps {
     onSave: (updatedPatient: Patient) => Promise<void>;
     onClose: () => void;
     doctors: User[];
+    user: User;
 }
 
-const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, onClose, doctors }) => {
+const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, onClose, doctors, user }) => {
     const [formData, setFormData] = useState({
         name: patient.name,
         age: patient.age.toString(),
@@ -849,14 +850,23 @@ const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, on
     });
     const [isSaving, setIsSaving] = useState(false);
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
+    
+    const canSelectMultipleDoctors = user.role === UserRole.Admin || (user.role === UserRole.Doctor && user.is_diagnosis_doctor);
+    const canEditDoctors = user.role === UserRole.Admin || user.role === UserRole.Secretary || (user.role === UserRole.Doctor && user.is_diagnosis_doctor);
+
 
     const handleDoctorIdsChange = (doctorId: string) => {
         setFormData(prev => {
-            const currentDoctorIds = prev.doctorIds;
-            const newDoctorIds = currentDoctorIds.includes(doctorId)
-                ? currentDoctorIds.filter(id => id !== doctorId)
-                : [...currentDoctorIds, doctorId];
-            return { ...prev, doctorIds: newDoctorIds };
+            if (canSelectMultipleDoctors) {
+                const currentDoctorIds = prev.doctorIds;
+                const newDoctorIds = currentDoctorIds.includes(doctorId)
+                    ? currentDoctorIds.filter(id => id !== doctorId)
+                    : [...currentDoctorIds, doctorId];
+                return { ...prev, doctorIds: newDoctorIds };
+            } else {
+                // Single-select logic for Secretary
+                return { ...prev, doctorIds: [doctorId] };
+            }
         });
     };
 
@@ -917,25 +927,30 @@ const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, on
                                 <option value={Gender.Female}>أنثى</option>
                             </select>
                         </div>
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأطباء المسؤولون</label>
-                            <div className="mt-2 p-3 border border-gray-800 dark:border-gray-600 rounded-md h-32 overflow-y-auto space-y-2 bg-white dark:bg-gray-700">
-                                {doctors.map(doctor => (
-                                    <label key={doctor.id} className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.doctorIds.includes(doctor.id)}
-                                            onChange={() => handleDoctorIdsChange(doctor.id)}
-                                            className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary"
-                                        />
-                                        <div>
-                                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{doctor.name}</span>
-                                            <span className="text-xs text-gray-500 dark:text-gray-400 block">{doctor.specialty || 'لا يوجد تخصص'}</span>
-                                        </div>
-                                    </label>
-                                ))}
+                        {canEditDoctors && (
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأطباء المسؤولون</label>
+                                {user.role === UserRole.Secretary && (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">يمكنك اختيار طبيب واحد فقط.</p>
+                                )}
+                                <div className="mt-2 p-3 border border-gray-800 dark:border-gray-600 rounded-md h-32 overflow-y-auto space-y-2 bg-white dark:bg-gray-700">
+                                    {doctors.map(doctor => (
+                                        <label key={doctor.id} className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.doctorIds.includes(doctor.id)}
+                                                onChange={() => handleDoctorIdsChange(doctor.id)}
+                                                className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary"
+                                            />
+                                            <div>
+                                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{doctor.name}</span>
+                                                <span className="text-xs text-gray-500 dark:text-gray-400 block">{doctor.specialty || 'لا يوجد تخصص'}</span>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
+                        )}
                         <div className="md:col-span-2"><label htmlFor="drugAllergyEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الحساسية الدوائية</label><textarea id="drugAllergyEdit" name="drugAllergy" value={formData.drugAllergy} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
                         <div className="md:col-span-2"><label htmlFor="chronicDiseasesEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأمراض المزمنة</label><textarea id="chronicDiseasesEdit" name="chronicDiseases" value={formData.chronicDiseases} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
                         <div className="md:col-span-2"><label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات عامة</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
@@ -1255,7 +1270,7 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
         age: '',
         phone: '',
         notes: '',
-        doctorIds: user.role === UserRole.Doctor ? [user.id] : [],
+        doctorIds: (user.role === UserRole.Doctor && !user.is_diagnosis_doctor) ? [user.id] : [],
         gender: Gender.Male,
         isSmoker: false,
         isPregnant: false,
@@ -1264,14 +1279,22 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
     });
     const [isSaving, setIsSaving] = useState(false);
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
+    
+    const canSelectMultipleDoctors = user.role === UserRole.Admin || (user.role === UserRole.Doctor && user.is_diagnosis_doctor);
+    const canEditDoctors = user.role === UserRole.Admin || user.role === UserRole.Secretary || (user.role === UserRole.Doctor && user.is_diagnosis_doctor);
 
     const handleDoctorIdsChange = (doctorId: string) => {
         setFormData(prev => {
-            const currentDoctorIds = prev.doctorIds;
-            const newDoctorIds = currentDoctorIds.includes(doctorId)
-                ? currentDoctorIds.filter(id => id !== doctorId)
-                : [...currentDoctorIds, doctorId];
-            return { ...prev, doctorIds: newDoctorIds };
+            if (canSelectMultipleDoctors) {
+                const currentDoctorIds = prev.doctorIds;
+                const newDoctorIds = currentDoctorIds.includes(doctorId)
+                    ? currentDoctorIds.filter(id => id !== doctorId)
+                    : [...currentDoctorIds, doctorId];
+                return { ...prev, doctorIds: newDoctorIds };
+            } else {
+                // Single-select logic for Secretary
+                return { ...prev, doctorIds: [doctorId] };
+            }
         });
     };
 
@@ -1323,25 +1346,30 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
                                 <option value={Gender.Female}>أنثى</option>
                             </select>
                         </div>
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأطباء المسؤولون</label>
-                            <div className="mt-2 p-3 border border-gray-800 dark:border-gray-600 rounded-md h-32 overflow-y-auto space-y-2 bg-white dark:bg-gray-700">
-                                {doctors.map(doctor => (
-                                    <label key={doctor.id} className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.doctorIds.includes(doctor.id)}
-                                            onChange={() => handleDoctorIdsChange(doctor.id)}
-                                            className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary"
-                                        />
-                                        <div>
-                                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{doctor.name}</span>
-                                            <span className="text-xs text-gray-500 dark:text-gray-400 block">{doctor.specialty || 'لا يوجد تخصص'}</span>
-                                        </div>
-                                    </label>
-                                ))}
+                        {canEditDoctors && (
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأطباء المسؤولون</label>
+                                {user.role === UserRole.Secretary && (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1 mb-1">يمكنك اختيار طبيب واحد فقط.</p>
+                                )}
+                                <div className="mt-2 p-3 border border-gray-800 dark:border-gray-600 rounded-md h-32 overflow-y-auto space-y-2 bg-white dark:bg-gray-700">
+                                    {doctors.map(doctor => (
+                                        <label key={doctor.id} className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.doctorIds.includes(doctor.id)}
+                                                onChange={() => handleDoctorIdsChange(doctor.id)}
+                                                className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary"
+                                            />
+                                            <div>
+                                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{doctor.name}</span>
+                                                <span className="text-xs text-gray-500 dark:text-gray-400 block">{doctor.specialty || 'لا يوجد تخصص'}</span>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         <div className="md:col-span-2"><label htmlFor="drugAllergyAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الحساسية الدوائية</label><textarea id="drugAllergyAdd" name="drugAllergy" value={formData.drugAllergy} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
                         <div className="md:col-span-2"><label htmlFor="chronicDiseasesAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأمراض المزمنة</label><textarea id="chronicDiseasesAdd" name="chronicDiseases" value={formData.chronicDiseases} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
@@ -1580,63 +1608,59 @@ const PatientPaymentsPage: React.FC<{ patient: Patient; onBack: () => void; }> =
                     <span>العودة</span>
                 </button>
                 <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">الوضع المالي للمريض</h1>
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">البيان المالي للمريض</h1>
                     <p className="text-gray-500 dark:text-gray-400">{patient.name}</p>
                 </div>
             </div>
+            
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-8">
+                <StatCard title="إجمالي تكاليف العلاج" value={`$${stats.totalCost.toFixed(2)}`} icon={BeakerIcon} color="red" />
+                <StatCard title="إجمالي الإيرادات" value={`$${stats.totalPayments.toFixed(2)}`} icon={CurrencyDollarIcon} color="green" />
+                <StatCard title="المتبقي" value={`$${stats.balance.toFixed(2)}`} icon={ListBulletIcon} color={stats.balance > 0 ? 'yellow' : 'blue'} />
+            </div>
 
-            {loading ? <CenteredLoadingSpinner /> : (
-            <>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <StatCard title="إجمالي تكلفة العلاج" value={`$${stats.totalCost.toFixed(2)}`} icon={BeakerIcon} color="red" />
-                    <StatCard title="مجموع الدفعات" value={`$${stats.totalPayments.toFixed(2)}`} icon={CurrencyDollarIcon} color="green" />
-                    <StatCard title="الرصيد المتبقي" value={`$${stats.balance.toFixed(2)}`} icon={ListBulletIcon} color={stats.balance > 0 ? 'yellow' : 'blue'} />
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">سجل الدفعات</h2>
+                    <button onClick={() => setIsAddingPayment(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
+                        <PlusIcon className="h-5 w-5 ml-2" />
+                        إضافة دفعة
+                    </button>
                 </div>
-                
-                 <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">سجل الدفعات</h2>
-                        <button onClick={() => setIsAddingPayment(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
-                            <PlusIcon className="h-5 w-5 ml-2" />
-                            إضافة دفعة
-                        </button>
-                    </div>
-                    
+
+                {loading ? <CenteredLoadingSpinner /> : payments.length > 0 ? (
                     <div className="overflow-x-auto">
-                        {payments.length > 0 ? (
-                            <table className="w-full text-right">
-                                <thead className="bg-gray-50 dark:bg-gray-700">
-                                    <tr>
-                                        <th className="p-3 font-semibold text-gray-600 dark:text-gray-300">التاريخ</th>
-                                        <th className="p-3 font-semibold text-gray-600 dark:text-gray-300">المبلغ</th>
-                                        <th className="p-3 font-semibold text-gray-600 dark:text-gray-300 text-left">الإجراءات</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {payments.map(pay => (
-                                    <tr key={pay.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                        <td className="p-3 text-gray-800 dark:text-gray-100">{new Date(pay.date).toLocaleDateString()}</td>
-                                        <td className="p-3 font-medium text-green-600 dark:text-green-400">${pay.amount.toFixed(2)}</td>
-                                        <td className="p-3 text-left space-x-2 rtl:space-x-reverse">
-                                            <button onClick={() => setEditingPayment(pay)} className="text-blue-600 dark:text-blue-400 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
-                                            <button onClick={() => setPaymentToDelete(pay)} className="text-red-600 dark:text-red-400 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف"><TrashIcon className="h-5 w-5" /></button>
+                        <table className="w-full text-right text-sm text-gray-800 dark:text-gray-200">
+                            <thead className="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-100 dark:bg-gray-700">
+                                <tr>
+                                    <th scope="col" className="px-6 py-3">التاريخ</th>
+                                    <th scope="col" className="px-6 py-3">المبلغ</th>
+                                    <th scope="col" className="px-6 py-3">الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {payments.map(pay => (
+                                    <tr key={pay.id} className="bg-white dark:bg-slate-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                        <td className="px-6 py-4 font-medium">{new Date(pay.date).toLocaleDateString()}</td>
+                                        <td className="px-6 py-4 font-bold text-green-600 dark:text-green-400">${pay.amount.toFixed(2)}</td>
+                                        <td className="px-6 py-4 flex justify-end items-center gap-2">
+                                            <button onClick={() => setEditingPayment(pay)} className="p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
+                                            <button onClick={() => setPaymentToDelete(pay)} className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400" title="حذف"><TrashIcon className="h-5 w-5" /></button>
                                         </td>
                                     </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        ) : (
-                            <p className="text-center text-gray-500 dark:text-gray-400 py-8">لا توجد دفعات مسجلة لهذا المريض.</p>
-                        )}
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
-                </div>
-            </>
-            )}
+                ) : (
+                    <p className="text-center text-gray-500 dark:text-gray-400 py-8">لا توجد دفعات مسجلة لهذا المريض.</p>
+                )}
+            </div>
 
             {isAddingPayment && <AddPaymentModalForPatient patient={patient} onSave={handleCreatePayment} onClose={() => setIsAddingPayment(false)} />}
-            {editingPayment && <EditPaymentModalForPatient payment={editingPayment} patientName={patient.name} onSave={handleUpdatePayment} onClose={() => setEditingPayment(null)} />}
+            {editingPayment && <EditPaymentModalForPatient payment={editingPayment} onSave={handleUpdatePayment} onClose={() => setEditingPayment(null)} patientName={patient.name} />}
             {paymentToDelete && (
-                <ConfirmDeleteModal
+                 <ConfirmDeleteModal
                     title="حذف الدفعة"
                     message={`هل أنت متأكد من حذف دفعة بقيمة $${paymentToDelete.amount.toFixed(2)}؟`}
                     onConfirm={confirmDeletePayment}
@@ -1649,358 +1673,477 @@ const PatientPaymentsPage: React.FC<{ patient: Patient; onBack: () => void; }> =
 
 
 // ===================================================================
+// PatientActivityLogPage Component (NEW)
+// ===================================================================
+const PatientActivityLogPage: React.FC<{ patient: Patient; onBack: () => void; }> = ({ patient, onBack }) => {
+    const [logs, setLogs] = useState<ActivityLog[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchLogs = useCallback(async () => {
+        setLoading(true);
+        const allLogs = await api.activityLogs.getAll();
+        setLogs(allLogs.filter(log => log.patientId === patient.id).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+        setLoading(false);
+    }, [patient.id]);
+
+    useEffect(() => {
+        fetchLogs();
+    }, [fetchLogs]);
+
+    const ActionIcon: React.FC<{ action: ActivityLogActionType }> = ({ action }) => {
+        const iconProps = { className: "h-5 w-5" };
+        switch (action) {
+            case ActivityLogActionType.Create:
+                return <div className="bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 rounded-full p-2"><PlusIcon {...iconProps} /></div>;
+            case ActivityLogActionType.Update:
+                return <div className="bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-full p-2"><PencilIcon {...iconProps} /></div>;
+            case ActivityLogActionType.Delete:
+                return <div className="bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full p-2"><TrashIcon {...iconProps} /></div>;
+            default:
+                return null;
+        }
+    };
+
+    return (
+        <div>
+            <div className="flex items-center gap-4 mb-6">
+                <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                    <ArrowBackIcon className="h-5 w-5" />
+                    <span>العودة</span>
+                </button>
+                <div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">سجل نشاط المريض</h1>
+                    <p className="text-gray-500 dark:text-gray-400">{patient.name}</p>
+                </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[200px]">
+                {loading ? <CenteredLoadingSpinner /> : logs.length > 0 ? (
+                    <div className="space-y-4">
+                        {logs.map(log => (
+                            <div key={log.id} className="flex items-start space-x-4 rtl:space-x-reverse p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                                <ActionIcon action={log.actionType} />
+                                <div className="flex-grow">
+                                    <p className="text-sm text-gray-800 dark:text-gray-200">{log.description}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                        بواسطة {log.userName} &bull; {new Date(log.timestamp).toLocaleString('ar-SA', { dateStyle: 'medium', timeStyle: 'short' })}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-16">
+                        <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
+                        <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-gray-100">لا يوجد سجل نشاط</h3>
+                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">لم يتم تسجيل أي نشاط لهذا المريض بعد.</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+
+// ===================================================================
 // Main PatientsPage Component
 // ===================================================================
 interface PatientsPageProps {
     user: User;
 }
-
 const PatientsPage: React.FC<PatientsPageProps> = ({ user }) => {
     const [patients, setPatients] = useState<Patient[]>([]);
     const [doctors, setDoctors] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
-    const [viewingSessionsFor, setViewingSessionsFor] = useState<Patient | null>(null);
-    const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
     const [isAddingPatient, setIsAddingPatient] = useState(false);
+    const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
     const [deletingPatient, setDeletingPatient] = useState<Patient | null>(null);
-    const [searchTerm, setSearchTerm] = useState('');
     const [viewingPatient, setViewingPatient] = useState<Patient | null>(null);
-    const [viewingPhotosFor, setViewingPhotosFor] = useState<Patient | null>(null);
-    const [viewingPaymentsFor, setViewingPaymentsFor] = useState<Patient | null>(null);
+    const [currentPage, setCurrentPage] = useState<'list' | 'details' | 'sessions' | 'payments' | 'gallery' | 'activity'>('list');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedDoctorId, setSelectedDoctorId] = useState('');
+    const [isPrinting, setIsPrinting] = useState<string | null>(null);
+    
     const { settings } = useAppSettings();
 
-    const fetchPatients = useCallback(async () => {
+    const fetchAllData = useCallback(async () => {
         setLoading(true);
-        let patientsData: Patient[];
-        if (user.role === UserRole.Doctor) {
-            patientsData = await api.patients.getAll().then(pats => pats.filter(p => p.doctorIds.includes(user.id)));
-        } else {
-            patientsData = await api.patients.getAll();
-        }
-        const doctorsData = await api.doctors.getAll();
-        setPatients(patientsData);
-        setDoctors(doctorsData);
+        const [pats, docs] = await Promise.all([
+            api.patients.getAll(),
+            api.doctors.getAll(),
+        ]);
+        setPatients(pats);
+        setDoctors(docs);
         setLoading(false);
-    }, [user.id, user.role]);
+    }, []);
 
     useEffect(() => {
-        fetchPatients();
-    }, [fetchPatients]);
+        fetchAllData();
+    }, [fetchAllData]);
+
+    const handlePrintReport = async (patient: Patient) => {
+        setIsPrinting(patient.id);
+    
+        const [allSessions, allPayments] = await Promise.all([
+            api.sessions.getAll(),
+            api.payments.getAll()
+        ]);
+        const sessions = allSessions.filter(s => s.patientId === patient.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const payments = allPayments.filter(p => p.patientId === patient.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
+        const totalPayments = payments.reduce((sum, p) => sum + p.amount, 0);
+        const totalCost = sessions.reduce((sessionSum, s) => {
+            const treatmentsCost = s.treatments.reduce((treatmentSum, t) => {
+                return treatmentSum + t.sessionPrice + (t.additionalCosts || 0);
+            }, 0);
+            return sessionSum + treatmentsCost;
+        }, 0);
+        const balance = totalCost - totalPayments;
+    
+        const patientDoctors = doctors.filter(d => patient.doctorIds.includes(d.id));
+        const getDoctorName = (doctorId: string) => doctors.find(d => d.id === doctorId)?.name || 'غير معروف';
+    
+        const patientDetailsHTML = `
+            <div class="flex flex-wrap -mx-2 text-sm mb-2">
+                <div class="px-2 mb-2">
+                    <span class="font-medium text-gray-500">الاسم: </span>
+                    <span class="text-gray-900 font-semibold">${patient.name}</span>
+                </div>
+                <div class="px-2 mb-2">
+                    <span class="font-medium text-gray-500">الكود: </span>
+                    <span class="text-gray-900 font-semibold">${patient.code}</span>
+                </div>
+                <div class="px-2 mb-2">
+                    <span class="font-medium text-gray-500">العمر: </span>
+                    <span class="text-gray-900 font-semibold">${patient.age}</span>
+                </div>
+                <div class="px-2 mb-2">
+                    <span class="font-medium text-gray-500">الهاتف: </span>
+                    <span class="text-gray-900 font-semibold">${patient.phone}</span>
+                </div>
+                <div class="px-2 mb-2">
+                    <span class="font-medium text-gray-500">الجنس: </span>
+                    <span class="text-gray-900 font-semibold">${patient.gender === 'female' ? 'أنثى' : 'ذكر'}</span>
+                </div>
+                ${patient.isSmoker ? `<div class="px-2 mb-2"><span class="font-medium text-gray-500">مدخن: </span><span class="text-gray-900 font-semibold">نعم</span></div>` : ''}
+                ${patient.gender === 'female' && patient.isPregnant ? `<div class="px-2 mb-2"><span class="font-medium text-gray-500">حامل: </span><span class="text-gray-900 font-semibold">نعم</span></div>` : ''}
+            </div>
+            <dl class="text-sm">
+                <div class="py-2 border-t border-gray-200 grid grid-cols-3 gap-4">
+                    <dt class="font-medium text-gray-500">الأطباء</dt>
+                    <dd class="text-gray-900 sm:mt-0 col-span-2">${patientDoctors.map(d => d.name).join(', ')}</dd>
+                </div>
+                <div class="py-2 border-t border-gray-200 grid grid-cols-3 gap-4">
+                    <dt class="font-medium text-gray-500">الحساسية الدوائية</dt>
+                    <dd class="text-gray-900 sm:mt-0 col-span-2">${patient.drugAllergy || 'لا يوجد'}</dd>
+                </div>
+                <div class="py-2 border-t border-gray-200 grid grid-cols-3 gap-4">
+                    <dt class="font-medium text-gray-500">الأمراض المزمنة</dt>
+                    <dd class="text-gray-900 sm:mt-0 col-span-2">${patient.chronicDiseases || 'لا يوجد'}</dd>
+                </div>
+                <div class="py-2 border-t border-gray-200 grid grid-cols-3 gap-4">
+                    <dt class="font-medium text-gray-500">ملاحظات عامة</dt>
+                    <dd class="text-gray-900 sm:mt-0 col-span-2">${patient.notes || 'لا يوجد'}</dd>
+                </div>
+            </dl>
+        `;
+    
+        const sessionsHTML = sessions.length > 0 ? `
+            <section class="mt-8">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">سجل الجلسات</h2>
+                <div class="space-y-4">
+                    ${sessions.map(session => `
+                        <div class="border border-gray-200 rounded-lg p-4 break-inside-avoid">
+                            <h3 class="font-semibold">جلسة بتاريخ ${new Date(session.date).toLocaleDateString()} - الطبيب: ${getDoctorName(session.doctorId)}</h3>
+                            ${session.notes ? `<p class="text-sm text-gray-600 mt-1">ملاحظات الجلسة: ${session.notes}</p>` : ''}
+                            ${session.treatments.length > 0 ? `
+                                 <table class="w-full text-right text-sm mt-2">
+                                    <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                                        <tr>
+                                            <th class="px-2 py-1">العلاج</th>
+                                            <th class="px-2 py-1">التاريخ</th>
+                                            <th class="px-2 py-1">السعر</th>
+                                            <th class="px-2 py-1">ملاحظات</th>
+                                            <th class="px-2 py-1">مكتمل</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    ${session.treatments.map(t => `
+                                        <tr class="border-b">
+                                            <td class="px-2 py-1">${t.name}</td>
+                                            <td class="px-2 py-1">${t.treatmentDate ? new Date(t.treatmentDate).toLocaleDateString() : '-'}</td>
+                                            <td class="px-2 py-1">$${(t.sessionPrice + (t.additionalCosts || 0)).toFixed(2)}</td>
+                                            <td class="px-2 py-1">${t.sessionNotes || '-'}</td>
+                                            <td class="px-2 py-1">${t.completed ? 'نعم' : 'لا'}</td>
+                                        </tr>
+                                    `).join('')}
+                                    </tbody>
+                                 </table>
+                            ` : '<p class="text-sm text-gray-500 mt-2">لا توجد علاجات لهذه الجلسة.</p>'}
+                        </div>
+                    `).join('')}
+                </div>
+            </section>
+        ` : '';
+        
+        const financialHTML = `
+            <section class="mt-8">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">الملخص المالي</h2>
+                 ${payments.length > 0 ? `
+                     <div class="mb-4 break-inside-avoid">
+                        <h3 class="font-semibold mb-2">الدفعات المسجلة</h3>
+                        <table class="w-full text-right text-sm">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                                <tr><th class="px-2 py-1">التاريخ</th><th class="px-2 py-1">المبلغ</th></tr>
+                            </thead>
+                            <tbody>
+                            ${payments.map(p => `
+                                <tr class="border-b">
+                                    <td class="px-2 py-1">${new Date(p.date).toLocaleDateString()}</td>
+                                    <td class="px-2 py-1">$${p.amount.toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                            </tbody>
+                        </table>
+                     </div>
+                 ` : ''}
+                <div class="border-t border-gray-300 pt-4 space-y-2 text-md">
+                     <div class="flex justify-between"><span class="font-medium text-gray-600">إجمالي التكاليف:</span><span class="font-bold">$${totalCost.toFixed(2)}</span></div>
+                     <div class="flex justify-between"><span class="font-medium text-gray-600">إجمالي المدفوعات:</span><span class="font-bold text-green-600">$${totalPayments.toFixed(2)}</span></div>
+                     <div class="flex justify-between text-lg"><span class="font-bold">الرصيد المتبقي:</span><span class="font-bold">$${balance.toFixed(2)}</span></div>
+                </div>
+            </section>
+        `;
+    
+        const reportHTML = `
+          <!DOCTYPE html>
+          <html lang="ar" dir="rtl">
+            <head>
+              <meta charset="UTF-8" />
+              <title>تقرير - ${patient.name}</title>
+              <script src="https://cdn.tailwindcss.com"></script>
+              <script>
+                tailwind.config = {
+                  theme: {
+                    extend: {
+                      colors: {
+                        primary: {
+                          DEFAULT: '#06b6d4', '50': '#ecfeff', '100': '#cffafe', '200': '#a5f3fd',
+                          '300': '#67e8f9', '400': '#22d3ee', '500': '#06b6d4', '600': '#0891b2',
+                          '700': '#0e7490', '800': '#155e75', '900': '#164e63', '950': '#083344',
+                        },
+                      }
+                    }
+                  }
+                }
+              </script>
+              <style>
+                @media print {
+                  @page { size: A4; margin: 20mm; }
+                  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                  .no-print { display: none !important; }
+                }
+                body { font-family: sans-serif; }
+              </style>
+            </head>
+            <body class="bg-white">
+              <div id="printable-report" class="p-6 md:p-8">
+                <header class="flex justify-between items-start border-b border-gray-300 pb-4 mb-6">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-800">${settings.appName}</h1>
+                        <p class="text-gray-500">تقرير المريض</p>
+                    </div>
+                     <img src="${settings.appLogo}" alt="شعار التطبيق" class="h-16 w-16" />
+                </header>
+                <section>
+                    <h2 class="text-xl font-bold text-gray-800 mb-2">معلومات المريض</h2>
+                    ${patientDetailsHTML}
+                </section>
+                ${sessionsHTML}
+                ${financialHTML}
+                <footer class="text-center text-xs text-gray-400 mt-8 pt-4 border-t border-gray-300">
+                    تاريخ الطباعة: ${new Date().toLocaleString()}
+                </footer>
+              </div>
+            </body>
+          </html>
+        `;
+    
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.document.open();
+            printWindow.document.write(reportHTML);
+            printWindow.document.close();
+            printWindow.onload = () => {
+                printWindow.focus();
+                printWindow.print();
+            };
+        }
+        
+        setIsPrinting(null);
+    };
 
     const handleCreatePatient = async (newPatientData: Omit<Patient, 'id' | 'code'>) => {
         await api.patients.create(newPatientData);
         setIsAddingPatient(false);
-        await fetchPatients();
+        await fetchAllData();
     };
 
     const handleUpdatePatient = async (updatedPatient: Patient) => {
-        try {
-            await api.patients.update(updatedPatient.id, updatedPatient);
-        } catch (error) {
-            console.error("Failed to update patient:", error);
-            alert(`فشل تحديث المريض: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
-        } finally {
-            setEditingPatient(null);
-            await fetchPatients();
-        }
+        await api.patients.update(updatedPatient.id, updatedPatient);
+        setEditingPatient(null);
+        await fetchAllData();
     };
 
     const confirmDeletePatient = async () => {
         if (deletingPatient) {
-            try {
-                await api.patients.delete(deletingPatient.id);
-            } catch(error) {
-                console.error("Failed to delete patient:", error);
-                alert(`فشل حذف المريض: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
-            } finally {
-                setDeletingPatient(null);
-                await fetchPatients();
-            }
+            await api.patients.delete(deletingPatient.id);
+            setDeletingPatient(null);
+            await fetchAllData();
         }
     };
     
-    const handlePrintPatientData = (patient: Patient) => {
-        const { appName, appLogo } = settings;
-        const patientDoctors = doctors.filter(d => patient.doctorIds.includes(d.id));
-        const htmlContent = `
-            <!DOCTYPE html>
-            <html lang="ar" dir="rtl">
-            <head>
-                <meta charset="UTF-8">
-                <title>تقرير المريض - ${patient.name}</title>
-                <style>
-                    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
-                    body {
-                        font-family: 'Tajawal', sans-serif;
-                        direction: rtl;
-                        margin: 0;
-                        padding: 20px;
-                        background-color: #fff;
-                        color: #333;
-                    }
-                    .report-container {
-                        max-width: 800px;
-                        margin: auto;
-                        border: 1px solid #eee;
-                        padding: 30px;
-                        box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
-                    }
-                    .report-header {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        border-bottom: 2px solid #06b6d4;
-                        padding-bottom: 15px;
-                        margin-bottom: 20px;
-                    }
-                    .report-header img {
-                        max-height: 60px;
-                        width: auto;
-                    }
-                    .report-header .title-block h1 {
-                        font-size: 2em;
-                        color: #06b6d4;
-                        margin: 0;
-                    }
-                    .report-header .title-block p {
-                        font-size: 1.2em;
-                        margin: 5px 0 0;
-                        color: #555;
-                    }
-                    .section {
-                        margin-bottom: 25px;
-                    }
-                    .section-title {
-                        font-size: 1.5em;
-                        font-weight: bold;
-                        color: #164e63;
-                        border-bottom: 1px solid #ccc;
-                        padding-bottom: 5px;
-                        margin-bottom: 15px;
-                    }
-                    .info-grid {
-                        display: grid;
-                        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-                        gap: 15px;
-                    }
-                    .info-item {
-                        background-color: #f9f9f9;
-                        padding: 10px;
-                        border-radius: 5px;
-                    }
-                    .info-item-label {
-                        font-weight: bold;
-                        color: #555;
-                        display: block;
-                        margin-bottom: 5px;
-                    }
-                    .info-item-value {
-                        font-size: 1.1em;
-                    }
-                    .notes {
-                        background-color: #f9f9f9;
-                        padding: 15px;
-                        border-radius: 5px;
-                        white-space: pre-wrap; /* To respect newlines */
-                    }
-                    .boolean-value {
-                        font-weight: bold;
-                    }
-                    .true { color: #16a34a; }
-                    .false { color: #dc2626; }
-                    @media print {
-                        body {
-                            -webkit-print-color-adjust: exact;
-                            print-color-adjust: exact;
-                        }
-                        .report-container {
-                            box-shadow: none;
-                            border: none;
-                            padding: 0;
-                        }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="report-container">
-                    <div class="report-header">
-                        <div class="title-block">
-                            <h1>${appName}</h1>
-                            <p>تقرير المريض</p>
-                        </div>
-                        ${appLogo ? `<img src="${appLogo}" alt="شعار التطبيق">` : ''}
-                    </div>
-    
-                    <div class="section">
-                        <h2 class="section-title">المعلومات الأساسية</h2>
-                        <div class="info-grid">
-                            <div class="info-item">
-                                <span class="info-item-label">الاسم الكامل:</span>
-                                <span class="info-item-value">${patient.name}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-item-label">كود المريض:</span>
-                                <span class="info-item-value">${patient.code}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-item-label">العمر:</span>
-                                <span class="info-item-value">${patient.age}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-item-label">الهاتف:</span>
-                                <span class="info-item-value">${patient.phone}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-item-label">الجنس:</span>
-                                <span class="info-item-value">${patient.gender === 'female' ? 'أنثى' : 'ذكر'}</span>
-                            </div>
-                             <div class="info-item" style="grid-column: 1 / -1;">
-                                <span class="info-item-label">الأطباء المسؤولون:</span>
-                                <span class="info-item-value">${patientDoctors.length > 0 ? patientDoctors.map(d => d.name).join(', ') : 'غير محدد'}</span>
-                            </div>
-                        </div>
-                    </div>
-    
-                    <div class="section">
-                        <h2 class="section-title">المعلومات الطبية</h2>
-                        <div class="info-grid">
-                            <div class="info-item">
-                                <span class="info-item-label">مدخن:</span>
-                                <span class="info-item-value boolean-value ${patient.isSmoker ? 'true' : 'false'}">${patient.isSmoker ? 'نعم' : 'لا'}</span>
-                            </div>
-                            ${patient.gender === 'female' ? `
-                            <div class="info-item">
-                                <span class="info-item-label">حامل:</span>
-                                <span class="info-item-value boolean-value ${patient.isPregnant ? 'true' : 'false'}">${patient.isPregnant ? 'نعم' : 'لا'}</span>
-                            </div>` : ''}
-                        </div>
-                         <div class="info-item" style="grid-column: 1 / -1; margin-top: 15px;">
-                            <span class="info-item-label">الحساسية الدوائية:</span>
-                            <p class="info-item-value notes">${patient.drugAllergy || 'لا يوجد'}</p>
-                        </div>
-                         <div class="info-item" style="grid-column: 1 / -1; margin-top: 15px;">
-                            <span class="info-item-label">الأمراض المزمنة:</span>
-                            <p class="info-item-value notes">${patient.chronicDiseases || 'لا يوجد'}</p>
-                        </div>
-                    </div>
-                    
-                    ${patient.notes ? `
-                    <div class="section">
-                        <h2 class="section-title">ملاحظات عامة</h2>
-                        <p class="notes">${patient.notes}</p>
-                    </div>` : ''}
-                </div>
-            </body>
-            </html>
-        `;
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-            printWindow.document.write(htmlContent);
-            printWindow.document.close();
-            printWindow.focus();
-            setTimeout(() => {
-                printWindow.print();
-            }, 500);
-        } else {
-            alert('يرجى السماح بالنوافذ المنبثقة لطباعة التقرير.');
-        }
+    const viewDetails = (patient: Patient, page: 'details' | 'sessions' | 'payments' | 'gallery' | 'activity') => {
+        setViewingPatient(patient);
+        setCurrentPage(page);
     };
 
-    const filteredPatients = patients.filter(patient =>
-        patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        patient.code.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredPatients = useMemo(() => {
+        let list = patients;
 
-    if (viewingPaymentsFor) {
-        return <PatientPaymentsPage patient={viewingPaymentsFor} onBack={() => setViewingPaymentsFor(null)} />;
-    }
+        if (user.role === UserRole.Doctor) {
+            list = list.filter(p => p.doctorIds.includes(user.id));
+        }
 
-    if (viewingPatient) {
-        return <PatientDetailsPage patient={viewingPatient} doctors={doctors} onBack={() => setViewingPatient(null)} />;
-    }
-    
-    if (viewingPhotosFor) {
-        return <PatientGalleryPage patient={viewingPhotosFor} onBack={() => setViewingPhotosFor(null)} />;
-    }
+        if (selectedDoctorId) {
+            list = list.filter(p => p.doctorIds.includes(selectedDoctorId));
+        }
 
-    if (viewingSessionsFor) {
-        return <PatientSessionsPage patient={viewingSessionsFor} onBack={() => setViewingSessionsFor(null)} doctors={doctors} />;
+        if (searchTerm) {
+            const lowerCaseSearch = searchTerm.toLowerCase();
+            list = list.filter(p => 
+                p.name.toLowerCase().includes(lowerCaseSearch) ||
+                p.code.toLowerCase().includes(lowerCaseSearch) ||
+                p.phone.includes(searchTerm)
+            );
+        }
+
+        return list;
+    }, [patients, user, searchTerm, selectedDoctorId]);
+
+    if (viewingPatient && currentPage === 'details') {
+        return <PatientDetailsPage patient={viewingPatient} onBack={() => setCurrentPage('list')} doctors={doctors} />;
+    }
+    if (viewingPatient && currentPage === 'sessions') {
+        return <PatientSessionsPage patient={viewingPatient} onBack={() => setCurrentPage('list')} doctors={doctors} />;
+    }
+     if (viewingPatient && currentPage === 'payments') {
+        return <PatientPaymentsPage patient={viewingPatient} onBack={() => setCurrentPage('list')} />;
+    }
+    if (viewingPatient && currentPage === 'gallery') {
+        return <PatientGalleryPage patient={viewingPatient} onBack={() => setCurrentPage('list')} />;
+    }
+    if (viewingPatient && currentPage === 'activity') {
+        return <PatientActivityLogPage patient={viewingPatient} onBack={() => setCurrentPage('list')} />;
     }
 
     return (
         <div>
             <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">
-                    {user.role === UserRole.Doctor ? "مرضاي" : "إدارة المرضى"}
+                    {user.role === UserRole.Doctor ? 'مرضاي' : 'إدارة المرضى'}
                 </h1>
-                <div className="relative w-full max-w-sm">
-                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                       <SearchIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-                   </div>
-                   <input
-                       type="text"
-                       value={searchTerm}
-                       onChange={(e) => setSearchTerm(e.target.value)}
-                       placeholder="ابحث بالاسم أو الكود..."
-                       className="w-full pl-3 pr-10 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                   />
+                <div className="flex items-center gap-4 flex-wrap">
+                    <div className="relative">
+                       <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                           <SearchIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                       </div>
+                       <input
+                           type="text"
+                           value={searchTerm}
+                           onChange={(e) => setSearchTerm(e.target.value)}
+                           placeholder="ابحث بالاسم، الكود، أو الهاتف..."
+                           className="w-full sm:w-64 pl-3 pr-10 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                       />
+                    </div>
+                     {user.role !== UserRole.Doctor && (
+                         <div className="relative">
+                            <select
+                                value={selectedDoctorId}
+                                onChange={(e) => setSelectedDoctorId(e.target.value)}
+                                className="w-full sm:w-48 px-3 py-2 pr-8 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary appearance-none"
+                                aria-label="Filter by doctor"
+                            >
+                                <option value="">كل الأطباء</option>
+                                {doctors.map(doctor => (
+                                    <option key={doctor.id} value={doctor.id}>{doctor.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                     {(user.role === UserRole.Admin || user.role === UserRole.SubManager || user.role === UserRole.Secretary) && (
+                        <button onClick={() => setIsAddingPatient(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
+                            <PlusIcon className="h-5 w-5 ml-2" />
+                            إضافة مريض
+                        </button>
+                     )}
                 </div>
-                <button onClick={() => setIsAddingPatient(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
-                    <PlusIcon className="h-5 w-5 ml-2" />
-                    إضافة مريض
-                </button>
             </div>
-            
+
             <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[200px]">
                 {loading ? <CenteredLoadingSpinner /> : (
-                    filteredPatients.length > 0 ? (
+                     filteredPatients.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {filteredPatients.map(patient => (
-                                <div key={patient.id} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col justify-between hover:shadow-lg">
+                            {filteredPatients.map(p => (
+                                <div key={p.id} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col justify-between transition-shadow hover:shadow-lg">
                                     <div>
                                         <div className="flex justify-between items-start">
-                                            <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{patient.name}</h3>
-                                            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full">{patient.code}</span>
+                                            <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{p.name}</h3>
+                                            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full">{p.code}</span>
                                         </div>
                                         <div className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-300">
-                                            <p><span className="font-semibold">العمر:</span> {patient.age}</p>
-                                            <p><span className="font-semibold">الهاتف:</span> {patient.phone}</p>
-                                            <p><span className="font-semibold">الجنس:</span> {patient.gender === Gender.Female ? 'أنثى' : 'ذكر'}</p>
-                                            {patient.isSmoker && <p className="font-semibold text-orange-600 dark:text-orange-400">مدخن</p>}
-                                            {patient.isPregnant && <p className="font-semibold text-pink-600 dark:text-pink-400">حامل</p>}
+                                            <p><span className="font-semibold">العمر:</span> {p.age}</p>
+                                            <p><span className="font-semibold">الهاتف:</span> {p.phone}</p>
                                         </div>
                                     </div>
                                     <div className="mt-4 pt-4 border-t dark:border-gray-600 flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
-                                         <button onClick={() => setViewingPatient(patient)} className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-sm" title="عرض التفاصيل"><EyeIcon className="h-4 w-4" /><span className="mr-1">عرض</span></button>
-                                         <button onClick={() => setViewingPhotosFor(patient)} className="flex items-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 p-1 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-sm" title="عرض الصور"><PhotographIcon className="h-4 w-4" /><span className="mr-1">الصور</span></button>
-                                         {(user.role !== UserRole.Secretary) && (
-                                            <button onClick={() => setViewingSessionsFor(patient)} className="flex items-center text-teal-600 dark:text-teal-400 hover:text-teal-800 p-1 rounded hover:bg-teal-100 dark:hover:bg-teal-900/40 text-sm"><ClipboardListIcon className="h-4 w-4" /><span className="mr-1">الجلسات</span></button>
-                                         )}
-                                         {user.role === UserRole.Admin && (
+                                        <button onClick={() => viewDetails(p, 'details')} className="flex items-center text-gray-600 dark:text-gray-300 hover:text-primary p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-sm" title="عرض التفاصيل"><EyeIcon className="h-4 w-4" /><span className="mr-1">التفاصيل</span></button>
+                                        <button onClick={() => viewDetails(p, 'sessions')} className="flex items-center text-teal-600 dark:text-teal-400 hover:text-teal-800 p-1 rounded hover:bg-teal-100 dark:hover:bg-teal-900/40 text-sm"><ClipboardListIcon className="h-4 w-4" /><span className="mr-1">الجلسات</span></button>
+                                        <button onClick={() => viewDetails(p, 'payments')} className="flex items-center text-green-600 dark:text-green-400 hover:text-green-800 p-1 rounded hover:bg-green-100 dark:hover:bg-green-900/40 text-sm"><CurrencyDollarIcon className="h-4 w-4" /><span className="mr-1">المالية</span></button>
+                                        <button onClick={() => viewDetails(p, 'gallery')} className="flex items-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 p-1 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-sm"><PhotographIcon className="h-4 w-4" /><span className="mr-1">الصور</span></button>
+                                        <button onClick={() => viewDetails(p, 'activity')} className="flex items-center text-orange-600 dark:text-orange-400 hover:text-orange-800 p-1 rounded hover:bg-orange-100 dark:hover:bg-orange-900/40 text-sm"><ListBulletIcon className="h-4 w-4" /><span className="mr-1">السجل</span></button>
+                                        <button 
+                                            onClick={() => handlePrintReport(p)} 
+                                            disabled={isPrinting === p.id}
+                                            className="flex items-center text-red-600 dark:text-red-400 hover:text-red-800 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-sm disabled:opacity-50 disabled:cursor-wait" 
+                                            title="طباعة تقرير"
+                                        >
+                                            {isPrinting === p.id ? <LoadingSpinner className="h-4 w-4" /> : <DocumentTextIcon className="h-4 w-4" />}
+                                            <span className="mr-1">طباعة</span>
+                                        </button>
+                                        {(user.role === UserRole.Admin || user.role === UserRole.Secretary) && (
                                             <>
-                                                <button onClick={() => setViewingPaymentsFor(patient)} className="flex items-center text-green-600 dark:text-green-400 hover:text-green-800 p-1 rounded hover:bg-green-100 dark:hover:bg-green-900/40 text-sm" title="الدفعات"><CurrencyDollarIcon className="h-4 w-4" /><span className="mr-1">الدفعات</span></button>
-                                                <button onClick={() => handlePrintPatientData(patient)} className="flex items-center text-red-500 dark:text-red-400 hover:text-red-700 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-sm" title="طباعة PDF"><DocumentTextIcon className="h-4 w-4" /><span className="mr-1">PDF</span></button>
+                                                <button onClick={() => setEditingPatient(p)} className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 text-sm"><PencilIcon className="h-4 w-4" /><span className="mr-1">تعديل</span></button>
+                                                <button onClick={() => setDeletingPatient(p)} className="flex items-center text-red-600 dark:text-red-400 hover:text-red-800 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-sm"><TrashIcon className="h-4 w-4" /><span className="mr-1">حذف</span></button>
                                             </>
-                                         )}
-                                         <button onClick={() => setEditingPatient(patient)} className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 text-sm"><PencilIcon className="h-4 w-4" /><span className="mr-1">تعديل</span></button>
-                                         <button onClick={() => setDeletingPatient(patient)} className="flex items-center text-red-600 dark:text-red-400 hover:text-red-800 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-sm"><TrashIcon className="h-4 w-4" /><span className="mr-1">حذف</span></button>
+                                        )}
                                     </div>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <p className="text-center text-gray-500 dark:text-gray-400 py-8">
-                            {user.role === UserRole.Doctor ? "لا يوجد مرضى مسجلون باسمك." : "لم يتم العثور على مرضى."}
+                         <p className="text-center text-gray-500 dark:text-gray-400 py-8">
+                            {user.role === UserRole.Doctor ? 'لا يوجد مرضى مسجلون لك حالياً.' : 'لم يتم العثور على مرضى.'}
                         </p>
                     )
                 )}
             </div>
             {isAddingPatient && <AddPatientModal onClose={() => setIsAddingPatient(false)} onSave={handleCreatePatient} doctors={doctors} user={user} />}
-            {editingPatient && <EditPatientModal patient={editingPatient} onClose={() => setEditingPatient(null)} onSave={handleUpdatePatient} doctors={doctors} />}
+            {editingPatient && <EditPatientModal patient={editingPatient} onClose={() => setEditingPatient(null)} onSave={handleUpdatePatient} doctors={doctors} user={user} />}
             {deletingPatient && (
                 <ConfirmDeleteModal
-                    title="حذف المريض"
-                    message={`هل أنت متأكد من رغبتك في حذف ${deletingPatient.name}؟`}
+                    title="حذف مريض"
+                    message={`هل أنت متأكد من رغبتك في حذف ${deletingPatient.name}؟ لا يمكن التراجع عن هذا الإجراء.`}
                     onConfirm={confirmDeletePatient}
                     onCancel={() => setDeletingPatient(null)}
                 />
@@ -2009,4 +2152,5 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user }) => {
     );
 };
 
+// FIX: Add default export to make the component importable in App.tsx.
 export default PatientsPage;

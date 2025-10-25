@@ -7,15 +7,13 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import Layout from './components/layout/Layout';
 import PatientsPage from './pages/PatientsPage';
-import DoctorsPage from './pages/DoctorsPage';
-import SecretariesPage from './pages/SecretariesPage';
+import UsersPage from './pages/UsersPage';
 import AppointmentsPage from './pages/AppointmentsPage';
 import PaymentsPage from './pages/PaymentsPage';
 import DoctorSchedulePage from './pages/DoctorSchedulePage';
 import DoctorSettingsPage from './pages/DoctorSettingsPage';
 import TreatmentsSettingsPage from './pages/TreatmentsSettingsPage';
 import StatisticsPage from './pages/StatisticsPage';
-import ApplicationSettingsPage from './pages/ApplicationSettingsPage';
 
 const AppContent: React.FC = () => {
     const { user } = useAuth();
@@ -31,20 +29,16 @@ const AppContent: React.FC = () => {
                 return <DashboardPage user={user} />;
             case 'patients':
                 return <PatientsPage user={user} />;
-            case 'doctors':
-                return user.role === UserRole.Admin ? <DoctorsPage /> : <div>الوصول مرفوض</div>;
-            case 'secretaries':
-                return user.role === UserRole.Admin ? <SecretariesPage /> : <div>الوصول مرفوض</div>;
+            case 'users':
+                return (user.role === UserRole.Admin || user.role === UserRole.SubManager) ? <UsersPage /> : <div>الوصول مرفوض</div>;
             case 'appointments':
                 return <AppointmentsPage user={user} />;
             case 'payments':
-                 return (user.role === UserRole.Admin || user.role === UserRole.Secretary) ? <PaymentsPage user={user} /> : <div>الوصول مرفوض</div>;
+                 return (user.role === UserRole.Admin || user.role === UserRole.Secretary || user.role === UserRole.SubManager) ? <PaymentsPage user={user} /> : <div>الوصول مرفوض</div>;
             case 'treatments_settings':
-                return user.role === UserRole.Admin ? <TreatmentsSettingsPage /> : <div>الوصول مرفوض</div>;
+                return (user.role === UserRole.Admin || user.role === UserRole.SubManager) ? <TreatmentsSettingsPage /> : <div>الوصول مرفوض</div>;
             case 'statistics':
-                return user.role === UserRole.Admin ? <StatisticsPage /> : <div>الوصول مرفوض</div>;
-            case 'application_settings':
-                return user.role === UserRole.Admin ? <ApplicationSettingsPage /> : <div>الوصول مرفوض</div>;
+                return (user.role === UserRole.Admin || user.role === UserRole.SubManager) ? <StatisticsPage /> : <div>الوصول مرفوض</div>;
             case 'schedule':
                 return user.role === UserRole.Doctor ? <DoctorSchedulePage user={user} /> : <div>الوصول مرفوض</div>;
             case 'settings':
@@ -64,13 +58,13 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
     return (
         <ThemeProvider>
-            <AppSettingsProvider>
-                <AuthProvider>
+            <AuthProvider>
+                <AppSettingsProvider>
                     <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
                         <AppContent />
                     </div>
-                </AuthProvider>
-            </AppSettingsProvider>
+                </AppSettingsProvider>
+            </AuthProvider>
         </ThemeProvider>
     );
 };

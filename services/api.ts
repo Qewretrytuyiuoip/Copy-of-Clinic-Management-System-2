@@ -1,3 +1,4 @@
+// FIX: Removed 'SubManager' from import as it is not an exported member of '../types'.
 import { User, UserRole, Patient, Treatment, Session, Appointment, Payment, DoctorAvailability, SessionTreatment, Gender, DaySchedule, PatientPhoto, ActivityLog, ActivityLogActionType, CreatePatientPhotosPayload } from '../types';
 import { API_BASE_URL } from '../config';
 
@@ -5,6 +6,7 @@ import { API_BASE_URL } from '../config';
 
 export let MOCK_USERS: User[] = [
     { id: 'admin1', name: 'د. مدير', email: 'admin@example.com', role: UserRole.Admin, password: '1' },
+    { id: 'sub1', name: 'مدير فرعي', email: 'sub@example.com', role: UserRole.SubManager, password: '1' },
     { id: 'doc1', name: 'د. سميث', email: 'smith@clinic.com', role: UserRole.Doctor, password: '1', specialty: 'أسنان', is_diagnosis_doctor: true },
     { id: 'doc2', name: 'د. جونز', email: 'jones@clinic.com', role: UserRole.Doctor, password: '1', specialty: 'قلب', is_diagnosis_doctor: false },
     { id: 'sec1', name: 'سارة كونور', email: 'sarah@clinic.com', role: UserRole.Secretary, password: '1' },
@@ -113,6 +115,7 @@ export const login = async (email: string, password: string): Promise<User | nul
                 email: userFromApi.email,
                 role: userFromApi.role, // Assuming API role string matches UserRole enum
                 specialty: userFromApi.specialty,
+                is_diagnosis_doctor: !!userFromApi.is_diagnosis_doctor,
             };
 
             if (data.token) {
@@ -552,6 +555,8 @@ const mapApiActivityLog = (log: any): ActivityLog => ({
 export const api = {
     doctors: createUserCRUD(UserRole.Doctor),
     secretaries: createUserCRUD(UserRole.Secretary),
+    admins: createUserCRUD(UserRole.Admin),
+    subManagers: createUserCRUD(UserRole.SubManager),
     patients: {
         getAll: async (): Promise<Patient[]> => {
             try {

@@ -5,8 +5,16 @@ import { UserRole } from './types';
 export const NAV_ITEMS = {
   [UserRole.Admin]: [
     { name: 'لوحة التحكم', icon: HomeIcon, page: 'dashboard' },
-    { name: 'الأطباء', icon: UserGroupIcon, page: 'doctors' },
-    { name: 'السكرتارية', icon: UsersIcon, page: 'secretaries' },
+    { name: 'المستخدمين', icon: UsersIcon, page: 'users' },
+    { name: 'المرضى', icon: UserGroupIcon, page: 'patients' },
+    { name: 'المواعيد', icon: CalendarIcon, page: 'appointments' },
+    { name: 'المدفوعات', icon: CurrencyDollarIcon, page: 'payments' },
+    { name: 'اعدادات العلاج', icon: BeakerIcon, page: 'treatments_settings' },
+    { name: 'الاحصائيات', icon: ClipboardListIcon, page: 'statistics' },
+  ],
+  [UserRole.SubManager]: [
+    { name: 'لوحة التحكم', icon: HomeIcon, page: 'dashboard' },
+    { name: 'المستخدمين', icon: UsersIcon, page: 'users' },
     { name: 'المرضى', icon: UserGroupIcon, page: 'patients' },
     { name: 'المواعيد', icon: CalendarIcon, page: 'appointments' },
     { name: 'المدفوعات', icon: CurrencyDollarIcon, page: 'payments' },
@@ -33,4 +41,5 @@ export const ROLE_NAMES = {
   [UserRole.Admin]: 'مدير',
   [UserRole.Doctor]: 'طبيب',
   [UserRole.Secretary]: 'سكرتير',
+  [UserRole.SubManager]: 'مدير فرعي',
 };

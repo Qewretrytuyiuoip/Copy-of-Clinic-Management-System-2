@@ -6,6 +6,7 @@ export enum UserRole {
     Admin = 'admin',
     Doctor = 'doctor',
     Secretary = 'secretary',
+    SubManager = 'sub_manager',
 }
 
 export enum Gender {

@@ -49,7 +49,8 @@ const LoginPage: React.FC = () => {
         <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
             <div className="w-full max-w-md p-8 space-y-8 bg-white dark:bg-slate-800 rounded-lg shadow-md">
                 <div className="text-center">
-                    <h1 className="text-4xl font-bold text-primary">{settings.appName}</h1>
+                    <img src={settings.appLogo} alt="شعار التطبيق" className="mx-auto h-16 w-16" />
+                    <h1 className="mt-2 text-3xl font-bold text-primary">{settings.appName}</h1>
                     <p className="mt-2 text-gray-600 dark:text-gray-300">مرحباً بعودتك! الرجاء تسجيل الدخول إلى حسابك.</p>
                 </div>
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
