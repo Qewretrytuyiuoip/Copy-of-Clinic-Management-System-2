@@ -1315,10 +1315,12 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
             return;
         }
         setIsSaving(true);
+        // FIX: Add 'createdAt' property to the object to satisfy the 'Omit<Patient, "id" | "code">' type, which requires it.
         await onSave({
             ...formData,
             age: parseInt(formData.age, 10) || 0,
             isPregnant: formData.gender === Gender.Female ? formData.isPregnant : false,
+            createdAt: new Date().toISOString(),
         });
         setIsSaving(false);
     };
@@ -2094,7 +2096,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
                             </select>
                         </div>
                     )}
-                     {(user.role === UserRole.Admin || user.role === UserRole.SubManager || user.role === UserRole.Secretary) && (
+                     {(user.role === UserRole.Admin || user.role === UserRole.SubManager || user.role === UserRole.Secretary || user.role === UserRole.Doctor) && (
                         <button onClick={() => setIsAddingPatient(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
                             <PlusIcon className="h-5 w-5 ml-2" />
                             إضافة مريض

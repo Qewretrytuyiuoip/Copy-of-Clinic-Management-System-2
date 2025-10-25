@@ -14,6 +14,7 @@ import DoctorSchedulePage from './pages/DoctorSchedulePage';
 import DoctorSettingsPage from './pages/DoctorSettingsPage';
 import TreatmentsSettingsPage from './pages/TreatmentsSettingsPage';
 import StatisticsPage from './pages/StatisticsPage';
+import ProfilePage from './pages/DoctorsPage'; // Re-use DoctorsPage file for ProfilePage
 
 const AppContent: React.FC = () => {
     const { user } = useAuth();
@@ -48,6 +49,8 @@ const AppContent: React.FC = () => {
                 return user.role === UserRole.Doctor ? <DoctorSchedulePage user={user} refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;
             case 'settings':
                 return user.role === UserRole.Doctor ? <DoctorSettingsPage user={user} refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;
+            case 'profile':
+                return <ProfilePage />;
             default:
                 return <DashboardPage user={user} refreshTrigger={refreshTrigger} />;
         }
