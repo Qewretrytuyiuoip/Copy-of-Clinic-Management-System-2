@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { User, Patient, UserRole, Session, SessionTreatment, Treatment, Payment, Gender, PatientPhoto, ActivityLog, ActivityLogActionType, CreatePatientPhotosPayload } from '../types';
 import { api } from '../services/api';
-import { PlusIcon, PencilIcon, TrashIcon, XIcon, ClipboardListIcon, BeakerIcon, ArrowBackIcon, EyeIcon, CurrencyDollarIcon, CheckIcon, SearchIcon, PhotographIcon, ListBulletIcon, DocumentTextIcon } from '../components/Icons';
+import { PlusIcon, PencilIcon, TrashIcon, XIcon, ClipboardListIcon, BeakerIcon, ArrowBackIcon, EyeIcon, CurrencyDollarIcon, CheckIcon, SearchIcon, PhotographIcon, ListBulletIcon, DocumentTextIcon, UserCircleIcon, CalendarIcon, ChevronDownIcon } from '../components/Icons';
 import LoadingSpinner, { CenteredLoadingSpinner } from '../components/LoadingSpinner';
 import { useAppSettings } from '../hooks/useAppSettings';
 
@@ -473,11 +473,17 @@ const EditSessionTreatmentModal: React.FC<EditSessionTreatmentModalProps> = ({ t
     );
 };
 
-// FIX: Added PatientSessionsPage component to fix reference error.
 // ===================================================================
 // PatientSessionsPage Component
 // ===================================================================
-const PatientSessionsPage: React.FC<PatientDetailsPageProps> = ({ patient, doctors, onBack }) => {
+interface PatientSessionsPageProps {
+    patient: Patient;
+    doctors: User[];
+    onBack: () => void;
+    user: User;
+}
+
+const PatientSessionsPage: React.FC<PatientSessionsPageProps> = ({ patient, doctors, onBack, user }) => {
     const [sessions, setSessions] = useState<Session[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAddingSession, setIsAddingSession] = useState(false);
@@ -487,7 +493,7 @@ const PatientSessionsPage: React.FC<PatientDetailsPageProps> = ({ patient, docto
     const [treatmentToDelete, setTreatmentToDelete] = useState<SessionTreatment | null>(null);
     const [editingTreatment, setEditingTreatment] = useState<SessionTreatment | null>(null);
     const [viewingTreatment, setViewingTreatment] = useState<SessionTreatment | null>(null);
-
+    const [viewingTreatmentsForSession, setViewingTreatmentsForSession] = useState<Session | null>(null);
 
     const getDoctorName = (doctorId: string) => doctors.find(d => d.id === doctorId)?.name || 'غير معروف';
 
@@ -512,8 +518,6 @@ const PatientSessionsPage: React.FC<PatientDetailsPageProps> = ({ patient, docto
     }, [fetchSessions]);
 
     const handleCreateSession = async (newSessionData: Omit<Session, 'id' | 'treatments'>) => {
-        // FIX: The `api.sessions.create` function expects the `treatments` property.
-        // An empty array is added to satisfy the `Omit<Session, 'id'>` type.
         await api.sessions.create({ ...newSessionData, treatments: [] });
         setIsAddingSession(false);
         await fetchSessions();
@@ -538,11 +542,20 @@ const PatientSessionsPage: React.FC<PatientDetailsPageProps> = ({ patient, docto
             setAddingTreatmentToSession(null);
         }
         await fetchSessions();
+        // After saving, find the updated session object and update the viewing state
+        const updatedSession = (await api.sessions.getAll()).find(s => s.id === viewingTreatmentsForSession?.id);
+        if(updatedSession) {
+            setViewingTreatmentsForSession(updatedSession);
+        }
     };
 
     const handleUpdateTreatment = async () => {
         setEditingTreatment(null);
         await fetchSessions();
+        const updatedSession = (await api.sessions.getAll()).find(s => s.id === viewingTreatmentsForSession?.id);
+        if(updatedSession) {
+            setViewingTreatmentsForSession(updatedSession);
+        }
     }
 
     const confirmDeleteTreatment = async () => {
@@ -550,6 +563,10 @@ const PatientSessionsPage: React.FC<PatientDetailsPageProps> = ({ patient, docto
             await api.sessionTreatments.delete(treatmentToDelete.instanceId);
             setTreatmentToDelete(null);
             await fetchSessions();
+            const updatedSession = (await api.sessions.getAll()).find(s => s.id === viewingTreatmentsForSession?.id);
+            if (updatedSession) {
+                setViewingTreatmentsForSession(updatedSession);
+            }
         }
     };
 
@@ -557,6 +574,10 @@ const PatientSessionsPage: React.FC<PatientDetailsPageProps> = ({ patient, docto
         try {
             await api.sessionTreatments.update(treatment.instanceId, { completed: !treatment.completed });
             await fetchSessions();
+            const updatedSession = (await api.sessions.getAll()).find(s => s.id === viewingTreatmentsForSession?.id);
+             if (updatedSession) {
+                setViewingTreatmentsForSession(updatedSession);
+            }
         } catch (error) {
             console.error("Failed to update treatment status:", error);
             alert('فشل في تحديث حالة العلاج.');
@@ -565,77 +586,122 @@ const PatientSessionsPage: React.FC<PatientDetailsPageProps> = ({ patient, docto
 
     return (
         <div>
-            <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-                 <div className="flex items-center gap-4">
-                    <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
-                        <ArrowBackIcon className="h-5 w-5" />
-                        <span>العودة</span>
-                    </button>
-                    <div>
-                        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">جلسات المريض</h1>
-                        <p className="text-gray-500 dark:text-gray-400">{patient.name}</p>
-                    </div>
-                </div>
-                <button onClick={() => setIsAddingSession(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
-                    <PlusIcon className="h-5 w-5 ml-2" />
-                    إضافة جلسة
-                </button>
-            </div>
-
-            <div className="space-y-6">
-                {loading ? <CenteredLoadingSpinner /> : sessions.length > 0 ? (
-                    sessions.map(session => (
-                        <div key={session.id} className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md">
-                            <div className="flex justify-between items-start flex-wrap gap-4 border-b dark:border-gray-700 pb-4 mb-4">
-                                <div>
-                                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">جلسة بتاريخ: {new Date(session.date).toLocaleDateString()}</h2>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">الطبيب: {getDoctorName(session.doctorId)}</p>
-                                    {session.notes && <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">ملاحظات الجلسة: {session.notes}</p>}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <button onClick={() => setAddingTreatmentToSession(session)} className="flex items-center gap-1 px-3 py-1.5 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-700"><PlusIcon className="h-4 w-4" /> علاج</button>
-                                    <button onClick={() => setEditingSession(session)} className="p-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل الجلسة"><PencilIcon className="h-5 w-5" /></button>
-                                    <button onClick={() => setSessionToDelete(session)} className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف الجلسة"><TrashIcon className="h-5 w-5" /></button>
-                                </div>
-                            </div>
-                            
+            {viewingTreatmentsForSession ? (
+                // TREATMENTS VIEW (as cards)
+                <div>
+                    <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => setViewingTreatmentsForSession(null)} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                                <ArrowBackIcon className="h-5 w-5" />
+                                <span>العودة للجلسات</span>
+                            </button>
                             <div>
-                                <h3 className="text-md font-semibold mb-2 text-gray-700 dark:text-gray-200">العلاجات في هذه الجلسة:</h3>
-                                {session.treatments.length > 0 ? (
-                                    <ul className="space-y-3">
-                                        {session.treatments.map(t => (
-                                            <li key={t.instanceId} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                                                <div className="flex items-center gap-3">
-                                                    <button onClick={() => handleToggleTreatmentComplete(t)} title={t.completed ? 'وضع علامة كغير مكتمل' : 'وضع علامة كمكتمل'}>
-                                                        {t.completed 
-                                                          ? <CheckIcon className="h-6 w-6 text-green-500" />
-                                                          : <div className="h-6 w-6 rounded-full border-2 border-gray-400 dark:border-gray-500"></div>
-                                                        }
-                                                    </button>
-                                                    <div>
-                                                        <p className={`font-semibold ${t.completed ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-800 dark:text-gray-100'}`}>{t.name}</p>
-                                                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                            السعر: ${t.sessionPrice.toFixed(2)}
-                                                            {t.additionalCosts ? ` (+ $${t.additionalCosts.toFixed(2)})` : ''}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-1">
-                                                     <button onClick={() => setViewingTreatment(t)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="عرض التفاصيل"><EyeIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" /></button>
-                                                     <button onClick={() => setEditingTreatment(t)} className="p-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل العلاج"><PencilIcon className="h-5 w-5" /></button>
-                                                     <button onClick={() => setTreatmentToDelete(t)} className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف العلاج"><TrashIcon className="h-5 w-5" /></button>
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                ) : <p className="text-center text-gray-500 dark:text-gray-400 py-4">لا توجد علاجات مضافة لهذه الجلسة بعد.</p>}
+                                <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">علاجات جلسة {new Date(viewingTreatmentsForSession.date).toLocaleDateString()}</h1>
+                                <p className="text-gray-500 dark:text-gray-400">للمريض: {patient.name}</p>
                             </div>
                         </div>
-                    ))
-                ) : <p className="text-center text-gray-500 dark:text-gray-400 py-16 bg-white dark:bg-slate-800 rounded-xl shadow-md">لا توجد جلسات مسجلة لهذا المريض.</p>}
-            </div>
+                        <button onClick={() => setAddingTreatmentToSession(viewingTreatmentsForSession)} className="flex items-center bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition-colors">
+                            <PlusIcon className="h-5 w-5 ml-2" />
+                            إضافة علاج
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {viewingTreatmentsForSession.treatments.length > 0 ? (
+                            viewingTreatmentsForSession.treatments.map(t => (
+                                <div key={t.instanceId} className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-md flex flex-col justify-between">
+                                    <div>
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <button onClick={() => handleToggleTreatmentComplete(t)} title={t.completed ? 'وضع علامة كغير مكتمل' : 'وضع علامة كمكتمل'}>
+                                                {t.completed 
+                                                  ? <CheckIcon className="h-6 w-6 text-green-500" />
+                                                  : <div className="h-6 w-6 rounded-full border-2 border-gray-400 dark:border-gray-500"></div>
+                                                }
+                                            </button>
+                                            <p className={`font-bold text-lg ${t.completed ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-800 dark:text-gray-100'}`}>{t.name}</p>
+                                        </div>
+                                        <p className="text-md font-semibold text-green-600 dark:text-green-400">
+                                            ${t.sessionPrice.toFixed(2)}
+                                            {t.additionalCosts ? ` (+ $${t.additionalCosts.toFixed(2)})` : ''}
+                                        </p>
+                                        {t.treatmentDate && <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">تاريخ العلاج: {new Date(t.treatmentDate).toLocaleDateString()}</p>}
+                                    </div>
+                                    <div className="mt-4 pt-4 border-t dark:border-gray-700 flex justify-end items-center gap-1">
+                                        <button onClick={() => setViewingTreatment(t)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="عرض التفاصيل"><EyeIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" /></button>
+                                        <button onClick={() => setEditingTreatment(t)} className="p-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل العلاج"><PencilIcon className="h-5 w-5" /></button>
+                                        <button onClick={() => setTreatmentToDelete(t)} className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف العلاج"><TrashIcon className="h-5 w-5" /></button>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                             <div className="col-span-full text-center py-16 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-slate-800 rounded-xl">
+                                <BeakerIcon className="mx-auto h-12 w-12 text-gray-400" />
+                                <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-gray-100">لا توجد علاجات</h3>
+                                <p className="mt-1 text-sm">ابدأ بإضافة أول علاج لهذه الجلسة.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            ) : (
+                // SESSIONS VIEW (as cards)
+                <div>
+                    <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+                         <div className="flex items-center gap-4">
+                            <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                                <ArrowBackIcon className="h-5 w-5" />
+                                <span>العودة</span>
+                            </button>
+                            <div>
+                                <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">جلسات المريض</h1>
+                                <p className="text-gray-500 dark:text-gray-400">{patient.name}</p>
+                            </div>
+                        </div>
+                        <button onClick={() => setIsAddingSession(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
+                            <PlusIcon className="h-5 w-5 ml-2" />
+                            إضافة جلسة
+                        </button>
+                    </div>
+
+                    <div className="space-y-6">
+                        {loading ? <CenteredLoadingSpinner /> : sessions.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {sessions.map(session => {
+                                const isSessionCompleted = session.treatments.length > 0 && session.treatments.every(t => t.completed);
+                                return (
+                                <div key={session.id} className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md flex flex-col justify-between">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">جلسة بتاريخ: {new Date(session.date).toLocaleDateString()}</h2>
+                                            {isSessionCompleted && (
+                                                <span title="الجلسة مكتملة" className="flex items-center justify-center bg-green-100 dark:bg-green-900/40 rounded-full p-1">
+                                                    <CheckIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">الطبيب: {getDoctorName(session.doctorId)}</p>
+                                        {session.notes && <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 bg-gray-50 dark:bg-slate-700/50 p-2 rounded-md">ملاحظات: {session.notes}</p>}
+                                    </div>
+                                    <div className="mt-4 pt-4 border-t dark:border-gray-700 flex flex-wrap items-center justify-end gap-2">
+                                        <button onClick={() => setViewingTreatmentsForSession(session)} className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white bg-teal-600 rounded-md hover:bg-teal-700"><BeakerIcon className="h-4 w-4" /> علاجات ({session.treatments.length})</button>
+                                        <button onClick={() => setEditingSession(session)} className="p-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل الجلسة"><PencilIcon className="h-5 w-5" /></button>
+                                        <button onClick={() => setSessionToDelete(session)} className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف الجلسة"><TrashIcon className="h-5 w-5" /></button>
+                                    </div>
+                                </div>
+                                )
+                            })}
+                            </div>
+                        ) : (
+                            <div className="text-center py-16 text-gray-500 dark:text-gray-400 bg-white dark:bg-slate-800 rounded-xl shadow-md">
+                                <ClipboardListIcon className="mx-auto h-12 w-12 text-gray-400" />
+                                <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-gray-100">لا توجد جلسات</h3>
+                                <p className="mt-1 text-sm">ابدأ بإضافة أول جلسة لهذا المريض.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
             
-            {isAddingSession && <AddSessionModal onSave={handleCreateSession} onClose={() => setIsAddingSession(false)} patientId={patient.id} doctors={doctors} />}
+            {isAddingSession && <AddSessionModal onSave={handleCreateSession} onClose={() => setIsAddingSession(false)} patientId={patient.id} doctors={doctors} user={user} patient={patient} />}
             {editingSession && <EditSessionModal session={editingSession} onSave={handleUpdateSession} onClose={() => setEditingSession(null)} />}
             {sessionToDelete && <ConfirmDeleteModal title="حذف الجلسة" message="هل أنت متأكد من حذف هذه الجلسة وجميع علاجاتها؟" onConfirm={confirmDeleteSession} onCancel={() => setSessionToDelete(null)} />}
             {addingTreatmentToSession && <AddTreatmentToSessionModal session={addingTreatmentToSession} onSave={handleSaveTreatment} onClose={() => setAddingTreatmentToSession(null)} />}
@@ -879,23 +945,38 @@ interface AddSessionModalProps {
     onClose: () => void;
     patientId: string;
     doctors: User[];
+    user: User;
+    patient: Patient;
 }
 
-const AddSessionModal: React.FC<AddSessionModalProps> = ({ onSave, onClose, patientId, doctors }) => {
-    const [formData, setFormData] = useState({ date: new Date().toISOString().split('T')[0], notes: '', doctorId: doctors.length === 1 ? doctors[0].id : '' });
+const AddSessionModal: React.FC<AddSessionModalProps> = ({ onSave, onClose, patientId, doctors, user, patient }) => {
+    const [formData, setFormData] = useState({ date: new Date().toISOString().split('T')[0], notes: '' });
     const [isSaving, setIsSaving] = useState(false);
     const inputStyle = "w-full px-3 py-2 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary text-black dark:text-white bg-white dark:bg-gray-700";
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.date || !formData.doctorId) { alert('يرجى تحديد تاريخ الجلسة والطبيب.'); return; }
+        
+        let doctorId = '';
+        if (user.role === UserRole.Doctor && patient.doctorIds.includes(user.id)) {
+            doctorId = user.id;
+        } else if (patient.doctorIds && patient.doctorIds.length > 0) {
+            // Default to the first assigned doctor
+            doctorId = patient.doctorIds[0];
+        }
+
+        if (!formData.date || !doctorId) { 
+            alert('لا يمكن إضافة جلسة. المريض ليس لديه طبيب مسؤول.'); 
+            return; 
+        }
+
         setIsSaving(true);
-        await onSave({ date: new Date(formData.date).toISOString(), notes: formData.notes, patientId, doctorId: formData.doctorId });
+        await onSave({ date: new Date(formData.date).toISOString(), notes: formData.notes, patientId, doctorId: doctorId });
         setIsSaving(false);
     };
 
@@ -905,13 +986,6 @@ const AddSessionModal: React.FC<AddSessionModalProps> = ({ onSave, onClose, pati
                 <div className="flex justify-between items-center p-4 border-b dark:border-gray-700"><h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">إضافة جلسة جديدة</h2><button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button></div>
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4">
-                        <div>
-                            <label htmlFor="doctorId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">طبيب الجلسة</label>
-                            <select id="doctorId" name="doctorId" value={formData.doctorId} onChange={handleChange} required className={inputStyle}>
-                                <option value="">-- اختر طبيب --</option>
-                                {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                            </select>
-                        </div>
                         <div><label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاريخ الجلسة</label><input type="date" id="date" name="date" value={formData.date} onChange={handleChange} required className={inputStyle} /></div>
                         <div><label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={4} className={inputStyle}></textarea></div>
                     </div>
@@ -1088,7 +1162,6 @@ const AddTreatmentToSessionModal: React.FC<AddTreatmentToSessionModalProps> = ({
 };
 
 
-// FIX: Added AddPatientModal component to fix reference error.
 // ===================================================================
 // AddPatientModal Component
 // ===================================================================
@@ -1513,13 +1586,11 @@ const PatientPaymentsPage: React.FC<{ patient: Patient; onBack: () => void; }> =
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            // FIX: api.payments.getAll requires arguments and returns a paginated object.
             const [allPaymentsResponse, allSessions] = await Promise.all([
                 api.payments.getAll({ page: 1, per_page: 9999 }),
                 api.sessions.getAll()
             ]);
 
-            // FIX: The array of payments is in the 'payments' property of the response.
             const allPayments = allPaymentsResponse.payments;
             const patientPayments = allPayments.filter(p => p.patientId === patient.id);
             const patientSessions = allSessions.filter(s => s.patientId === patient.id);
@@ -1667,8 +1738,6 @@ const PatientActivityLogPage: React.FC<{ patient: Patient; onBack: () => void; }
 
     const fetchLogs = useCallback(async () => {
         setLoading(true);
-        // FIX: The `api.activityLogs.getAll` method requires pagination parameters and returns an object with a `logs` property.
-        // A large per_page value is used here to fetch all logs for the patient, and the response is handled correctly.
         const response = await api.activityLogs.getAll({ page: 1, per_page: 9999 });
         setLogs(response.logs.filter(log => log.patientId === patient.id).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
         setLoading(false);
@@ -1733,6 +1802,282 @@ const PatientActivityLogPage: React.FC<{ patient: Patient; onBack: () => void; }
 };
 
 // ===================================================================
+// PatientPlanPage Component (NEW & Redesigned)
+// ===================================================================
+interface PlanSession {
+    clientId: string; // for React key
+    doctorId: string;
+    date: string;
+    notes: string;
+    treatments: Treatment[];
+}
+interface AddTreatmentToPlanSessionProps {
+    session: PlanSession;
+    allTreatments: Treatment[];
+    onAdd: (treatment: Treatment) => void;
+}
+const AddTreatmentToPlanSession: React.FC<AddTreatmentToPlanSessionProps> = ({ session, allTreatments, onAdd }) => {
+    const [selectedTreatmentId, setSelectedTreatmentId] = useState('');
+    const availableTreatments = allTreatments.filter(t => !session.treatments.some(st => st.id === t.id));
+
+    const handleAdd = () => {
+        const treatmentToAdd = allTreatments.find(t => t.id === selectedTreatmentId);
+        if (treatmentToAdd) {
+            onAdd(treatmentToAdd);
+            setSelectedTreatmentId('');
+        }
+    };
+
+    return (
+        <div className="mt-2 flex rounded-md shadow-sm">
+            <select
+                value={selectedTreatmentId}
+                onChange={e => setSelectedTreatmentId(e.target.value)}
+                className="relative -mr-px block w-full flex-1 rounded-l-md border-gray-300 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 px-3 py-2 text-gray-900 focus:z-10 focus:border-primary focus:ring-primary sm:text-sm"
+            >
+                <option value="">اختر علاجًا...</option>
+                {availableTreatments.map(t => (
+                    <option key={t.id} value={t.id}>{t.name} (${t.price.toFixed(2)})</option>
+                ))}
+            </select>
+            <button
+                type="button"
+                onClick={handleAdd}
+                disabled={!selectedTreatmentId}
+                className="relative -ml-px inline-flex items-center gap-x-1.5 rounded-r-md px-3 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary-700 focus:z-10 disabled:bg-primary-300 disabled:cursor-not-allowed"
+            >
+                <PlusIcon className="h-5 w-5" aria-hidden="true" />
+                <span>إضافة</span>
+            </button>
+        </div>
+    );
+};
+
+const PatientPlanPage: React.FC<{ patient: Patient; doctors: User[]; user: User; onBack: () => void; }> = ({ patient, doctors, user, onBack }) => {
+    const [plan, setPlan] = useState<PlanSession[]>([]);
+    const [allTreatments, setAllTreatments] = useState<Treatment[]>([]);
+    const [loadingTreatments, setLoadingTreatments] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [openSessionClientId, setOpenSessionClientId] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchAllTreatments = async () => {
+            setLoadingTreatments(true);
+            try {
+                const treatments = await api.treatmentSettings.getAll(true); // force refresh
+                setAllTreatments(treatments);
+            } catch (error) {
+                console.error("Failed to fetch treatments for plan:", error);
+            } finally {
+                setLoadingTreatments(false);
+            }
+        };
+        fetchAllTreatments();
+    }, []);
+
+    const patientDoctors = useMemo(() => doctors.filter(d => patient.doctorIds.includes(d.id)), [doctors, patient]);
+    const getDoctorName = useCallback((doctorId: string) => doctors.find(d => d.id === doctorId)?.name || 'غير معروف', [doctors]);
+
+    const addSession = () => {
+        let assignedDoctorId = '';
+        if (user.role === UserRole.Doctor && patient.doctorIds.includes(user.id)) {
+            assignedDoctorId = user.id;
+        } else if (patientDoctors.length > 0) {
+            assignedDoctorId = patientDoctors[0].id;
+        }
+        
+        const newSession = {
+            clientId: `session_${Date.now()}`,
+            doctorId: assignedDoctorId,
+            date: new Date().toISOString().split('T')[0],
+            notes: '',
+            treatments: []
+        };
+        
+        setPlan(prev => [...prev, newSession]);
+        setOpenSessionClientId(newSession.clientId);
+    };
+
+    const removeSession = (clientId: string) => {
+        setPlan(prev => prev.filter(s => s.clientId !== clientId));
+    };
+
+    const updateSessionField = (clientId: string, field: keyof PlanSession, value: any) => {
+        setPlan(prev => prev.map(s => s.clientId === clientId ? { ...s, [field]: value } : s));
+    };
+
+    const addTreatmentToSession = (clientId: string, treatment: Treatment) => {
+        setPlan(prev => prev.map(s => 
+            s.clientId === clientId ? { ...s, treatments: [...s.treatments, treatment] } : s
+        ));
+    };
+
+    const removeTreatmentFromSession = (clientId: string, treatmentId: string) => {
+        setPlan(prev => prev.map(s =>
+            s.clientId === clientId ? { ...s, treatments: s.treatments.filter(t => t.id !== treatmentId) } : s
+        ));
+    };
+    
+    const handleToggleSession = (clientId: string) => {
+        setOpenSessionClientId(prevOpenId => (prevOpenId === clientId ? null : clientId));
+    };
+
+    const handleSavePlan = async () => {
+        setIsSaving(true);
+        try {
+            for (const session of plan) {
+                if (!session.doctorId || !session.date || session.treatments.length === 0) {
+                    continue; 
+                }
+                const newSession = await api.sessions.create({
+                    patientId: patient.id,
+                    doctorId: session.doctorId,
+                    date: session.date,
+                    notes: session.notes,
+                    treatments: [] 
+                });
+
+                for (const treatment of session.treatments) {
+                    await api.sessionTreatments.create({
+                        session_id: newSession.id,
+                        treatment_name: treatment.name,
+                        treatment_price: treatment.price,
+                        treatment_date: newSession.date,
+                        completed: false,
+                    });
+                }
+            }
+            alert('تم حفظ الخطة بنجاح!');
+            onBack();
+        } catch (error) {
+            console.error("Failed to save plan:", error);
+            alert(`فشل حفظ الخطة: ${error instanceof Error ? error.message : "خطأ غير معروف"}`);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+    
+    return (
+        <div className="bg-gray-50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-lg">
+            <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+                <div className="flex items-center gap-4">
+                    <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                        <ArrowBackIcon className="h-5 w-5" />
+                        <span>العودة</span>
+                    </button>
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">خطة العلاج</h1>
+                        <p className="text-gray-500 dark:text-gray-400">{patient.name}</p>
+                    </div>
+                </div>
+                 <button onClick={addSession} className="flex items-center gap-2 px-4 py-2 font-semibold text-primary dark:text-primary-300 bg-primary-100 dark:bg-primary-900/30 rounded-lg shadow-sm hover:bg-primary-200 dark:hover:bg-primary-900/50 transition-colors">
+                    <PlusIcon className="h-5 w-5" />
+                    <span>إضافة جلسة جديدة</span>
+                </button>
+            </div>
+
+            <div className="space-y-4">
+                 {plan.length === 0 ? (
+                    <div className="text-center py-16 px-4 sm:px-6 lg:px-8 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+                        <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
+                        <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-gray-100">لا توجد جلسات في هذه الخطة بعد</h3>
+                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">انقر على "إضافة جلسة جديدة" للبدء.</p>
+                    </div>
+                ) : (
+                    plan.map((session, index) => {
+                        const isOpen = openSessionClientId === session.clientId;
+                        return (
+                            <div key={session.clientId} className="bg-white dark:bg-slate-800 rounded-xl shadow-md overflow-hidden">
+                                <button 
+                                    type="button"
+                                    onClick={() => handleToggleSession(session.clientId)}
+                                    className="w-full flex justify-between items-center p-4 text-right hover:bg-gray-50 dark:hover:bg-slate-700/50"
+                                    aria-expanded={isOpen}
+                                >
+                                    <h2 className="text-xl font-bold text-primary dark:text-primary-300">الجلسة {index + 1}</h2>
+                                    <div className="flex items-center gap-2">
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); removeSession(session.clientId); }} 
+                                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-full" 
+                                            title="إزالة الجلسة"
+                                        >
+                                            <TrashIcon className="h-5 w-5" />
+                                        </button>
+                                        <ChevronDownIcon className={`h-6 w-6 text-gray-500 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+                                    </div>
+                                </button>
+                                <div className={`transition-all duration-500 ease-in-out ${isOpen ? 'max-h-[1000px]' : 'max-h-0'}`}>
+                                    <div className="p-6 pt-2 border-t dark:border-gray-700">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">التاريخ</label>
+                                                <div className="relative">
+                                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                                                        <CalendarIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                                                    </div>
+                                                    <input type="date" value={session.date} onChange={e => updateSessionField(session.clientId, 'date', e.target.value)} className="w-full pl-3 pr-10 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الطبيب المسؤول</label>
+                                                <div className="relative">
+                                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                                                        <UserCircleIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                                                    </div>
+                                                    <div className="w-full pl-3 pr-10 py-2 bg-gray-100 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300">
+                                                        {getDoctorName(session.doctorId) || '...'}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="md:col-span-2">
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات الجلسة</label>
+                                                <textarea value={session.notes} onChange={e => updateSessionField(session.clientId, 'notes', e.target.value)} rows={2} className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white" placeholder="ملاحظات اختيارية..."></textarea>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-6">
+                                            <h3 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-2">العلاجات المضافة</h3>
+                                            {session.treatments.length > 0 && (
+                                                <div className="flex flex-wrap gap-2 mb-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-md">
+                                                    {session.treatments.map(t => (
+                                                        <span key={t.id} className="inline-flex items-center gap-x-1.5 py-1.5 pl-2 pr-3 rounded-full text-xs font-medium bg-teal-100 text-teal-800 dark:bg-teal-800/30 dark:text-teal-400">
+                                                            <span>{t.name}</span>
+                                                            <button type="button" onClick={() => removeTreatmentFromSession(session.clientId, t.id)} className="group inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full text-teal-600 dark:text-teal-400 hover:bg-teal-200 dark:hover:bg-teal-700 hover:text-teal-900 dark:hover:text-white focus:outline-none">
+                                                                <XIcon className="h-3 w-3" />
+                                                            </button>
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {loadingTreatments ? <CenteredLoadingSpinner containerClassName="py-4" /> : (
+                                                <AddTreatmentToPlanSession 
+                                                    session={session}
+                                                    allTreatments={allTreatments}
+                                                    onAdd={(treatment) => addTreatmentToSession(session.clientId, treatment)}
+                                                />
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    })
+                )}
+            </div>
+
+            {plan.length > 0 && (
+                <div className="mt-8 flex justify-end">
+                    <button onClick={handleSavePlan} disabled={isSaving} className="flex items-center justify-center gap-2 px-8 py-3 bg-green-600 text-white font-bold text-lg rounded-lg shadow-lg hover:bg-green-700 transition-colors disabled:bg-green-400 disabled:cursor-wait">
+                        {isSaving && <LoadingSpinner className="h-5 w-5 border-white" />}
+                        <span>{isSaving ? 'جاري الحفظ...' : 'حفظ الخطة'}</span>
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ===================================================================
 // Pagination Component
 // ===================================================================
 const Pagination: React.FC<{
@@ -1783,7 +2128,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
     const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
     const [deletingPatient, setDeletingPatient] = useState<Patient | null>(null);
     const [viewingPatient, setViewingPatient] = useState<Patient | null>(null);
-    const [currentPage, setCurrentPage] = useState<'list' | 'details' | 'sessions' | 'payments' | 'gallery' | 'activity'>('list');
+    const [currentPage, setCurrentPage] = useState<'list' | 'details' | 'sessions' | 'payments' | 'gallery' | 'activity' | 'plan'>('list');
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDoctorId, setSelectedDoctorId] = useState('');
     const [page, setPage] = useState(1);
@@ -1850,12 +2195,10 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
     const handlePrintReport = async (patient: Patient) => {
         setIsPrinting(patient.id);
     
-        // FIX: api.payments.getAll requires arguments and returns a paginated object.
         const [allSessions, allPaymentsResponse] = await Promise.all([
             api.sessions.getAll(),
             api.payments.getAll({ page: 1, per_page: 9999 })
         ]);
-        // FIX: The array of payments is in the 'payments' property of the response.
         const allPayments = allPaymentsResponse.payments;
         const sessions = allSessions.filter(s => s.patientId === patient.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         const payments = allPayments.filter(p => p.patientId === patient.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -2064,18 +2407,18 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
     const handleUpdatePatient = async (updatedPatient: Patient) => {
         await api.patients.update(updatedPatient.id, updatedPatient, user.id);
         setEditingPatient(null);
-        await handlePageChange(currentPage);
+        setForceRefresh(c => c + 1);
     };
 
     const confirmDeletePatient = async () => {
         if (deletingPatient) {
             await api.patients.delete(deletingPatient.id, user.id);
             setDeletingPatient(null);
-            await handlePageChange(currentPage);
+            setForceRefresh(c => c + 1);
         }
     };
     
-    const viewDetails = (patient: Patient, page: 'details' | 'sessions' | 'payments' | 'gallery' | 'activity') => {
+    const viewDetails = (patient: Patient, page: 'details' | 'sessions' | 'payments' | 'gallery' | 'activity' | 'plan') => {
         setViewingPatient(patient);
         setCurrentPage(page);
     };
@@ -2085,7 +2428,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
         return <PatientDetailsPage patient={viewingPatient} onBack={() => setCurrentPage('list')} doctors={doctors} />;
     }
     if (viewingPatient && currentPage === 'sessions') {
-        return <PatientSessionsPage patient={viewingPatient} onBack={() => setCurrentPage('list')} doctors={doctors} />;
+        return <PatientSessionsPage patient={viewingPatient} onBack={() => setCurrentPage('list')} doctors={doctors} user={user} />;
     }
      if (viewingPatient && currentPage === 'payments') {
         return <PatientPaymentsPage patient={viewingPatient} onBack={() => setCurrentPage('list')} />;
@@ -2095,6 +2438,9 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
     }
     if (viewingPatient && currentPage === 'activity') {
         return <PatientActivityLogPage patient={viewingPatient} onBack={() => setCurrentPage('list')} />;
+    }
+    if (viewingPatient && currentPage === 'plan') {
+        return <PatientPlanPage patient={viewingPatient} onBack={() => setCurrentPage('list')} doctors={doctors} user={user} />;
     }
 
     return (
@@ -2166,7 +2512,10 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
                                         <div className="mt-4 pt-4 border-t dark:border-gray-600 flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
                                             <button onClick={() => viewDetails(p, 'details')} className="flex items-center text-gray-600 dark:text-gray-300 hover:text-primary p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-sm" title="عرض التفاصيل"><EyeIcon className="h-4 w-4" /><span className="mr-1">التفاصيل</span></button>
                                             {user.role !== UserRole.Secretary && (
-                                                <button onClick={() => viewDetails(p, 'sessions')} className="flex items-center text-teal-600 dark:text-teal-400 hover:text-teal-800 p-1 rounded hover:bg-teal-100 dark:hover:bg-teal-900/40 text-sm"><ClipboardListIcon className="h-4 w-4" /><span className="mr-1">الجلسات</span></button>
+                                                <>
+                                                    <button onClick={() => viewDetails(p, 'sessions')} className="flex items-center text-teal-600 dark:text-teal-400 hover:text-teal-800 p-1 rounded hover:bg-teal-100 dark:hover:bg-teal-900/40 text-sm"><ClipboardListIcon className="h-4 w-4" /><span className="mr-1">الجلسات</span></button>
+                                                    <button onClick={() => viewDetails(p, 'plan')} className="flex items-center text-purple-600 dark:text-purple-400 hover:text-purple-800 p-1 rounded hover:bg-purple-100 dark:hover:bg-purple-900/40 text-sm"><DocumentTextIcon className="h-4 w-4" /><span className="mr-1">الخطة</span></button>
+                                                </>
                                             )}
                                             <button onClick={() => viewDetails(p, 'gallery')} className="flex items-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 p-1 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-sm"><PhotographIcon className="h-4 w-4" /><span className="mr-1">الصور</span></button>
                                             
@@ -2228,5 +2577,4 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
     );
 };
 
-// FIX: Add default export to make the component importable in App.tsx.
 export default PatientsPage;
