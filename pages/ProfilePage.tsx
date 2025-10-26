@@ -47,9 +47,10 @@ interface TreatmentFormModalProps {
     treatment?: Treatment;
     onSave: (data: Omit<Treatment, 'id'> | Treatment) => Promise<void>;
     onClose: () => void;
+    user: User;
 }
 
-const TreatmentFormModal: React.FC<TreatmentFormModalProps> = ({ treatment, onSave, onClose }) => {
+const TreatmentFormModal: React.FC<TreatmentFormModalProps> = ({ treatment, onSave, onClose, user }) => {
     const [formData, setFormData] = useState({
         name: treatment?.name || '',
         price: treatment?.price.toString() || '',
@@ -98,10 +99,12 @@ const TreatmentFormModal: React.FC<TreatmentFormModalProps> = ({ treatment, onSa
                             <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">اسم العلاج</label>
                             <input type="text" id="name" name="name" value={formData.name} onChange={handleChange} required className={inputStyle} />
                         </div>
-                        <div>
-                            <label htmlFor="price" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">السعر</label>
-                            <input type="number" step="0.01" id="price" name="price" value={formData.price} onChange={handleChange} required className={inputStyle} placeholder="0.00" />
-                        </div>
+                        {user.role !== UserRole.Doctor && (
+                            <div>
+                                <label htmlFor="price" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">السعر</label>
+                                <input type="number" step="0.01" id="price" name="price" value={formData.price} onChange={handleChange} required className={inputStyle} placeholder="0.00" />
+                            </div>
+                        )}
                         <div>
                             <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات</label>
                             <textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={3} className={inputStyle} placeholder="أضف ملاحظات عامة حول العلاج..."></textarea>
@@ -122,6 +125,7 @@ const TreatmentFormModal: React.FC<TreatmentFormModalProps> = ({ treatment, onSa
 // TreatmentsSettings Component
 // ===================================================================
 const TreatmentsSettings: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => {
+    const { user } = useAuth();
     const [treatments, setTreatments] = useState<Treatment[]>([]);
     const [loading, setLoading] = useState(true);
     const [fetchError, setFetchError] = useState<string | null>(null);
@@ -184,6 +188,8 @@ const TreatmentsSettings: React.FC<{ refreshTrigger: number }> = ({ refreshTrigg
         treatment.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    if (!user) return null;
+
     return (
         <div className="mt-8">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">إعدادات العلاج</h1>
@@ -216,7 +222,9 @@ const TreatmentsSettings: React.FC<{ refreshTrigger: number }> = ({ refreshTrigg
                                     <div>
                                         <div className="flex justify-between items-start">
                                             <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{t.name}</h3>
-                                            <p className="text-lg font-bold text-green-600 dark:text-green-400">${t.price.toFixed(2)}</p>
+                                            {user.role !== UserRole.Doctor && (
+                                                <p className="text-lg font-bold text-green-600 dark:text-green-400">SYP {t.price.toFixed(2)}</p>
+                                            )}
                                         </div>
                                         {t.notes && <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 bg-gray-100 dark:bg-gray-700 p-2 rounded-md">{t.notes}</p>}
                                     </div>
@@ -242,6 +250,7 @@ const TreatmentsSettings: React.FC<{ refreshTrigger: number }> = ({ refreshTrigg
                     treatment={editingTreatment || undefined}
                     onClose={() => { setIsAdding(false); setEditingTreatment(null); }} 
                     onSave={handleSave}
+                    user={user}
                 />
             )}
             {deletingTreatment && (

@@ -45,6 +45,7 @@ export interface Session {
     id:string;
     patientId: string;
     doctorId: string;
+    title: string;
     date: string; // ISO string
     notes: string;
     treatments: SessionTreatment[];

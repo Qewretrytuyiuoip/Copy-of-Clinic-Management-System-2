@@ -25,12 +25,10 @@ export const NAV_ITEMS = {
     { name: 'الملف الشخصي', icon: UserCircleIcon, page: 'profile' },
     { name: 'لوحة التحكم', icon: HomeIcon, page: 'dashboard' },
     { name: 'مرضاي', icon: UserGroupIcon, page: 'patients' },
-    { name: 'جدولي', icon: CalendarIcon, page: 'schedule' },
   ],
   [UserRole.Secretary]: [
     { name: 'الملف الشخصي', icon: UserCircleIcon, page: 'profile' },
     { name: 'لوحة التحكم', icon: HomeIcon, page: 'dashboard' },
-    { name: 'المواعيد', icon: CalendarIcon, page: 'appointments' },
     { name: 'المرضى', icon: UserGroupIcon, page: 'patients' },
     { name: 'المدفوعات', icon: CurrencyDollarIcon, page: 'payments' },
   ],

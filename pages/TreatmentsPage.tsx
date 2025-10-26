@@ -1,5 +1,6 @@
 
 
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { Treatment } from '../types';
 import { api } from '../services/api';
@@ -46,7 +47,7 @@ const TreatmentsPage: React.FC = () => {
                                 {treatments.map(treatment => (
                                     <tr key={treatment.id} className="border-b hover:bg-gray-50">
                                         <td className="p-3">{treatment.name}</td>
-                                        <td className="p-3">${treatment.price.toFixed(2)}</td>
+                                        <td className="p-3">SYP {treatment.price.toFixed(2)}</td>
                                         <td className="p-3 space-x-4">
                                             <button className="text-blue-600 hover:underline">تعديل</button>
                                             <button className="text-red-600 hover:underline">حذف</button>

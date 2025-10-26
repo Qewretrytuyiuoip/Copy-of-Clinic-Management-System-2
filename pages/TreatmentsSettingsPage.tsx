@@ -173,7 +173,6 @@ const TreatmentsSettingsPage: React.FC<{ refreshTrigger: number }> = ({ refreshT
                 setDeletingTreatment(null);
                 await fetchTreatments();
             } catch (error) {
-                console.error("Failed to delete treatment:", error);
                 alert(`فشل حذف العلاج: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
             }
         }
@@ -216,7 +215,7 @@ const TreatmentsSettingsPage: React.FC<{ refreshTrigger: number }> = ({ refreshT
                                     <div>
                                         <div className="flex justify-between items-start">
                                             <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{t.name}</h3>
-                                            <p className="text-lg font-bold text-green-600 dark:text-green-400">${t.price.toFixed(2)}</p>
+                                            <p className="text-lg font-bold text-green-600 dark:text-green-400">SYP {t.price.toFixed(2)}</p>
                                         </div>
                                         {t.notes && <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 bg-gray-100 dark:bg-gray-700 p-2 rounded-md">{t.notes}</p>}
                                     </div>

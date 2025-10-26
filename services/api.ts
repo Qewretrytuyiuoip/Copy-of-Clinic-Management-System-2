@@ -415,6 +415,7 @@ const mapApiSessionToSessionBase = (s: any): Session => ({
     id: String(s.id),
     patientId: String(s.patient_id),
     doctorId: String(s.doctor_id),
+    title: s.title ?? '',
     date: s.date,
     notes: s.notes ?? '',
     treatments: [], // Will be populated separately
@@ -830,6 +831,7 @@ export const api = {
                 const formData = new FormData();
                 formData.append('patient_id', item.patientId);
                 formData.append('doctor_id', item.doctorId);
+                formData.append('title', item.title);
                 formData.append('date', item.date.split('T')[0]);
                 formData.append('notes', item.notes);
 
@@ -854,6 +856,7 @@ export const api = {
                 const formData = new FormData();
                 formData.append('id', id);
 
+                if (updates.title !== undefined) formData.append('title', updates.title);
                 if (updates.date) formData.append('date', updates.date.split('T')[0]);
                 if (updates.notes !== undefined) formData.append('notes', updates.notes);
                 

@@ -1,6 +1,7 @@
 
 
 
+
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { User, Appointment, Payment, ActivityLog, ActivityLogActionType } from '../../types';
 import { api } from '../../services/api';
@@ -154,7 +155,7 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger })
                 <StatCard title="إجمالي الأطباء" value={stats.doctors} icon={UsersIcon} />
                 <StatCard title="إجمالي المرضى" value={stats.patients} icon={UserGroupIcon} />
                 <StatCard title="مواعيد اليوم" value={stats.appointments} icon={CalendarIcon} />
-                <StatCard title="إجمالي الإيرادات" value={`$${stats.revenue.toLocaleString()}`} icon={CurrencyDollarIcon} />
+                <StatCard title="إجمالي الإيرادات" value={`SYP ${stats.revenue.toLocaleString()}`} icon={CurrencyDollarIcon} />
             </div>
             <div className="mt-8 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md">
                 <h2 className="text-xl font-semibold mb-4 dark:text-gray-100">النشاط الأخير</h2>

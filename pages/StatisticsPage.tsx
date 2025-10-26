@@ -144,9 +144,9 @@ const StatisticsPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
             ) : (
                 <>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-8">
-                        <StatCard title="إجمالي تكاليف العلاج" value={`$${calculatedStats.overallCosts.toFixed(2)}`} icon={BeakerIcon} color="red" />
-                        <StatCard title="إجمالي الإيرادات" value={`$${calculatedStats.overallRevenue.toFixed(2)}`} icon={CurrencyDollarIcon} color="green" />
-                        <StatCard title="المتبقي" value={`$${calculatedStats.overallBalance.toFixed(2)}`} icon={ListBulletIcon} color={calculatedStats.overallBalance > 0 ? 'yellow' : 'blue'} />
+                        <StatCard title="إجمالي تكاليف العلاج" value={`SYP ${calculatedStats.overallCosts.toFixed(2)}`} icon={BeakerIcon} color="red" />
+                        <StatCard title="إجمالي الإيرادات" value={`SYP ${calculatedStats.overallRevenue.toFixed(2)}`} icon={CurrencyDollarIcon} color="green" />
+                        <StatCard title="المتبقي" value={`SYP ${calculatedStats.overallBalance.toFixed(2)}`} icon={ListBulletIcon} color={calculatedStats.overallBalance > 0 ? 'yellow' : 'blue'} />
                     </div>
 
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md">
@@ -158,15 +158,15 @@ const StatisticsPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
                                     <div className="mt-3 space-y-2 text-sm">
                                         <div className="flex justify-between items-center text-red-600 dark:text-red-400">
                                             <span>إجمالي التكاليف:</span>
-                                            <span className="font-semibold">${stat.totalCosts.toFixed(2)}</span>
+                                            <span className="font-semibold">SYP {stat.totalCosts.toFixed(2)}</span>
                                         </div>
                                         <div className="flex justify-between items-center text-green-600 dark:text-green-400">
                                             <span>مجموع الدفعات:</span>
-                                            <span className="font-semibold">${stat.totalPayments.toFixed(2)}</span>
+                                            <span className="font-semibold">SYP {stat.totalPayments.toFixed(2)}</span>
                                         </div>
                                         <div className={`flex justify-between items-center pt-2 border-t dark:border-gray-600 font-bold ${stat.balance > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-blue-600 dark:text-blue-400'}`}>
                                             <span>الرصيد المتبقي:</span>
-                                            <span>${stat.balance.toFixed(2)}</span>
+                                            <span>SYP {stat.balance.toFixed(2)}</span>
                                         </div>
                                     </div>
                                 </div>

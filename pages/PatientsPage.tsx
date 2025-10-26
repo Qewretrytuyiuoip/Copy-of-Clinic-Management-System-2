@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { User, Patient, UserRole, Session, SessionTreatment, Treatment, Payment, Gender, PatientPhoto, ActivityLog, ActivityLogActionType, CreatePatientPhotosPayload } from '../types';
-import { api } from '../services/api';
+import { api, getSessionsByPatient } from '../services/api';
 import { PlusIcon, PencilIcon, TrashIcon, XIcon, ClipboardListIcon, BeakerIcon, ArrowBackIcon, EyeIcon, CurrencyDollarIcon, CheckIcon, SearchIcon, PhotographIcon, ListBulletIcon, DocumentTextIcon, UserCircleIcon, CalendarIcon, ChevronDownIcon } from '../components/Icons';
 import LoadingSpinner, { CenteredLoadingSpinner } from '../components/LoadingSpinner';
 import { useAppSettings } from '../hooks/useAppSettings';
@@ -107,7 +107,9 @@ const AddEditPhotoModal: React.FC<AddEditPhotoModalProps> = ({ photo, patientId,
             }
         } catch (error) {
             console.error("Failed to save photos", error);
-            alert(`فشل الحفظ: ${error instanceof Error ? error.message : "خطأ غير معروف"}`);
+            // FIX: Correctly handle 'unknown' error type in catch block. The 'error' variable cannot be directly used in a template literal with property access, so its message is first extracted into a variable.
+            const message = error instanceof Error ? error.message : "خطأ غير معروف";
+            alert(`فشل الحفظ: ${message}`);
         } finally {
             setIsSaving(false);
         }
@@ -389,9 +391,10 @@ interface EditSessionTreatmentModalProps {
     treatment: SessionTreatment;
     onSave: () => Promise<void>;
     onClose: () => void;
+    user: User;
 }
 
-const EditSessionTreatmentModal: React.FC<EditSessionTreatmentModalProps> = ({ treatment, onSave, onClose }) => {
+const EditSessionTreatmentModal: React.FC<EditSessionTreatmentModalProps> = ({ treatment, onSave, onClose, user }) => {
     const [formData, setFormData] = useState({
         sessionPrice: treatment.sessionPrice.toString(),
         sessionNotes: treatment.sessionNotes || '',
@@ -429,7 +432,8 @@ const EditSessionTreatmentModal: React.FC<EditSessionTreatmentModalProps> = ({ t
             await onSave();
         } catch (error) {
             console.error("Failed to update treatment:", error);
-            alert(`فشل في تحديث العلاج: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            alert(`فشل في تحديث العلاج: ${message}`);
         } finally {
             setIsSaving(false);
         }
@@ -448,16 +452,18 @@ const EditSessionTreatmentModal: React.FC<EditSessionTreatmentModalProps> = ({ t
                             <label htmlFor="treatmentDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاريخ العلاج</label>
                             <input type="date" id="treatmentDate" name="treatmentDate" value={formData.treatmentDate} onChange={handleChange} required className={inputStyle} />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label htmlFor="sessionPrice" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">السعر</label>
-                                <input type="number" step="0.01" id="sessionPrice" name="sessionPrice" value={formData.sessionPrice} onChange={handleChange} required className={inputStyle} />
+                        {user.role !== UserRole.Doctor && (
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="sessionPrice" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">السعر</label>
+                                    <input type="number" step="0.01" id="sessionPrice" name="sessionPrice" value={formData.sessionPrice} onChange={handleChange} required className={inputStyle} />
+                                </div>
+                                 <div>
+                                    <label htmlFor="additionalCosts" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تكاليف اضافية</label>
+                                    <input type="number" step="0.01" id="additionalCosts" name="additionalCosts" value={formData.additionalCosts} readOnly className={`${inputStyle} bg-gray-100 dark:bg-gray-800 cursor-not-allowed`} placeholder="يتم حسابه من الملاحظات" />
+                                </div>
                             </div>
-                             <div>
-                                <label htmlFor="additionalCosts" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تكاليف اضافية</label>
-                                <input type="number" step="0.01" id="additionalCosts" name="additionalCosts" value={formData.additionalCosts} readOnly className={`${inputStyle} bg-gray-100 dark:bg-gray-800 cursor-not-allowed`} placeholder="يتم حسابه من الملاحظات" />
-                            </div>
-                        </div>
+                        )}
                         <div>
                             <label htmlFor="sessionNotes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات</label>
                             <textarea id="sessionNotes" name="sessionNotes" value={formData.sessionNotes} onChange={handleChange} rows={3} className={inputStyle} placeholder="ملاحظات حول العلاج... سيتم استخلاص الأرقام للتكاليف الإضافية"></textarea>
@@ -596,8 +602,8 @@ const PatientSessionsPage: React.FC<PatientSessionsPageProps> = ({ patient, doct
                                 <span>العودة للجلسات</span>
                             </button>
                             <div>
-                                <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">علاجات جلسة {new Date(viewingTreatmentsForSession.date).toLocaleDateString()}</h1>
-                                <p className="text-gray-500 dark:text-gray-400">للمريض: {patient.name}</p>
+                                <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">علاجات جلسة: {viewingTreatmentsForSession.title || 'بدون عنوان'}</h1>
+                                <p className="text-gray-500 dark:text-gray-400">للمريض: {patient.name} - بتاريخ {new Date(viewingTreatmentsForSession.date).toLocaleDateString()}</p>
                             </div>
                         </div>
                         <button onClick={() => setAddingTreatmentToSession(viewingTreatmentsForSession)} className="flex items-center bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition-colors">
@@ -620,10 +626,12 @@ const PatientSessionsPage: React.FC<PatientSessionsPageProps> = ({ patient, doct
                                             </button>
                                             <p className={`font-bold text-lg ${t.completed ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-800 dark:text-gray-100'}`}>{t.name}</p>
                                         </div>
-                                        <p className="text-md font-semibold text-green-600 dark:text-green-400">
-                                            ${t.sessionPrice.toFixed(2)}
-                                            {t.additionalCosts ? ` (+ $${t.additionalCosts.toFixed(2)})` : ''}
-                                        </p>
+                                        {user.role !== UserRole.Doctor && (
+                                            <p className="text-md font-semibold text-green-600 dark:text-green-400">
+                                                SYP {t.sessionPrice.toFixed(2)}
+                                                {t.additionalCosts ? ` (+ SYP ${t.additionalCosts.toFixed(2)})` : ''}
+                                            </p>
+                                        )}
                                         {t.treatmentDate && <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">تاريخ العلاج: {new Date(t.treatmentDate).toLocaleDateString()}</p>}
                                     </div>
                                     <div className="mt-4 pt-4 border-t dark:border-gray-700 flex justify-end items-center gap-1">
@@ -670,15 +678,15 @@ const PatientSessionsPage: React.FC<PatientSessionsPageProps> = ({ patient, doct
                                 return (
                                 <div key={session.id} className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md flex flex-col justify-between">
                                     <div>
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">جلسة بتاريخ: {new Date(session.date).toLocaleDateString()}</h2>
+                                        <div className="flex items-center justify-between gap-2 mb-1">
+                                            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{session.title || 'جلسة بدون عنوان'}</h2>
                                             {isSessionCompleted && (
                                                 <span title="الجلسة مكتملة" className="flex items-center justify-center bg-green-100 dark:bg-green-900/40 rounded-full p-1">
                                                     <CheckIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
                                                 </span>
                                             )}
                                         </div>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">الطبيب: {getDoctorName(session.doctorId)}</p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">بتاريخ: {new Date(session.date).toLocaleDateString()} - الطبيب: {getDoctorName(session.doctorId)}</p>
                                         {session.notes && <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 bg-gray-50 dark:bg-slate-700/50 p-2 rounded-md">ملاحظات: {session.notes}</p>}
                                     </div>
                                     <div className="mt-4 pt-4 border-t dark:border-gray-700 flex flex-wrap items-center justify-end gap-2">
@@ -704,10 +712,10 @@ const PatientSessionsPage: React.FC<PatientSessionsPageProps> = ({ patient, doct
             {isAddingSession && <AddSessionModal onSave={handleCreateSession} onClose={() => setIsAddingSession(false)} patientId={patient.id} doctors={doctors} user={user} patient={patient} />}
             {editingSession && <EditSessionModal session={editingSession} onSave={handleUpdateSession} onClose={() => setEditingSession(null)} />}
             {sessionToDelete && <ConfirmDeleteModal title="حذف الجلسة" message="هل أنت متأكد من حذف هذه الجلسة وجميع علاجاتها؟" onConfirm={confirmDeleteSession} onCancel={() => setSessionToDelete(null)} />}
-            {addingTreatmentToSession && <AddTreatmentToSessionModal session={addingTreatmentToSession} onSave={handleSaveTreatment} onClose={() => setAddingTreatmentToSession(null)} />}
-            {editingTreatment && <EditSessionTreatmentModal treatment={editingTreatment} onSave={handleUpdateTreatment} onClose={() => setEditingTreatment(null)} />}
+            {addingTreatmentToSession && <AddTreatmentToSessionModal session={addingTreatmentToSession} onSave={handleSaveTreatment} onClose={() => setAddingTreatmentToSession(null)} user={user} />}
+            {editingTreatment && <EditSessionTreatmentModal treatment={editingTreatment} onSave={handleUpdateTreatment} onClose={() => setEditingTreatment(null)} user={user} />}
             {treatmentToDelete && <ConfirmDeleteModal title="حذف العلاج" message={`هل أنت متأكد من حذف علاج "${treatmentToDelete.name}" من الجلسة؟`} onConfirm={confirmDeleteTreatment} onCancel={() => setTreatmentToDelete(null)} />}
-            {viewingTreatment && <ViewTreatmentDetailsModal treatment={viewingTreatment} onClose={() => setViewingTreatment(null)} />}
+            {viewingTreatment && <ViewTreatmentDetailsModal treatment={viewingTreatment} onClose={() => setViewingTreatment(null)} user={user} />}
         </div>
     );
 };
@@ -825,6 +833,7 @@ interface EditSessionModalProps {
 
 const EditSessionModal: React.FC<EditSessionModalProps> = ({ session, onSave, onClose }) => {
     const [formData, setFormData] = useState({
+        title: session.title || '',
         date: new Date(session.date).toISOString().split('T')[0],
         notes: session.notes,
     });
@@ -841,6 +850,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({ session, onSave, on
         setIsSaving(true);
         const updatedSessionData = {
             ...session,
+            title: formData.title,
             date: new Date(formData.date).toISOString(),
             notes: formData.notes,
         };
@@ -857,6 +867,10 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({ session, onSave, on
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4">
+                        <div>
+                            <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">عنوان الجلسة</label>
+                            <input type="text" id="title" name="title" value={formData.title} onChange={handleChange} required className={inputStyle} />
+                        </div>
                         <div>
                             <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاريخ الجلسة</label>
                             <input type="date" id="date" name="date" value={formData.date} onChange={handleChange} required className={inputStyle} />
@@ -882,9 +896,10 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({ session, onSave, on
 interface ViewTreatmentDetailsModalProps {
     treatment: SessionTreatment;
     onClose: () => void;
+    user: User;
 }
 
-const ViewTreatmentDetailsModal: React.FC<ViewTreatmentDetailsModalProps> = ({ treatment, onClose }) => {
+const ViewTreatmentDetailsModal: React.FC<ViewTreatmentDetailsModalProps> = ({ treatment, onClose, user }) => {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
@@ -903,18 +918,20 @@ const ViewTreatmentDetailsModal: React.FC<ViewTreatmentDetailsModalProps> = ({ t
                             <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">{new Date(treatment.treatmentDate).toLocaleDateString()}</p>
                         </div>
                     )}
-                    <div className="pt-3 grid grid-cols-2 gap-4">
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">السعر</p>
-                            <p className="text-lg font-semibold text-green-600 dark:text-green-400">${treatment.sessionPrice.toFixed(2)}</p>
-                        </div>
-                         {treatment.additionalCosts && treatment.additionalCosts > 0 && (
+                    {user.role !== UserRole.Doctor && (
+                        <div className="pt-3 grid grid-cols-2 gap-4">
                             <div>
-                                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">تكاليف إضافية</p>
-                                <p className="text-lg font-semibold text-green-600 dark:text-green-400">${treatment.additionalCosts.toFixed(2)}</p>
+                                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">السعر</p>
+                                <p className="text-lg font-semibold text-green-600 dark:text-green-400">SYP {treatment.sessionPrice.toFixed(2)}</p>
                             </div>
-                         )}
-                    </div>
+                             {treatment.additionalCosts && treatment.additionalCosts > 0 && (
+                                <div>
+                                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">تكاليف إضافية</p>
+                                    <p className="text-lg font-semibold text-green-600 dark:text-green-400">SYP {treatment.additionalCosts.toFixed(2)}</p>
+                                </div>
+                             )}
+                        </div>
+                    )}
                     {treatment.sessionNotes && (
                          <div className="pt-3">
                             <p className="text-sm font-medium text-gray-500 dark:text-gray-400">ملاحظات الجلسة</p>
@@ -950,7 +967,7 @@ interface AddSessionModalProps {
 }
 
 const AddSessionModal: React.FC<AddSessionModalProps> = ({ onSave, onClose, patientId, doctors, user, patient }) => {
-    const [formData, setFormData] = useState({ date: new Date().toISOString().split('T')[0], notes: '' });
+    const [formData, setFormData] = useState({ title: '', date: new Date().toISOString().split('T')[0], notes: '' });
     const [isSaving, setIsSaving] = useState(false);
     const inputStyle = "w-full px-3 py-2 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary text-black dark:text-white bg-white dark:bg-gray-700";
 
@@ -976,7 +993,7 @@ const AddSessionModal: React.FC<AddSessionModalProps> = ({ onSave, onClose, pati
         }
 
         setIsSaving(true);
-        await onSave({ date: new Date(formData.date).toISOString(), notes: formData.notes, patientId, doctorId: doctorId });
+        await onSave({ title: formData.title, date: new Date(formData.date).toISOString(), notes: formData.notes, patientId, doctorId: doctorId });
         setIsSaving(false);
     };
 
@@ -986,6 +1003,7 @@ const AddSessionModal: React.FC<AddSessionModalProps> = ({ onSave, onClose, pati
                 <div className="flex justify-between items-center p-4 border-b dark:border-gray-700"><h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">إضافة جلسة جديدة</h2><button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button></div>
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4">
+                        <div><label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">عنوان الجلسة</label><input type="text" id="title" name="title" value={formData.title} onChange={handleChange} required className={inputStyle} /></div>
                         <div><label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاريخ الجلسة</label><input type="date" id="date" name="date" value={formData.date} onChange={handleChange} required className={inputStyle} /></div>
                         <div><label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={4} className={inputStyle}></textarea></div>
                     </div>
@@ -1004,9 +1022,10 @@ interface AddTreatmentToSessionModalProps {
     session: Session;
     onSave: (keepOpen?: boolean) => Promise<void>;
     onClose: () => void;
+    user: User;
 }
 
-const AddTreatmentToSessionModal: React.FC<AddTreatmentToSessionModalProps> = ({ session, onSave, onClose }) => {
+const AddTreatmentToSessionModal: React.FC<AddTreatmentToSessionModalProps> = ({ session, onSave, onClose, user }) => {
     const [allTreatments, setAllTreatments] = useState<Treatment[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedTreatmentId, setSelectedTreatmentId] = useState('');
@@ -1083,7 +1102,8 @@ const AddTreatmentToSessionModal: React.FC<AddTreatmentToSessionModalProps> = ({
             }
         } catch (error) {
             console.error("Failed to save treatment:", error);
-            alert(`فشل في حفظ العلاج: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            alert(`فشل في حفظ العلاج: ${message}`);
         } finally {
             spinnerStateSetter(false);
         }
@@ -1110,7 +1130,7 @@ const AddTreatmentToSessionModal: React.FC<AddTreatmentToSessionModalProps> = ({
                             <label htmlFor="treatment" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">اختر علاج</label>
                             <select id="treatment" value={selectedTreatmentId} onChange={handleTreatmentChange} required className={inputStyle}>
                                 <option value="">-- اختر علاج --</option>
-                                {allTreatments.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                {allTreatments.map(t => <option key={t.id} value={t.id}>{t.name}{user.role !== UserRole.Doctor && ` (SYP ${t.price})`}</option>)}
                             </select>
                         </div>
                         {selectedTreatmentId && (
@@ -1119,16 +1139,18 @@ const AddTreatmentToSessionModal: React.FC<AddTreatmentToSessionModalProps> = ({
                                     <label htmlFor="treatmentDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاريخ العلاج</label>
                                     <input type="date" id="treatmentDate" value={treatmentDate} onChange={e => setTreatmentDate(e.target.value)} required className={inputStyle} />
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label htmlFor="sessionPrice" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">السعر</label>
-                                        <input type="number" step="0.01" id="sessionPrice" value={sessionPrice} onChange={e => setSessionPrice(e.target.value)} required className={inputStyle} />
+                                {user.role !== UserRole.Doctor && (
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label htmlFor="sessionPrice" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">السعر</label>
+                                            <input type="number" step="0.01" id="sessionPrice" value={sessionPrice} onChange={e => setSessionPrice(e.target.value)} required className={inputStyle} />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="additionalCosts" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تكاليف اضافية</label>
+                                            <input type="number" step="0.01" id="additionalCosts" value={additionalCosts} readOnly className={`${inputStyle} bg-gray-100 dark:bg-gray-800 cursor-not-allowed`} placeholder="يتم حسابه من الملاحظات" />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label htmlFor="additionalCosts" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تكاليف اضافية</label>
-                                        <input type="number" step="0.01" id="additionalCosts" value={additionalCosts} readOnly className={`${inputStyle} bg-gray-100 dark:bg-gray-800 cursor-not-allowed`} placeholder="يتم حسابه من الملاحظات" />
-                                    </div>
-                                </div>
+                                )}
                                 <div>
                                     <label htmlFor="sessionNotes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات</label>
                                     <textarea id="sessionNotes" value={sessionNotes} onChange={e => setSessionNotes(e.target.value)} rows={3} className={inputStyle} placeholder="ملاحظات حول العلاج... سيتم استخلاص الأرقام للتكاليف الإضافية (مثال: 'مادة خاصة 150 ومادة أخرى 50.5')"></textarea>
@@ -1232,7 +1254,13 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
             await onSave(newPatientData);
             // On success, the parent component will close the modal.
         } catch (error) {
-            alert(`فشل الحفظ: ${error instanceof Error ? error.message : "خطأ غير معروف"}`);
+            let message = 'خطأ غير معروف';
+            if (error instanceof Error) {
+                message = error.message;
+            } else if (typeof error === 'string') {
+                message = error;
+            }
+            alert(`فشل الحفظ: ${message}`);
             setIsSaving(false);
         }
     };
@@ -1671,9 +1699,9 @@ const PatientPaymentsPage: React.FC<{ patient: Patient; onBack: () => void; }> =
             </div>
             
              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-8">
-                <StatCard title="إجمالي تكاليف العلاج" value={`$${stats.totalCost.toFixed(2)}`} icon={BeakerIcon} color="red" />
-                <StatCard title="إجمالي الإيرادات" value={`$${stats.totalPayments.toFixed(2)}`} icon={CurrencyDollarIcon} color="green" />
-                <StatCard title="المتبقي" value={`$${stats.balance.toFixed(2)}`} icon={ListBulletIcon} color={stats.balance > 0 ? 'yellow' : 'blue'} />
+                <StatCard title="إجمالي تكاليف العلاج" value={`SYP ${stats.totalCost.toFixed(2)}`} icon={BeakerIcon} color="red" />
+                <StatCard title="إجمالي الإيرادات" value={`SYP ${stats.totalPayments.toFixed(2)}`} icon={CurrencyDollarIcon} color="green" />
+                <StatCard title="المتبقي" value={`SYP ${stats.balance.toFixed(2)}`} icon={ListBulletIcon} color={stats.balance > 0 ? 'yellow' : 'blue'} />
             </div>
 
             <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md">
@@ -1699,7 +1727,7 @@ const PatientPaymentsPage: React.FC<{ patient: Patient; onBack: () => void; }> =
                                 {payments.map(pay => (
                                     <tr key={pay.id} className="bg-white dark:bg-slate-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                                         <td className="px-6 py-4 font-medium">{new Date(pay.date).toLocaleDateString()}</td>
-                                        <td className="px-6 py-4 font-bold text-green-600 dark:text-green-400">${pay.amount.toFixed(2)}</td>
+                                        <td className="px-6 py-4 font-bold text-green-600 dark:text-green-400">SYP {pay.amount.toFixed(2)}</td>
                                         <td className="px-6 py-4 flex justify-end items-center gap-2">
                                             <button onClick={() => setEditingPayment(pay)} className="p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
                                             <button onClick={() => setPaymentToDelete(pay)} className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400" title="حذف"><TrashIcon className="h-5 w-5" /></button>
@@ -1719,7 +1747,7 @@ const PatientPaymentsPage: React.FC<{ patient: Patient; onBack: () => void; }> =
             {paymentToDelete && (
                  <ConfirmDeleteModal
                     title="حذف الدفعة"
-                    message={`هل أنت متأكد من حذف دفعة بقيمة $${paymentToDelete.amount.toFixed(2)}؟`}
+                    message={`هل أنت متأكد من حذف دفعة بقيمة SYP ${paymentToDelete.amount.toFixed(2)}؟`}
                     onConfirm={confirmDeletePayment}
                     onCancel={() => setPaymentToDelete(null)}
                 />
@@ -1805,18 +1833,21 @@ const PatientActivityLogPage: React.FC<{ patient: Patient; onBack: () => void; }
 // PatientPlanPage Component (NEW & Redesigned)
 // ===================================================================
 interface PlanSession {
+    id?: string; // for tracking existing sessions
     clientId: string; // for React key
+    title: string;
     doctorId: string;
     date: string;
     notes: string;
-    treatments: Treatment[];
+    treatments: SessionTreatment[];
 }
 interface AddTreatmentToPlanSessionProps {
     session: PlanSession;
     allTreatments: Treatment[];
     onAdd: (treatment: Treatment) => void;
+    user: User;
 }
-const AddTreatmentToPlanSession: React.FC<AddTreatmentToPlanSessionProps> = ({ session, allTreatments, onAdd }) => {
+const AddTreatmentToPlanSession: React.FC<AddTreatmentToPlanSessionProps> = ({ session, allTreatments, onAdd, user }) => {
     const [selectedTreatmentId, setSelectedTreatmentId] = useState('');
     const availableTreatments = allTreatments.filter(t => !session.treatments.some(st => st.id === t.id));
 
@@ -1837,7 +1868,7 @@ const AddTreatmentToPlanSession: React.FC<AddTreatmentToPlanSessionProps> = ({ s
             >
                 <option value="">اختر علاجًا...</option>
                 {availableTreatments.map(t => (
-                    <option key={t.id} value={t.id}>{t.name} (${t.price.toFixed(2)})</option>
+                    <option key={t.id} value={t.id}>{t.name}{user.role !== UserRole.Doctor && ` (SYP ${t.price.toFixed(2)})`}</option>
                 ))}
             </select>
             <button
@@ -1856,27 +1887,44 @@ const AddTreatmentToPlanSession: React.FC<AddTreatmentToPlanSessionProps> = ({ s
 const PatientPlanPage: React.FC<{ patient: Patient; doctors: User[]; user: User; onBack: () => void; }> = ({ patient, doctors, user, onBack }) => {
     const [plan, setPlan] = useState<PlanSession[]>([]);
     const [allTreatments, setAllTreatments] = useState<Treatment[]>([]);
-    const [loadingTreatments, setLoadingTreatments] = useState(true);
+    const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [openSessionClientId, setOpenSessionClientId] = useState<string | null>(null);
+    const initialPlanRef = useRef<PlanSession[]>([]);
+
 
     useEffect(() => {
-        const fetchAllTreatments = async () => {
-            setLoadingTreatments(true);
+        const fetchInitialData = async () => {
+            setLoading(true);
             try {
-                const treatments = await api.treatmentSettings.getAll(true); // force refresh
+                const [sessions, treatments] = await Promise.all([
+                    getSessionsByPatient(patient.id),
+                    api.treatmentSettings.getAll(true) // force refresh
+                ]);
+
+                const initialPlanData = sessions.map(session => ({
+                    id: session.id,
+                    clientId: `session_${session.id}`,
+                    title: session.title,
+                    doctorId: session.doctorId,
+                    date: session.date.split('T')[0],
+                    notes: session.notes,
+                    treatments: session.treatments
+                })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                
+                setPlan(initialPlanData);
+                initialPlanRef.current = JSON.parse(JSON.stringify(initialPlanData)); // Deep copy for comparison
                 setAllTreatments(treatments);
             } catch (error) {
-                console.error("Failed to fetch treatments for plan:", error);
+                console.error("Failed to fetch initial data for plan:", error);
             } finally {
-                setLoadingTreatments(false);
+                setLoading(false);
             }
         };
-        fetchAllTreatments();
-    }, []);
+        fetchInitialData();
+    }, [patient.id]);
 
     const patientDoctors = useMemo(() => doctors.filter(d => patient.doctorIds.includes(d.id)), [doctors, patient]);
-    const getDoctorName = useCallback((doctorId: string) => doctors.find(d => d.id === doctorId)?.name || 'غير معروف', [doctors]);
 
     const addSession = () => {
         let assignedDoctorId = '';
@@ -1886,8 +1934,9 @@ const PatientPlanPage: React.FC<{ patient: Patient; doctors: User[]; user: User;
             assignedDoctorId = patientDoctors[0].id;
         }
         
-        const newSession = {
+        const newSession: PlanSession = {
             clientId: `session_${Date.now()}`,
+            title: '',
             doctorId: assignedDoctorId,
             date: new Date().toISOString().split('T')[0],
             notes: '',
@@ -1902,19 +1951,26 @@ const PatientPlanPage: React.FC<{ patient: Patient; doctors: User[]; user: User;
         setPlan(prev => prev.filter(s => s.clientId !== clientId));
     };
 
-    const updateSessionField = (clientId: string, field: keyof PlanSession, value: any) => {
+    const updateSessionField = (clientId: string, field: keyof Omit<PlanSession, 'treatments' | 'clientId'>, value: any) => {
         setPlan(prev => prev.map(s => s.clientId === clientId ? { ...s, [field]: value } : s));
     };
 
     const addTreatmentToSession = (clientId: string, treatment: Treatment) => {
+        const newSessionTreatment: SessionTreatment = {
+            ...treatment,
+            instanceId: `new_${Date.now()}_${Math.random()}`,
+            sessionId: '', 
+            sessionPrice: treatment.price,
+            completed: false,
+        };
         setPlan(prev => prev.map(s => 
-            s.clientId === clientId ? { ...s, treatments: [...s.treatments, treatment] } : s
+            s.clientId === clientId ? { ...s, treatments: [...s.treatments, newSessionTreatment] } : s
         ));
     };
 
-    const removeTreatmentFromSession = (clientId: string, treatmentId: string) => {
+    const removeTreatmentFromSession = (clientId: string, instanceId: string) => {
         setPlan(prev => prev.map(s =>
-            s.clientId === clientId ? { ...s, treatments: s.treatments.filter(t => t.id !== treatmentId) } : s
+            s.clientId === clientId ? { ...s, treatments: s.treatments.filter(t => t.instanceId !== instanceId) } : s
         ));
     };
     
@@ -1925,37 +1981,121 @@ const PatientPlanPage: React.FC<{ patient: Patient; doctors: User[]; user: User;
     const handleSavePlan = async () => {
         setIsSaving(true);
         try {
-            for (const session of plan) {
-                if (!session.doctorId || !session.date || session.treatments.length === 0) {
-                    continue; 
+            const initialPlan = initialPlanRef.current;
+            const currentPlan = plan;
+    
+            const initialSessionIds = new Set(initialPlan.map(s => s.id).filter(Boolean));
+            const currentSessionIds = new Set(currentPlan.map(s => s.id).filter(Boolean));
+    
+            // 1. Handle Deleted Sessions
+            for (const sessionId of initialSessionIds) {
+                if (!currentSessionIds.has(sessionId)) {
+                    await api.sessions.delete(sessionId!);
                 }
-                const newSession = await api.sessions.create({
-                    patientId: patient.id,
-                    doctorId: session.doctorId,
-                    date: session.date,
-                    notes: session.notes,
-                    treatments: [] 
-                });
-
-                for (const treatment of session.treatments) {
-                    await api.sessionTreatments.create({
-                        session_id: newSession.id,
-                        treatment_name: treatment.name,
-                        treatment_price: treatment.price,
-                        treatment_date: newSession.date,
-                        completed: false,
+            }
+    
+            for (const session of currentPlan) {
+                if (session.id) { // Existing Session - handle updates and treatment changes
+                    const initialSession = initialPlan.find(s => s.id === session.id);
+                    if (!initialSession) continue;
+    
+                    // 2. Handle Session Detail Updates
+                    if (
+                        session.title !== initialSession.title ||
+                        session.date !== initialSession.date ||
+                        session.doctorId !== initialSession.doctorId ||
+                        session.notes !== initialSession.notes
+                    ) {
+                        await api.sessions.update(session.id, {
+                            title: session.title,
+                            date: session.date,
+                            doctorId: session.doctorId,
+                            notes: session.notes,
+                        });
+                    }
+    
+                    // 3. Handle Treatment Changes
+                    const initialTreatmentIds = new Set(initialSession.treatments.map(t => t.instanceId));
+                    const currentTreatmentIds = new Set(session.treatments.map(t => t.instanceId));
+                    
+                    for (const treatmentId of initialTreatmentIds) {
+                        if (!currentTreatmentIds.has(treatmentId)) {
+                            await api.sessionTreatments.delete(treatmentId);
+                        }
+                    }
+                    
+                    for (const treatment of session.treatments) {
+                        if (!initialTreatmentIds.has(treatment.instanceId)) {
+                            await api.sessionTreatments.create({
+                                session_id: session.id,
+                                treatment_name: treatment.name,
+                                treatment_price: treatment.sessionPrice,
+                                treatment_date: session.date,
+                                completed: false,
+                            });
+                        }
+                    }
+    
+                } else { // New Session - create it and its treatments
+                    if (!session.doctorId || !session.date) continue;
+                    
+                    const newSession = await api.sessions.create({
+                        patientId: patient.id,
+                        doctorId: session.doctorId,
+                        date: session.date,
+                        notes: session.notes,
+                        treatments: [],
+                        title: session.title.trim() || `جلسة بتاريخ ${new Date(session.date).toLocaleDateString()}`
                     });
+    
+                    for (const treatment of session.treatments) {
+                        await api.sessionTreatments.create({
+                            session_id: newSession.id,
+                            treatment_name: treatment.name,
+                            treatment_price: treatment.sessionPrice,
+                            treatment_date: newSession.date,
+                            completed: false,
+                        });
+                    }
                 }
             }
             alert('تم حفظ الخطة بنجاح!');
             onBack();
         } catch (error) {
             console.error("Failed to save plan:", error);
-            alert(`فشل حفظ الخطة: ${error instanceof Error ? error.message : "خطأ غير معروف"}`);
+            let message = 'خطأ غير معروف';
+            if (error instanceof Error) {
+                message = error.message;
+            } else if (typeof error === 'string') {
+                message = error;
+            }
+            alert(`فشل حفظ الخطة: ${message}`);
         } finally {
             setIsSaving(false);
         }
     };
+    
+    if (loading) {
+        return (
+            <div className="bg-gray-50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-lg">
+                <div className="flex justify-between items-center mb-6">
+                     <div className="flex items-center gap-4">
+                        <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                            <ArrowBackIcon className="h-5 w-5" />
+                            <span>العودة</span>
+                        </button>
+                        <div>
+                            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">خطة العلاج</h1>
+                            <p className="text-gray-500 dark:text-gray-400">{patient.name}</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[200px]">
+                    <CenteredLoadingSpinner />
+                </div>
+            </div>
+        );
+    }
     
     return (
         <div className="bg-gray-50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-lg">
@@ -1986,19 +2126,22 @@ const PatientPlanPage: React.FC<{ patient: Patient; doctors: User[]; user: User;
                 ) : (
                     plan.map((session, index) => {
                         const isOpen = openSessionClientId === session.clientId;
+                        const isExisting = !!session.id;
+                        const inputStyles = `w-full pl-3 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white bg-white dark:bg-gray-700`;
+
                         return (
-                            <div key={session.clientId} className="bg-white dark:bg-slate-800 rounded-xl shadow-md overflow-hidden">
+                            <div key={session.clientId} className={`bg-white dark:bg-slate-800 rounded-xl shadow-md overflow-hidden`}>
                                 <button 
                                     type="button"
                                     onClick={() => handleToggleSession(session.clientId)}
                                     className="w-full flex justify-between items-center p-4 text-right hover:bg-gray-50 dark:hover:bg-slate-700/50"
                                     aria-expanded={isOpen}
                                 >
-                                    <h2 className="text-xl font-bold text-primary dark:text-primary-300">الجلسة {index + 1}</h2>
+                                    <h2 className={`text-xl font-bold ${isExisting ? 'text-gray-600 dark:text-gray-300' : 'text-primary dark:text-primary-300'}`}>{session.title || (isExisting ? `جلسة بتاريخ ${new Date(session.date).toLocaleDateString()}` : `جلسة جديدة ${plan.length - index}`)}</h2>
                                     <div className="flex items-center gap-2">
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); removeSession(session.clientId); }} 
-                                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-full" 
+                                            className={`p-2 text-red-600 dark:text-red-400 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40`} 
                                             title="إزالة الجلسة"
                                         >
                                             <TrashIcon className="h-5 w-5" />
@@ -2009,13 +2152,17 @@ const PatientPlanPage: React.FC<{ patient: Patient; doctors: User[]; user: User;
                                 <div className={`transition-all duration-500 ease-in-out ${isOpen ? 'max-h-[1000px]' : 'max-h-0'}`}>
                                     <div className="p-6 pt-2 border-t dark:border-gray-700">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="md:col-span-2">
+                                                <label htmlFor={`title-${session.clientId}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">عنوان الجلسة</label>
+                                                <input type="text" id={`title-${session.clientId}`} value={session.title} onChange={e => updateSessionField(session.clientId, 'title', e.target.value)} className={inputStyles} required placeholder="مثال: جلسة تقويم الأسنان الأولى" />
+                                            </div>
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">التاريخ</label>
                                                 <div className="relative">
                                                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
                                                         <CalendarIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
                                                     </div>
-                                                    <input type="date" value={session.date} onChange={e => updateSessionField(session.clientId, 'date', e.target.value)} className="w-full pl-3 pr-10 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white" />
+                                                    <input type="date" value={session.date} onChange={e => updateSessionField(session.clientId, 'date', e.target.value)} className={inputStyles} />
                                                 </div>
                                             </div>
                                             <div>
@@ -2024,38 +2171,38 @@ const PatientPlanPage: React.FC<{ patient: Patient; doctors: User[]; user: User;
                                                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
                                                         <UserCircleIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
                                                     </div>
-                                                    <div className="w-full pl-3 pr-10 py-2 bg-gray-100 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300">
-                                                        {getDoctorName(session.doctorId) || '...'}
+                                                    <div className={`${inputStyles.replace('bg-white dark:bg-gray-700', '')} bg-gray-100 dark:bg-slate-700/50 cursor-not-allowed`}>
+                                                        {doctors.find(d => d.id === session.doctorId)?.name || 'غير محدد'}
                                                     </div>
                                                 </div>
                                             </div>
                                             <div className="md:col-span-2">
                                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات الجلسة</label>
-                                                <textarea value={session.notes} onChange={e => updateSessionField(session.clientId, 'notes', e.target.value)} rows={2} className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white" placeholder="ملاحظات اختيارية..."></textarea>
+                                                <textarea value={session.notes} onChange={e => updateSessionField(session.clientId, 'notes', e.target.value)} rows={2} className={inputStyles.replace('pr-10', '')} placeholder="ملاحظات اختيارية..."></textarea>
                                             </div>
                                         </div>
 
                                         <div className="mt-6">
-                                            <h3 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-2">العلاجات المضافة</h3>
+                                            <h3 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-2">العلاجات</h3>
                                             {session.treatments.length > 0 && (
                                                 <div className="flex flex-wrap gap-2 mb-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-md">
                                                     {session.treatments.map(t => (
-                                                        <span key={t.id} className="inline-flex items-center gap-x-1.5 py-1.5 pl-2 pr-3 rounded-full text-xs font-medium bg-teal-100 text-teal-800 dark:bg-teal-800/30 dark:text-teal-400">
+                                                        <span key={t.instanceId} className="inline-flex items-center gap-x-1.5 py-1.5 pl-2 pr-3 rounded-full text-xs font-medium bg-teal-100 text-teal-800 dark:bg-teal-800/30 dark:text-teal-400">
                                                             <span>{t.name}</span>
-                                                            <button type="button" onClick={() => removeTreatmentFromSession(session.clientId, t.id)} className="group inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full text-teal-600 dark:text-teal-400 hover:bg-teal-200 dark:hover:bg-teal-700 hover:text-teal-900 dark:hover:text-white focus:outline-none">
+                                                            <button type="button" onClick={() => removeTreatmentFromSession(session.clientId, t.instanceId)} className="group inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full text-teal-600 dark:text-teal-400 hover:bg-teal-200 dark:hover:bg-teal-700 hover:text-teal-900 dark:hover:text-white focus:outline-none">
                                                                 <XIcon className="h-3 w-3" />
                                                             </button>
                                                         </span>
                                                     ))}
                                                 </div>
                                             )}
-                                            {loadingTreatments ? <CenteredLoadingSpinner containerClassName="py-4" /> : (
-                                                <AddTreatmentToPlanSession 
-                                                    session={session}
-                                                    allTreatments={allTreatments}
-                                                    onAdd={(treatment) => addTreatmentToSession(session.clientId, treatment)}
-                                                />
-                                            )}
+
+                                            <AddTreatmentToPlanSession 
+                                                session={session}
+                                                allTreatments={allTreatments}
+                                                onAdd={(treatment) => addTreatmentToSession(session.clientId, treatment)}
+                                                user={user}
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -2065,14 +2212,12 @@ const PatientPlanPage: React.FC<{ patient: Patient; doctors: User[]; user: User;
                 )}
             </div>
 
-            {plan.length > 0 && (
-                <div className="mt-8 flex justify-end">
-                    <button onClick={handleSavePlan} disabled={isSaving} className="flex items-center justify-center gap-2 px-8 py-3 bg-green-600 text-white font-bold text-lg rounded-lg shadow-lg hover:bg-green-700 transition-colors disabled:bg-green-400 disabled:cursor-wait">
-                        {isSaving && <LoadingSpinner className="h-5 w-5 border-white" />}
-                        <span>{isSaving ? 'جاري الحفظ...' : 'حفظ الخطة'}</span>
-                    </button>
-                </div>
-            )}
+            <div className="mt-8 flex justify-end">
+                <button onClick={handleSavePlan} disabled={isSaving} className="flex items-center justify-center gap-2 px-8 py-3 bg-green-600 text-white font-bold text-lg rounded-lg shadow-lg hover:bg-green-700 transition-colors disabled:bg-green-400 disabled:cursor-wait">
+                    {isSaving && <LoadingSpinner className="h-5 w-5 border-white" />}
+                    <span>{isSaving ? 'جاري الحفظ...' : 'حفظ الخطة'}</span>
+                </button>
+            </div>
         </div>
     );
 };
@@ -2114,6 +2259,54 @@ const Pagination: React.FC<{
 
 
 // ===================================================================
+// PrintOptionsModal Component (NEW)
+// ===================================================================
+interface PrintOptionsModalProps {
+    patientName: string;
+    onConfirm: (includeFinancial: boolean) => void;
+    onCancel: () => void;
+    user: User;
+}
+
+const PrintOptionsModal: React.FC<PrintOptionsModalProps> = ({ patientName, onConfirm, onCancel, user }) => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 transition-opacity" onClick={onCancel}>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+                <div className="text-center">
+                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-primary-100 dark:bg-primary-900/30">
+                        <DocumentTextIcon className="h-6 w-6 text-primary-600 dark:text-primary-400" aria-hidden="true" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-4">طباعة تقرير لـ {patientName}</h3>
+                    {user.role !== UserRole.Doctor && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 px-4">هل ترغب في تضمين الملخص المالي في التقرير؟</p>
+                    )}
+                </div>
+            </div>
+            <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex flex-col sm:flex-row justify-center gap-3">
+                {user.role !== UserRole.Doctor ? (
+                    <>
+                        <button type="button" onClick={() => onConfirm(true)} className="w-full sm:w-auto inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary text-base font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                            نعم، تضمين الملخص
+                        </button>
+                        <button type="button" onClick={() => onConfirm(false)} className="w-full sm:w-auto inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400">
+                            لا، بدون ملخص
+                        </button>
+                    </>
+                ) : (
+                     <button type="button" onClick={() => onConfirm(false)} className="w-full sm:w-auto inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary text-base font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                        طباعة التقرير
+                    </button>
+                )}
+                <button type="button" onClick={onCancel} className="mt-2 sm:mt-0 w-full sm:w-auto inline-flex justify-center rounded-md px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-white focus:outline-none">
+                    إلغاء
+                </button>
+            </div>
+        </div>
+    </div>
+);
+
+
+// ===================================================================
 // Main PatientsPage Component
 // ===================================================================
 interface PatientsPageProps {
@@ -2135,6 +2328,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
     const [totalPages, setTotalPages] = useState(1);
     const [totalResults, setTotalResults] = useState(0);
     const [isPrinting, setIsPrinting] = useState<string | null>(null);
+    const [patientToPrint, setPatientToPrint] = useState<Patient | null>(null);
     const [forceRefresh, setForceRefresh] = useState(0);
     
     const { settings } = useAppSettings();
@@ -2192,29 +2386,66 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
     };
 
 
-    const handlePrintReport = async (patient: Patient) => {
+    const handlePrintReport = async (patient: Patient, includeFinancial: boolean) => {
+        setPatientToPrint(null);
         setIsPrinting(patient.id);
     
-        const [allSessions, allPaymentsResponse] = await Promise.all([
+        const [allSessions] = await Promise.all([
             api.sessions.getAll(),
-            api.payments.getAll({ page: 1, per_page: 9999 })
         ]);
-        const allPayments = allPaymentsResponse.payments;
+
         const sessions = allSessions.filter(s => s.patientId === patient.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        const payments = allPayments.filter(p => p.patientId === patient.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        
-        const totalPayments = payments.reduce((sum, p) => sum + p.amount, 0);
+        const getDoctorName = (doctorId: string) => doctors.find(d => d.id === doctorId)?.name || 'غير معروف';
+    
+        const patientDoctors = doctors.filter(d => patient.doctorIds.includes(d.id));
+        const shouldShowFinancial = user.role !== UserRole.Doctor && includeFinancial;
+
+        let financialHTML = '';
         const totalCost = sessions.reduce((sessionSum, s) => {
             const treatmentsCost = s.treatments.reduce((treatmentSum, t) => {
                 return treatmentSum + t.sessionPrice + (t.additionalCosts || 0);
             }, 0);
             return sessionSum + treatmentsCost;
         }, 0);
-        const balance = totalCost - totalPayments;
-    
-        const patientDoctors = doctors.filter(d => patient.doctorIds.includes(d.id));
-        const getDoctorName = (doctorId: string) => doctors.find(d => d.id === doctorId)?.name || 'غير معروف';
-    
+
+        if (shouldShowFinancial) {
+            const allPaymentsResponse = await api.payments.getAll({ page: 1, per_page: 9999 });
+            const allPayments = allPaymentsResponse.payments;
+            const payments = allPayments.filter(p => p.patientId === patient.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            
+            const totalPayments = payments.reduce((sum, p) => sum + p.amount, 0);
+            const balance = totalCost - totalPayments;
+        
+            financialHTML = `
+                <section class="mt-8">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">الملخص المالي</h2>
+                     ${payments.length > 0 ? `
+                         <div class="mb-4 break-inside-avoid">
+                            <h3 class="font-semibold mb-2">الدفعات المسجلة</h3>
+                            <table class="w-full text-right text-sm">
+                                <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                                    <tr><th class="px-2 py-1">التاريخ</th><th class="px-2 py-1">المبلغ</th></tr>
+                                </thead>
+                                <tbody>
+                                ${payments.map(p => `
+                                    <tr class="border-b">
+                                        <td class="px-2 py-1">${new Date(p.date).toLocaleDateString()}</td>
+                                        <td class="px-2 py-1">SYP ${p.amount.toFixed(2)}</td>
+                                    </tr>
+                                `).join('')}
+                                </tbody>
+                            </table>
+                         </div>
+                     ` : ''}
+                    <div class="border-t border-gray-300 pt-4 space-y-2 text-md">
+                         <div class="flex justify-between"><span class="font-medium text-gray-600">إجمالي التكاليف:</span><span class="font-bold">SYP ${totalCost.toFixed(2)}</span></div>
+                         <div class="flex justify-between"><span class="font-medium text-gray-600">إجمالي المدفوعات:</span><span class="font-bold text-green-600">SYP ${totalPayments.toFixed(2)}</span></div>
+                         <div class="flex justify-between text-lg"><span class="font-bold">الرصيد المتبقي:</span><span class="font-bold">SYP ${balance.toFixed(2)}</span></div>
+                    </div>
+                </section>
+            `;
+        }
+        
         const patientDetailsHTML = `
             <div class="flex flex-wrap -mx-2 text-sm mb-2">
                 <div class="px-2 mb-2">
@@ -2266,7 +2497,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
                 <div class="space-y-4">
                     ${sessions.map(session => `
                         <div class="border border-gray-200 rounded-lg p-4 break-inside-avoid">
-                            <h3 class="font-semibold">جلسة بتاريخ ${new Date(session.date).toLocaleDateString()} - الطبيب: ${getDoctorName(session.doctorId)}</h3>
+                            <h3 class="font-semibold">${session.title || `جلسة بتاريخ ${new Date(session.date).toLocaleDateString()}`} - الطبيب: ${getDoctorName(session.doctorId)}</h3>
                             ${session.notes ? `<p class="text-sm text-gray-600 mt-1">ملاحظات الجلسة: ${session.notes}</p>` : ''}
                             ${session.treatments.length > 0 ? `
                                  <table class="w-full text-right text-sm mt-2">
@@ -2274,7 +2505,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
                                         <tr>
                                             <th class="px-2 py-1">العلاج</th>
                                             <th class="px-2 py-1">التاريخ</th>
-                                            <th class="px-2 py-1">السعر</th>
+                                            ${shouldShowFinancial ? '<th class="px-2 py-1">السعر</th>' : ''}
                                             <th class="px-2 py-1">ملاحظات</th>
                                             <th class="px-2 py-1">مكتمل</th>
                                         </tr>
@@ -2284,7 +2515,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
                                         <tr class="border-b">
                                             <td class="px-2 py-1">${t.name}</td>
                                             <td class="px-2 py-1">${t.treatmentDate ? new Date(t.treatmentDate).toLocaleDateString() : '-'}</td>
-                                            <td class="px-2 py-1">$${(t.sessionPrice + (t.additionalCosts || 0)).toFixed(2)}</td>
+                                            ${shouldShowFinancial ? `<td class="px-2 py-1">SYP ${(t.sessionPrice + (t.additionalCosts || 0)).toFixed(2)}</td>` : ''}
                                             <td class="px-2 py-1">${t.sessionNotes || '-'}</td>
                                             <td class="px-2 py-1">${t.completed ? 'نعم' : 'لا'}</td>
                                         </tr>
@@ -2297,35 +2528,6 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
                 </div>
             </section>
         ` : '';
-        
-        const financialHTML = `
-            <section class="mt-8">
-                <h2 class="text-xl font-bold text-gray-800 mb-4">الملخص المالي</h2>
-                 ${payments.length > 0 ? `
-                     <div class="mb-4 break-inside-avoid">
-                        <h3 class="font-semibold mb-2">الدفعات المسجلة</h3>
-                        <table class="w-full text-right text-sm">
-                            <thead class="text-xs text-gray-700 uppercase bg-gray-100">
-                                <tr><th class="px-2 py-1">التاريخ</th><th class="px-2 py-1">المبلغ</th></tr>
-                            </thead>
-                            <tbody>
-                            ${payments.map(p => `
-                                <tr class="border-b">
-                                    <td class="px-2 py-1">${new Date(p.date).toLocaleDateString()}</td>
-                                    <td class="px-2 py-1">$${p.amount.toFixed(2)}</td>
-                                </tr>
-                            `).join('')}
-                            </tbody>
-                        </table>
-                     </div>
-                 ` : ''}
-                <div class="border-t border-gray-300 pt-4 space-y-2 text-md">
-                     <div class="flex justify-between"><span class="font-medium text-gray-600">إجمالي التكاليف:</span><span class="font-bold">$${totalCost.toFixed(2)}</span></div>
-                     <div class="flex justify-between"><span class="font-medium text-gray-600">إجمالي المدفوعات:</span><span class="font-bold text-green-600">$${totalPayments.toFixed(2)}</span></div>
-                     <div class="flex justify-between text-lg"><span class="font-bold">الرصيد المتبقي:</span><span class="font-bold">$${balance.toFixed(2)}</span></div>
-                </div>
-            </section>
-        `;
     
         const reportHTML = `
           <!DOCTYPE html>
@@ -2527,17 +2729,17 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
                                                 <button onClick={() => viewDetails(p, 'activity')} className="flex items-center text-orange-600 dark:text-orange-400 hover:text-orange-800 p-1 rounded hover:bg-orange-100 dark:hover:bg-orange-900/40 text-sm"><ListBulletIcon className="h-4 w-4" /><span className="mr-1">السجل</span></button>
                                             )}
                                             
-                                            {user.role !== UserRole.Doctor && (
-                                                <button 
-                                                    onClick={() => handlePrintReport(p)} 
-                                                    disabled={isPrinting === p.id}
-                                                    className="flex items-center text-red-600 dark:text-red-400 hover:text-red-800 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-sm disabled:opacity-50 disabled:cursor-wait" 
-                                                    title="طباعة تقرير"
-                                                >
-                                                    {isPrinting === p.id ? <LoadingSpinner className="h-4 w-4" /> : <DocumentTextIcon className="h-4 w-4" />}
-                                                    <span className="mr-1">طباعة</span>
-                                                </button>
-                                            )}
+                                            
+                                            <button 
+                                                onClick={() => setPatientToPrint(p)} 
+                                                disabled={isPrinting === p.id}
+                                                className="flex items-center text-red-600 dark:text-red-400 hover:text-red-800 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-sm disabled:opacity-50 disabled:cursor-wait" 
+                                                title="طباعة تقرير"
+                                            >
+                                                {isPrinting === p.id ? <LoadingSpinner className="h-4 w-4" /> : <DocumentTextIcon className="h-4 w-4" />}
+                                                <span className="mr-1">طباعة</span>
+                                            </button>
+                                            
 
                                             {(user.role === UserRole.Admin || user.role === UserRole.Secretary || user.role === UserRole.Doctor) && (
                                                 <button onClick={() => setEditingPatient(p)} className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 text-sm"><PencilIcon className="h-4 w-4" /><span className="mr-1">تعديل</span></button>
@@ -2571,6 +2773,14 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
                     message={`هل أنت متأكد من رغبتك في حذف ${deletingPatient.name}؟ لا يمكن التراجع عن هذا الإجراء.`}
                     onConfirm={confirmDeletePatient}
                     onCancel={() => setDeletingPatient(null)}
+                />
+            )}
+            {patientToPrint && (
+                <PrintOptionsModal 
+                    patientName={patientToPrint.name}
+                    onCancel={() => setPatientToPrint(null)}
+                    onConfirm={(includeFinancial) => handlePrintReport(patientToPrint, includeFinancial)}
+                    user={user}
                 />
             )}
         </div>
