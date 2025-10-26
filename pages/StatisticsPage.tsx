@@ -44,14 +44,18 @@ const StatisticsPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
         setLoading(true);
         setFetchError(null);
         try {
-            const [pats, sess, pays] = await Promise.all([
-                api.patients.getAll(),
+            // FIX: api.payments.getAll requires arguments and returns a paginated object.
+            const [patsResponse, sess, paysResponse] = await Promise.all([
+                // FIX: api.patients.getAll requires arguments.
+                api.patients.getAll({ page: 1, per_page: 9999 }),
                 api.sessions.getAll(),
-                api.payments.getAll(),
+                api.payments.getAll({ page: 1, per_page: 9999 }),
             ]);
-            setPatients(pats);
+            // FIX: The API returns a pagination object. We need the 'patients' array from it.
+            setPatients(patsResponse.patients);
             setSessions(sess);
-            setPayments(pays);
+            // FIX: The array of payments is in the 'payments' property of the response.
+            setPayments(paysResponse.payments);
         } catch (error) {
             if (error instanceof Error && error.message.includes('Failed to fetch')) {
                 setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');

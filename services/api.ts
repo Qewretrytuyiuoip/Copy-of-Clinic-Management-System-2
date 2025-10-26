@@ -502,12 +502,12 @@ const getGroupedSessionTreatments = async (): Promise<Record<string, SessionTrea
 
 const mapApiActivityLog = (log: any): ActivityLog => ({
     id: String(log.id),
-    userId: String(log.user_id),
-    patientId: String(log.patient_id),
+    userId: String(log.user?.id ?? log.user_id ?? ''),
+    patientId: String(log.patient_id ?? ''),
     actionType: log.action_type as ActivityLogActionType,
     description: log.description,
     timestamp: log.timestamp,
-    userName: log.user ? log.user.name : 'مستخدم غير معروف',
+    userName: log.user?.name ?? 'مستخدم غير معروف',
 });
 
 export const api = {
@@ -516,17 +516,29 @@ export const api = {
     admins: createUserCRUD(UserRole.Admin),
     subManagers: createUserCRUD(UserRole.SubManager),
     patients: {
-        getAll: async (): Promise<Patient[]> => {
+        getAll: async (params: { page: number; per_page: number; search?: string; doctorId?: string; }): Promise<{ patients: Patient[], total: number, last_page: number }> => {
             try {
-                const apiPatients = await apiFetch('patients/all', { method: 'POST' });
-                if (!Array.isArray(apiPatients)) {
-                    console.error('Expected an array of patients from API, but got:', apiPatients);
-                    return [];
+                const formData = new FormData();
+                formData.append('page', String(params.page));
+                formData.append('per_page', String(params.per_page));
+                if (params.search) formData.append('search', params.search);
+                if (params.doctorId) formData.append('doctor_id', params.doctorId);
+
+                const response = await apiFetch('patients/all', { method: 'POST', body: formData });
+                
+                if (!response || typeof response !== 'object' || !Array.isArray(response.data)) {
+                    console.error('Expected a paginated object with a "data" array from API, but got:', response);
+                    return { patients: [], total: 0, last_page: 1 };
                 }
-                return apiPatients.map(mapApiPatientToPatient);
+
+                return {
+                    patients: response.data.map(mapApiPatientToPatient),
+                    total: response.total || 0,
+                    last_page: response.last_page || 1
+                };
             } catch (error) {
-                console.error("Failed to fetch patients:", error);
-                return [];
+                console.error("Failed to fetch paginated patients:", error);
+                throw error;
             }
         },
         getById: async (id: string): Promise<Patient | null> => {
@@ -965,17 +977,32 @@ export const api = {
         },
     },
     payments: {
-        getAll: async (): Promise<Payment[]> => {
+        getAll: async (params: { page: number; per_page: number; search?: string; }): Promise<{ payments: Payment[], total: number, last_page: number }> => {
             try {
-                const apiPayments = await apiFetch('payments/all', { method: 'POST' });
-                if (!Array.isArray(apiPayments)) {
-                    console.error('Expected an array of payments from API, but got:', apiPayments);
-                    return [];
+                const formData = new FormData();
+                formData.append('page', String(params.page));
+                formData.append('per_page', String(params.per_page));
+                if (params.search) formData.append('search', params.search);
+
+                const response = await apiFetch('payments/all', { method: 'POST', body: formData });
+                
+                if (!response || typeof response !== 'object' || !Array.isArray(response.data)) {
+                    // Fallback for non-paginated API for now
+                    if (Array.isArray(response)) {
+                        return { payments: response.map(mapApiPaymentToPayment), total: response.length, last_page: 1 };
+                    }
+                    console.error('Expected a paginated object with a "data" array from API, but got:', response);
+                    return { payments: [], total: 0, last_page: 1 };
                 }
-                return apiPayments.map(mapApiPaymentToPayment);
+
+                return {
+                    payments: response.data.map(mapApiPaymentToPayment),
+                    total: response.total || 0,
+                    last_page: response.last_page || 1
+                };
             } catch (error) {
-                console.error("Failed to fetch payments:", error);
-                return [];
+                console.error("Failed to fetch paginated payments:", error);
+                throw error;
             }
         },
         create: async (item: Omit<Payment, 'id'>): Promise<Payment> => {
@@ -1125,11 +1152,11 @@ export const api = {
 
                 const apiResponse = await apiFetch('activity_logs/all', { method: 'POST', body: formData });
                 
-                // The paginated response is an object like { logs: { data: [], current_page: 1, last_page: 5 } }
-                const paginatedData = apiResponse.logs;
+                // The paginated response is the response object itself.
+                const paginatedData = apiResponse;
                 
                 if (!paginatedData || typeof paginatedData !== 'object' || !Array.isArray(paginatedData.data)) {
-                    console.error('Expected a paginated object with a "logs.data" array from API, but got:', apiResponse);
+                    console.error('Expected a paginated object with a "data" array from API, but got:', apiResponse);
                     // Fallback for cases where the API might just return an array directly
                     if (Array.isArray(apiResponse)) {
                         return { logs: apiResponse.map(mapApiActivityLog), hasMore: false };

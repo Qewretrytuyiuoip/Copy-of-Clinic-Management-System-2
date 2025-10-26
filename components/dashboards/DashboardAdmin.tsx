@@ -1,5 +1,6 @@
 
 
+
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { User, Appointment, Payment, ActivityLog, ActivityLogActionType } from '../../types';
 import { api } from '../../services/api';
@@ -57,14 +58,17 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger })
         setLoading(true);
         setFetchError(null);
         try {
-            const [doctors, fetchedPatients, appointments, payments] = await Promise.all([
+            // FIX: api.payments.getAll requires pagination arguments.
+            const [doctors, fetchedPatients, appointments, paymentsResponse] = await Promise.all([
                 api.doctors.getAll(),
-                api.patients.getAll(),
+                // FIX: api.patients.getAll requires arguments. Fetching 1 to get total count.
+                api.patients.getAll({ page: 1, per_page: 1 }),
                 api.appointments.getAll(),
-                api.payments.getAll(),
+                api.payments.getAll({ page: 1, per_page: 9999 }),
             ]);
             
-            const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
+            // FIX: The API returns a paginated object, use 'payments' property for the array.
+            const totalRevenue = paymentsResponse.payments.reduce((sum, p) => sum + p.amount, 0);
 
             const today = new Date();
             const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -72,7 +76,8 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger })
 
             setStats({
                 doctors: doctors.length,
-                patients: fetchedPatients.length,
+                // FIX: The API returns a pagination object, use 'total' for patient count.
+                patients: fetchedPatients.total,
                 appointments: todaysAppointmentsCount,
                 revenue: totalRevenue
             });

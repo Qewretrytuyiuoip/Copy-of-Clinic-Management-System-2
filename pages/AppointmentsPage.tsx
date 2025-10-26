@@ -441,7 +441,8 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
         try {
             const appointmentPromise = api.appointments.getAll();
             const doctorsPromise = api.doctors.getAll();
-            const patientsPromise = refreshPatients || patients.length === 0 ? api.patients.getAll() : Promise.resolve(patients);
+            // FIX: api.patients.getAll requires arguments and returns a pagination object. Using .then to extract the patients array to match types.
+            const patientsPromise = refreshPatients || patients.length === 0 ? api.patients.getAll({ page: 1, per_page: 9999 }).then(r => r.patients) : Promise.resolve(patients);
 
             const [apps, docs, pats] = await Promise.all([appointmentPromise, doctorsPromise, patientsPromise]);
             

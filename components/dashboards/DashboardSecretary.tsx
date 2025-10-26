@@ -51,13 +51,15 @@ const DashboardSecretary: React.FC<DashboardSecretaryProps> = ({ user, refreshTr
         setLoading(true);
         setFetchError(null);
         try {
-            const [apps, pats, docs] = await Promise.all([
+            const [apps, patsResponse, docs] = await Promise.all([
                 api.appointments.getAll(),
-                api.patients.getAll(),
+                // FIX: api.patients.getAll requires arguments.
+                api.patients.getAll({ page: 1, per_page: 9999 }),
                 api.doctors.getAll(),
             ]);
             setAppointments(apps);
-            setPatients(pats);
+            // FIX: The API returns a pagination object. We need the 'patients' array from it.
+            setPatients(patsResponse.patients);
             setDoctors(docs);
         } catch (error) {
             if (error instanceof Error && error.message.includes('Failed to fetch')) {

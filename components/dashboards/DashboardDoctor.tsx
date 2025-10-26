@@ -54,11 +54,14 @@ const DashboardDoctor: React.FC<DashboardDoctorProps> = ({ user, refreshTrigger 
         setLoading(true);
         setFetchError(null);
         try {
-            const [allPatients, allAppointments] = await Promise.all([
-                api.patients.getAll(),
+            // FIX: api.patients.getAll requires arguments.
+            const [allPatientsResponse, allAppointments] = await Promise.all([
+                api.patients.getAll({ page: 1, per_page: 9999 }),
                 api.appointments.getAll()
             ]);
             
+            // FIX: The API returns a pagination object. We need the 'patients' array from it.
+            const allPatients = allPatientsResponse.patients;
             setPatients(allPatients); // Store all patients for name lookup
 
             const myPatients = allPatients.filter(p => p.doctorIds.includes(user.id));

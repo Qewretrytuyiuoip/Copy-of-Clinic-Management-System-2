@@ -383,6 +383,270 @@ const PatientGalleryPage: React.FC<PatientGalleryPageProps> = ({ patient, onBack
 
 
 // ===================================================================
+// EditSessionTreatmentModal Component
+// ===================================================================
+interface EditSessionTreatmentModalProps {
+    treatment: SessionTreatment;
+    onSave: () => Promise<void>;
+    onClose: () => void;
+}
+
+const EditSessionTreatmentModal: React.FC<EditSessionTreatmentModalProps> = ({ treatment, onSave, onClose }) => {
+    const [formData, setFormData] = useState({
+        sessionPrice: treatment.sessionPrice.toString(),
+        sessionNotes: treatment.sessionNotes || '',
+        treatmentDate: treatment.treatmentDate ? new Date(treatment.treatmentDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        additionalCosts: treatment.additionalCosts?.toString() || '',
+    });
+    const [isSaving, setIsSaving] = useState(false);
+    const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
+
+    useEffect(() => {
+        const numbers = formData.sessionNotes.match(/\d+(\.\d+)?/g);
+        if (numbers) {
+            const sum = numbers.reduce((total, num) => total + parseFloat(num), 0);
+            setFormData(prev => ({...prev, additionalCosts: sum > 0 ? sum.toFixed(2) : ''}));
+        } else {
+            setFormData(prev => ({...prev, additionalCosts: ''}));
+        }
+    }, [formData.sessionNotes]);
+    
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+            await api.sessionTreatments.update(treatment.instanceId, {
+                sessionPrice: parseFloat(formData.sessionPrice) || 0,
+                sessionNotes: formData.sessionNotes,
+                treatmentDate: formData.treatmentDate,
+                additionalCosts: parseFloat(formData.additionalCosts) || undefined,
+            });
+            await onSave();
+        } catch (error) {
+            console.error("Failed to update treatment:", error);
+            alert(`فشل في تحديث العلاج: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+    
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">تعديل العلاج: {treatment.name}</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="p-6 space-y-4">
+                        <div>
+                            <label htmlFor="treatmentDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاريخ العلاج</label>
+                            <input type="date" id="treatmentDate" name="treatmentDate" value={formData.treatmentDate} onChange={handleChange} required className={inputStyle} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label htmlFor="sessionPrice" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">السعر</label>
+                                <input type="number" step="0.01" id="sessionPrice" name="sessionPrice" value={formData.sessionPrice} onChange={handleChange} required className={inputStyle} />
+                            </div>
+                             <div>
+                                <label htmlFor="additionalCosts" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تكاليف اضافية</label>
+                                <input type="number" step="0.01" id="additionalCosts" name="additionalCosts" value={formData.additionalCosts} readOnly className={`${inputStyle} bg-gray-100 dark:bg-gray-800 cursor-not-allowed`} placeholder="يتم حسابه من الملاحظات" />
+                            </div>
+                        </div>
+                        <div>
+                            <label htmlFor="sessionNotes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات</label>
+                            <textarea id="sessionNotes" name="sessionNotes" value={formData.sessionNotes} onChange={handleChange} rows={3} className={inputStyle} placeholder="ملاحظات حول العلاج... سيتم استخلاص الأرقام للتكاليف الإضافية"></textarea>
+                        </div>
+                    </div>
+                    <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
+                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+// FIX: Added PatientSessionsPage component to fix reference error.
+// ===================================================================
+// PatientSessionsPage Component
+// ===================================================================
+const PatientSessionsPage: React.FC<PatientDetailsPageProps> = ({ patient, doctors, onBack }) => {
+    const [sessions, setSessions] = useState<Session[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [isAddingSession, setIsAddingSession] = useState(false);
+    const [editingSession, setEditingSession] = useState<Session | null>(null);
+    const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
+    const [addingTreatmentToSession, setAddingTreatmentToSession] = useState<Session | null>(null);
+    const [treatmentToDelete, setTreatmentToDelete] = useState<SessionTreatment | null>(null);
+    const [editingTreatment, setEditingTreatment] = useState<SessionTreatment | null>(null);
+    const [viewingTreatment, setViewingTreatment] = useState<SessionTreatment | null>(null);
+
+
+    const getDoctorName = (doctorId: string) => doctors.find(d => d.id === doctorId)?.name || 'غير معروف';
+
+    const fetchSessions = useCallback(async () => {
+        setLoading(true);
+        try {
+            const allSessions = await api.sessions.getAll();
+            const patientSessions = allSessions
+                .filter(s => s.patientId === patient.id)
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            setSessions(patientSessions);
+        } catch (error) {
+            console.error("Failed to fetch sessions:", error);
+            alert("فشل في تحميل الجلسات.");
+        } finally {
+            setLoading(false);
+        }
+    }, [patient.id]);
+
+    useEffect(() => {
+        fetchSessions();
+    }, [fetchSessions]);
+
+    const handleCreateSession = async (newSessionData: Omit<Session, 'id' | 'treatments'>) => {
+        // FIX: The `api.sessions.create` function expects the `treatments` property.
+        // An empty array is added to satisfy the `Omit<Session, 'id'>` type.
+        await api.sessions.create({ ...newSessionData, treatments: [] });
+        setIsAddingSession(false);
+        await fetchSessions();
+    };
+
+    const handleUpdateSession = async (updatedSession: Session) => {
+        await api.sessions.update(updatedSession.id, updatedSession);
+        setEditingSession(null);
+        await fetchSessions();
+    };
+
+    const confirmDeleteSession = async () => {
+        if (sessionToDelete) {
+            await api.sessions.delete(sessionToDelete.id);
+            setSessionToDelete(null);
+            await fetchSessions();
+        }
+    };
+
+    const handleSaveTreatment = async (keepModalOpen?: boolean) => {
+        if (!keepModalOpen) {
+            setAddingTreatmentToSession(null);
+        }
+        await fetchSessions();
+    };
+
+    const handleUpdateTreatment = async () => {
+        setEditingTreatment(null);
+        await fetchSessions();
+    }
+
+    const confirmDeleteTreatment = async () => {
+        if (treatmentToDelete) {
+            await api.sessionTreatments.delete(treatmentToDelete.instanceId);
+            setTreatmentToDelete(null);
+            await fetchSessions();
+        }
+    };
+
+    const handleToggleTreatmentComplete = async (treatment: SessionTreatment) => {
+        try {
+            await api.sessionTreatments.update(treatment.instanceId, { completed: !treatment.completed });
+            await fetchSessions();
+        } catch (error) {
+            console.error("Failed to update treatment status:", error);
+            alert('فشل في تحديث حالة العلاج.');
+        }
+    };
+
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+                 <div className="flex items-center gap-4">
+                    <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                        <ArrowBackIcon className="h-5 w-5" />
+                        <span>العودة</span>
+                    </button>
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">جلسات المريض</h1>
+                        <p className="text-gray-500 dark:text-gray-400">{patient.name}</p>
+                    </div>
+                </div>
+                <button onClick={() => setIsAddingSession(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
+                    <PlusIcon className="h-5 w-5 ml-2" />
+                    إضافة جلسة
+                </button>
+            </div>
+
+            <div className="space-y-6">
+                {loading ? <CenteredLoadingSpinner /> : sessions.length > 0 ? (
+                    sessions.map(session => (
+                        <div key={session.id} className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md">
+                            <div className="flex justify-between items-start flex-wrap gap-4 border-b dark:border-gray-700 pb-4 mb-4">
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">جلسة بتاريخ: {new Date(session.date).toLocaleDateString()}</h2>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">الطبيب: {getDoctorName(session.doctorId)}</p>
+                                    {session.notes && <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">ملاحظات الجلسة: {session.notes}</p>}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => setAddingTreatmentToSession(session)} className="flex items-center gap-1 px-3 py-1.5 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-700"><PlusIcon className="h-4 w-4" /> علاج</button>
+                                    <button onClick={() => setEditingSession(session)} className="p-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل الجلسة"><PencilIcon className="h-5 w-5" /></button>
+                                    <button onClick={() => setSessionToDelete(session)} className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف الجلسة"><TrashIcon className="h-5 w-5" /></button>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h3 className="text-md font-semibold mb-2 text-gray-700 dark:text-gray-200">العلاجات في هذه الجلسة:</h3>
+                                {session.treatments.length > 0 ? (
+                                    <ul className="space-y-3">
+                                        {session.treatments.map(t => (
+                                            <li key={t.instanceId} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                                <div className="flex items-center gap-3">
+                                                    <button onClick={() => handleToggleTreatmentComplete(t)} title={t.completed ? 'وضع علامة كغير مكتمل' : 'وضع علامة كمكتمل'}>
+                                                        {t.completed 
+                                                          ? <CheckIcon className="h-6 w-6 text-green-500" />
+                                                          : <div className="h-6 w-6 rounded-full border-2 border-gray-400 dark:border-gray-500"></div>
+                                                        }
+                                                    </button>
+                                                    <div>
+                                                        <p className={`font-semibold ${t.completed ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-800 dark:text-gray-100'}`}>{t.name}</p>
+                                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                            السعر: ${t.sessionPrice.toFixed(2)}
+                                                            {t.additionalCosts ? ` (+ $${t.additionalCosts.toFixed(2)})` : ''}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                     <button onClick={() => setViewingTreatment(t)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="عرض التفاصيل"><EyeIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" /></button>
+                                                     <button onClick={() => setEditingTreatment(t)} className="p-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل العلاج"><PencilIcon className="h-5 w-5" /></button>
+                                                     <button onClick={() => setTreatmentToDelete(t)} className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف العلاج"><TrashIcon className="h-5 w-5" /></button>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : <p className="text-center text-gray-500 dark:text-gray-400 py-4">لا توجد علاجات مضافة لهذه الجلسة بعد.</p>}
+                            </div>
+                        </div>
+                    ))
+                ) : <p className="text-center text-gray-500 dark:text-gray-400 py-16 bg-white dark:bg-slate-800 rounded-xl shadow-md">لا توجد جلسات مسجلة لهذا المريض.</p>}
+            </div>
+            
+            {isAddingSession && <AddSessionModal onSave={handleCreateSession} onClose={() => setIsAddingSession(false)} patientId={patient.id} doctors={doctors} />}
+            {editingSession && <EditSessionModal session={editingSession} onSave={handleUpdateSession} onClose={() => setEditingSession(null)} />}
+            {sessionToDelete && <ConfirmDeleteModal title="حذف الجلسة" message="هل أنت متأكد من حذف هذه الجلسة وجميع علاجاتها؟" onConfirm={confirmDeleteSession} onCancel={() => setSessionToDelete(null)} />}
+            {addingTreatmentToSession && <AddTreatmentToSessionModal session={addingTreatmentToSession} onSave={handleSaveTreatment} onClose={() => setAddingTreatmentToSession(null)} />}
+            {editingTreatment && <EditSessionTreatmentModal treatment={editingTreatment} onSave={handleUpdateTreatment} onClose={() => setEditingTreatment(null)} />}
+            {treatmentToDelete && <ConfirmDeleteModal title="حذف العلاج" message={`هل أنت متأكد من حذف علاج "${treatmentToDelete.name}" من الجلسة؟`} onConfirm={confirmDeleteTreatment} onCancel={() => setTreatmentToDelete(null)} />}
+            {viewingTreatment && <ViewTreatmentDetailsModal treatment={viewingTreatment} onClose={() => setViewingTreatment(null)} />}
+        </div>
+    );
+};
+
+// ===================================================================
 // PatientDetailsPage Component
 // ===================================================================
 interface PatientDetailsPageProps {
@@ -824,6 +1088,148 @@ const AddTreatmentToSessionModal: React.FC<AddTreatmentToSessionModalProps> = ({
 };
 
 
+// FIX: Added AddPatientModal component to fix reference error.
+// ===================================================================
+// AddPatientModal Component
+// ===================================================================
+interface AddPatientModalProps {
+    onSave: (newPatient: Omit<Patient, 'id' | 'code'>) => Promise<void>;
+    onClose: () => void;
+    doctors: User[];
+    user: User;
+}
+
+const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doctors, user }) => {
+    const [formData, setFormData] = useState({
+        name: '',
+        age: '',
+        phone: '',
+        notes: '',
+        gender: Gender.Male,
+        isSmoker: false,
+        isPregnant: false,
+        drugAllergy: '',
+        chronicDiseases: '',
+        doctorIds: user.role === UserRole.Doctor ? [user.id] : [],
+    });
+    const [isSaving, setIsSaving] = useState(false);
+    const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
+
+    const canEditDoctors = user.role === UserRole.Admin || user.role === UserRole.Secretary || (user.role === UserRole.Doctor && user.is_diagnosis_doctor);
+
+
+    const handleDoctorIdsChange = (doctorId: string) => {
+        setFormData(prev => {
+            const currentDoctorIds = prev.doctorIds;
+            const newDoctorIds = currentDoctorIds.includes(doctorId)
+                ? currentDoctorIds.filter(id => id !== doctorId)
+                : [...currentDoctorIds, doctorId];
+            return { ...prev, doctorIds: newDoctorIds };
+        });
+    };
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value, type } = e.target;
+        
+        if (type === 'checkbox') {
+            const { checked } = e.target as HTMLInputElement;
+            setFormData(prev => ({ ...prev, [name]: checked }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+             if (name === 'gender' && value === Gender.Male) {
+                setFormData(prev => ({ ...prev, isPregnant: false }));
+            }
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (formData.doctorIds.length === 0) {
+            alert('يرجى اختيار طبيب واحد على الأقل.');
+            return;
+        }
+        setIsSaving(true);
+        const newPatientData = {
+            ...formData,
+            age: parseInt(formData.age, 10) || 0,
+            isPregnant: formData.gender === Gender.Female ? formData.isPregnant : false,
+            createdAt: new Date().toISOString(),
+        };
+        try {
+            await onSave(newPatientData);
+            // On success, the parent component will close the modal.
+        } catch (error) {
+            alert(`فشل الحفظ: ${error instanceof Error ? error.message : "خطأ غير معروف"}`);
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-lg" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">إضافة مريض جديد</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="p-6 max-h-[70vh] overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div><label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الاسم</label><input type="text" id="name" name="name" value={formData.name} onChange={handleChange} required className={inputStyle} /></div>
+                         <div><label htmlFor="age" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">العمر</label><input type="number" id="age" name="age" value={formData.age} onChange={handleChange} required className={inputStyle} /></div>
+                         <div><label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الهاتف</label><input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleChange} required className={inputStyle} /></div>
+                         <div>
+                            <label htmlFor="gender" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الجنس</label>
+                            <select id="gender" name="gender" value={formData.gender} onChange={handleChange} className={inputStyle}>
+                                <option value={Gender.Male}>ذكر</option>
+                                <option value={Gender.Female}>أنثى</option>
+                            </select>
+                        </div>
+                        {canEditDoctors && (
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأطباء المسؤولون</label>
+                                <div className="mt-2 p-3 border border-gray-800 dark:border-gray-600 rounded-md h-32 overflow-y-auto space-y-2 bg-white dark:bg-gray-700">
+                                    {doctors.map(doctor => (
+                                        <label key={doctor.id} className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.doctorIds.includes(doctor.id)}
+                                                onChange={() => handleDoctorIdsChange(doctor.id)}
+                                                className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary"
+                                            />
+                                            <div>
+                                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{doctor.name}</span>
+                                                <span className="text-xs text-gray-500 dark:text-gray-400 block">{doctor.specialty || 'لا يوجد تخصص'}</span>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        <div className="md:col-span-2"><label htmlFor="drugAllergy" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الحساسية الدوائية</label><textarea id="drugAllergy" name="drugAllergy" value={formData.drugAllergy} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                        <div className="md:col-span-2"><label htmlFor="chronicDiseases" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأمراض المزمنة</label><textarea id="chronicDiseases" name="chronicDiseases" value={formData.chronicDiseases} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                        <div className="md:col-span-2"><label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات عامة</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                        <div className="md:col-span-2 flex items-center space-x-4 pt-2">
+                           <label className="flex items-center cursor-pointer">
+                                <input type="checkbox" name="isSmoker" checked={formData.isSmoker} onChange={handleChange} className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary" />
+                                <span className="mr-2 text-sm text-gray-700 dark:text-gray-300">مدخن</span>
+                            </label>
+                            {formData.gender === Gender.Female && (
+                                <label className="flex items-center cursor-pointer">
+                                    <input type="checkbox" name="isPregnant" checked={formData.isPregnant} onChange={handleChange} className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary" />
+                                    <span className="mr-2 text-sm text-gray-700 dark:text-gray-300">حامل</span>
+                                </label>
+                            )}
+                        </div>
+                    </div>
+                    <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700 rounded-b-lg space-x-2">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
+                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
 // ===================================================================
 // EditPatientModal Component
 // ===================================================================
@@ -976,443 +1382,6 @@ const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, on
 };
 
 // ===================================================================
-// EditSessionTreatmentModal Component
-// ===================================================================
-interface EditSessionTreatmentModalProps {
-    treatment: SessionTreatment;
-    onSave: (updatedTreatment: Partial<SessionTreatment>) => Promise<void>;
-    onClose: () => void;
-}
-
-const EditSessionTreatmentModal: React.FC<EditSessionTreatmentModalProps> = ({ treatment, onSave, onClose }) => {
-    const [sessionPrice, setSessionPrice] = useState(treatment.sessionPrice.toString());
-    const [sessionNotes, setSessionNotes] = useState(treatment.sessionNotes || '');
-    const [treatmentDate, setTreatmentDate] = useState(treatment.treatmentDate || new Date().toISOString().split('T')[0]);
-    const [additionalCosts, setAdditionalCosts] = useState(treatment.additionalCosts?.toString() || '');
-    const [isSaving, setIsSaving] = useState(false);
-    const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
-
-    useEffect(() => {
-        const numbers = sessionNotes.match(/\d+(\.\d+)?/g);
-        if (numbers) {
-            const sum = numbers.reduce((total, num) => total + parseFloat(num), 0);
-            setAdditionalCosts(sum > 0 ? sum.toFixed(2) : '');
-        } else {
-            setAdditionalCosts('');
-        }
-    }, [sessionNotes]);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsSaving(true);
-        await onSave({ 
-            sessionPrice: parseFloat(sessionPrice) || 0, 
-            sessionNotes: sessionNotes,
-            treatmentDate: treatmentDate,
-            additionalCosts: parseFloat(additionalCosts) || undefined,
-        });
-        setIsSaving(false);
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
-                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">تعديل علاج الجلسة</h2>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
-                </div>
-                <form onSubmit={handleSubmit}>
-                    <div className="p-6 space-y-4">
-                        <p className="text-gray-700 dark:text-gray-300"><span className="font-semibold">العلاج:</span> {treatment.name}</p>
-                        <div>
-                            <label htmlFor="treatmentDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاريخ العلاج</label>
-                            <input type="date" id="treatmentDate" value={treatmentDate} onChange={e => setTreatmentDate(e.target.value)} required className={inputStyle} />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label htmlFor="sessionPrice" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">السعر</label>
-                                <input type="number" step="0.01" id="sessionPrice" value={sessionPrice} onChange={e => setSessionPrice(e.target.value)} required className={inputStyle} />
-                            </div>
-                            <div>
-                                <label htmlFor="additionalCosts" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تكاليف اضافية</label>
-                                <input type="number" step="0.01" id="additionalCosts" value={additionalCosts} readOnly className={`${inputStyle} bg-gray-100 dark:bg-gray-800 cursor-not-allowed`} placeholder="يتم حسابه من الملاحظات" />
-                            </div>
-                        </div>
-                         <div>
-                            <label htmlFor="sessionNotes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات خاصة بالجلسة</label>
-                            <textarea id="sessionNotes" name="sessionNotes" value={sessionNotes} onChange={(e) => setSessionNotes(e.target.value)} rows={3} className={inputStyle} placeholder="ملاحظات حول العلاج... سيتم استخلاص الأرقام للتكاليف الإضافية." />
-                        </div>
-                    </div>
-                    <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700 rounded-b-lg space-x-2">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
-                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-};
-
-// ===================================================================
-// SessionTreatmentsPage Component
-// ===================================================================
-interface SessionTreatmentsPageProps {
-    session: Session;
-    onBack: () => void;
-}
-const SessionTreatmentsPage: React.FC<SessionTreatmentsPageProps> = ({ session: initialSession, onBack }) => {
-    const [session, setSession] = useState<Session>(initialSession);
-    const [loading, setLoading] = useState(false);
-    const [editingTreatment, setEditingTreatment] = useState<SessionTreatment | null>(null);
-    const [viewingTreatment, setViewingTreatment] = useState<SessionTreatment | null>(null);
-    const [isAddingTreatment, setIsAddingTreatment] = useState(false);
-    const [deletingTreatment, setDeletingTreatment] = useState<SessionTreatment | null>(null);
-
-    const refreshSession = useCallback(async (keepAddModalOpen: boolean = false) => {
-        if (!keepAddModalOpen) {
-            setIsAddingTreatment(false);
-        }
-        setLoading(true);
-        const freshSession = await api.sessions.getById(session.id);
-        if (freshSession) { setSession(freshSession); }
-        setLoading(false);
-    }, [session.id]);
-    
-    useEffect(() => { refreshSession(); }, []);
-
-    const handleUpdateTreatment = async (updates: Partial<SessionTreatment>) => {
-        if (editingTreatment) {
-            await api.sessionTreatments.update(editingTreatment.instanceId, updates);
-            setEditingTreatment(null);
-            await refreshSession();
-        }
-    };
-
-    const confirmDeleteTreatment = async () => {
-        if (deletingTreatment) {
-            await api.sessionTreatments.delete(deletingTreatment.instanceId);
-            setDeletingTreatment(null);
-            await refreshSession();
-        }
-    };
-    
-    const handleToggleCompletion = async (treatment: SessionTreatment) => {
-        const newTreatments = session.treatments.map(t =>
-            t.instanceId === treatment.instanceId ? { ...t, completed: !t.completed } : t
-        );
-        setSession(prev => ({ ...prev!, treatments: newTreatments })); // Optimistic update
-        await api.sessionTreatments.update(treatment.instanceId, { completed: !treatment.completed });
-    };
-
-    return (
-        <div>
-             <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-4">
-                    <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
-                        <ArrowBackIcon className="h-5 w-5" />
-                        <span>العودة</span>
-                    </button>
-                    <div><h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">علاجات جلسة</h1><p className="text-gray-500 dark:text-gray-400">{new Date(session.date).toLocaleDateString()}</p></div>
-                </div>
-                <div>
-                    <button onClick={() => setIsAddingTreatment(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors"><PlusIcon className="h-5 w-5 ml-2" />إضافة علاج</button>
-                </div>
-            </div>
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[200px]">
-                 {loading ? <CenteredLoadingSpinner /> : ( session.treatments.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{session.treatments.map(t => (
-                            <div key={t.instanceId} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col justify-between hover:shadow-lg">
-                                <div>
-                                    <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{t.name}</h3>
-                                    <p className="text-green-600 dark:text-green-400 font-semibold text-lg mt-2">${t.sessionPrice.toFixed(2)}</p>
-                                    {t.sessionNotes && <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 bg-gray-100 dark:bg-gray-700 p-2 rounded-md">{t.sessionNotes}</p>}
-                                    <div className="mt-4">
-                                        <label className="flex items-center space-x-2 cursor-pointer">
-                                            <input type="checkbox" checked={t.completed} onChange={() => handleToggleCompletion(t)} className="h-5 w-5 rounded text-primary focus:ring-primary-500 border-gray-300 dark:border-gray-600"/>
-                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">مكتمل</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div className="mt-4 pt-4 border-t dark:border-gray-600 flex items-center justify-end space-x-2">
-                                    <button onClick={() => setViewingTreatment(t)} className="text-gray-600 dark:text-gray-300 hover:text-primary p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="عرض التفاصيل"><EyeIcon className="h-5 w-5" /></button>
-                                    <button onClick={() => setEditingTreatment(t)} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
-                                    <button onClick={() => setDeletingTreatment(t)} className="text-red-600 dark:text-red-400 hover:text-red-800 p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف"><TrashIcon className="h-5 w-5" /></button>
-                                </div>
-                            </div>))}
-                        </div>) : <p className="text-center text-gray-500 dark:text-gray-400 py-8">لا توجد علاجات مسجلة لهذه الجلسة.</p>
-                )}
-            </div>
-            {editingTreatment && <EditSessionTreatmentModal treatment={editingTreatment} onClose={() => setEditingTreatment(null)} onSave={handleUpdateTreatment} />}
-            {viewingTreatment && <ViewTreatmentDetailsModal treatment={viewingTreatment} onClose={() => setViewingTreatment(null)} />}
-            {isAddingTreatment && <AddTreatmentToSessionModal session={session} onClose={() => setIsAddingTreatment(false)} onSave={refreshSession} />}
-            {deletingTreatment && (
-                <ConfirmDeleteModal
-                    title="حذف العلاج"
-                    message={`هل أنت متأكد من حذف علاج "${deletingTreatment.name}" من هذه الجلسة؟`}
-                    onConfirm={confirmDeleteTreatment}
-                    onCancel={() => setDeletingTreatment(null)}
-                />
-            )}
-        </div>
-    );
-};
-
-// ===================================================================
-// PatientSessionsPage Component
-// ===================================================================
-const PatientSessionsPage: React.FC<{ patient: Patient; onBack: () => void; doctors: User[] }> = ({ patient, onBack, doctors }) => {
-    const [sessions, setSessions] = useState<Session[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [viewingTreatmentsFor, setViewingTreatmentsFor] = useState<Session | null>(null);
-    const [editingSession, setEditingSession] = useState<Session | null>(null);
-    const [isAddingSession, setIsAddingSession] = useState(false);
-    const [deletingSession, setDeletingSession] = useState<Session | null>(null);
-
-    const fetchSessions = useCallback(async () => {
-        setLoading(true);
-        const allSessions = await api.sessions.getAll();
-        const patientSessions = allSessions.filter(s => s.patientId === patient.id);
-        patientSessions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        setSessions(patientSessions);
-        setLoading(false);
-    }, [patient.id]);
-
-    useEffect(() => { fetchSessions(); }, [fetchSessions]);
-
-    const handleCreateSession = async (newSessionData: Omit<Session, 'id' | 'treatments'>) => {
-        await api.sessions.create({ ...newSessionData, treatments: [] } as Omit<Session, 'id'>);
-        setIsAddingSession(false);
-        await fetchSessions();
-    };
-
-    const handleUpdateSession = async (updatedSession: Session) => {
-        await api.sessions.update(updatedSession.id, updatedSession);
-        setEditingSession(null);
-        await fetchSessions();
-    };
-
-    const confirmDeleteSession = async () => {
-        if (deletingSession) {
-            await api.sessions.delete(deletingSession.id);
-            setDeletingSession(null);
-            await fetchSessions();
-        }
-    };
-
-    if (viewingTreatmentsFor) {
-        return <SessionTreatmentsPage session={viewingTreatmentsFor} onBack={() => { setViewingTreatmentsFor(null); fetchSessions(); }} />;
-    }
-
-    return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-4">
-                    <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
-                        <ArrowBackIcon className="h-5 w-5" />
-                        <span>العودة</span>
-                    </button>
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">جلسات: {patient.name}</h1>
-                </div>
-                 <div>
-                    <button onClick={() => setIsAddingSession(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors"><PlusIcon className="h-5 w-5 ml-2" />إضافة جلسة</button>
-                </div>
-            </div>
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[200px]">
-                {loading ? <CenteredLoadingSpinner /> : sessions.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{sessions.map(s => {
-                        const allTreatmentsCompleted = s.treatments.length > 0 && s.treatments.every(t => t.completed);
-                        return (
-                        <div key={s.id} className="relative bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col justify-between hover:shadow-lg">
-                             {allTreatmentsCompleted && (
-                                <div className="absolute top-3 left-3 text-green-500 bg-white dark:bg-gray-800 rounded-full" title="الجلسة مكتملة">
-                                    <CheckIcon className="h-6 w-6" />
-                                </div>
-                            )}
-                            <div><p className="font-bold text-lg text-gray-800 dark:text-gray-100">{new Date(s.date).toLocaleDateString()}</p><p className="text-gray-600 dark:text-gray-300 mt-2 text-sm h-12 overflow-hidden">{s.notes || 'لا توجد ملاحظات.'}</p></div>
-                            <div className="mt-4 pt-4 border-t dark:border-gray-600 flex items-center justify-end space-x-2">
-                                <button onClick={() => setViewingTreatmentsFor(s)} className="flex items-center text-purple-600 dark:text-purple-400 hover:text-purple-800 p-1 rounded hover:bg-purple-100 dark:hover:bg-purple-900/40 text-sm"><BeakerIcon className="h-4 w-4" /><span className="mr-1">العلاجات ({s.treatments.length})</span></button>
-                                <button onClick={() => setEditingSession(s)} className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 text-sm"><PencilIcon className="h-4 w-4" /><span className="mr-1">تعديل</span></button>
-                                <button onClick={() => setDeletingSession(s)} className="flex items-center text-red-600 dark:text-red-400 hover:text-red-800 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-sm"><TrashIcon className="h-4 w-4" /><span className="mr-1">حذف</span></button>
-                            </div>
-                        </div>
-                        )
-                    })}
-                    </div>) : <p className="text-center text-gray-500 dark:text-gray-400 py-8">لا توجد جلسات مسجلة.</p>}
-            </div>
-            {isAddingSession && <AddSessionModal onClose={() => setIsAddingSession(false)} onSave={handleCreateSession} patientId={patient.id} doctors={doctors.filter(d => patient.doctorIds.includes(d.id))} />}
-            {editingSession && <EditSessionModal session={editingSession} onClose={() => setEditingSession(null)} onSave={handleUpdateSession} />}
-            {deletingSession && (
-                <ConfirmDeleteModal
-                    title="حذف الجلسة"
-                    message={`هل أنت متأكد من حذف جلسة تاريخ ${new Date(deletingSession.date).toLocaleDateString()}؟`}
-                    onConfirm={confirmDeleteSession}
-                    onCancel={() => setDeletingSession(null)}
-                />
-            )}
-        </div>
-    );
-};
-
-
-// ===================================================================
-// AddPatientModal Component
-// ===================================================================
-interface AddPatientModalProps {
-    onSave: (newPatient: Omit<Patient, 'id' | 'code'>) => Promise<void>;
-    onClose: () => void;
-    doctors: User[];
-    user: User;
-}
-
-const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doctors, user }) => {
-    const [formData, setFormData] = useState({
-        name: '',
-        age: '',
-        phone: '',
-        notes: '',
-        doctorIds: (user.role === UserRole.Doctor && !user.is_diagnosis_doctor) ? [user.id] : [],
-        gender: Gender.Male,
-        isSmoker: false,
-        isPregnant: false,
-        drugAllergy: '',
-        chronicDiseases: ''
-    });
-    const [isSaving, setIsSaving] = useState(false);
-    const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
-    
-    const isSecretary = user.role === UserRole.Secretary;
-    const canSelectMultipleDoctors = user.role === UserRole.Admin || (user.role === UserRole.Doctor && user.is_diagnosis_doctor);
-    const canEditDoctors = user.role === UserRole.Admin || user.role === UserRole.Secretary || (user.role === UserRole.Doctor && user.is_diagnosis_doctor);
-
-    const handleDoctorIdsChange = (doctorId: string) => {
-        setFormData(prev => {
-            const currentDoctorIds = prev.doctorIds;
-            const newDoctorIds = currentDoctorIds.includes(doctorId)
-                ? currentDoctorIds.filter(id => id !== doctorId)
-                : [...currentDoctorIds, doctorId];
-            return { ...prev, doctorIds: newDoctorIds };
-        });
-    };
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value, type } = e.target;
-        
-        if (type === 'checkbox') {
-            const { checked } = e.target as HTMLInputElement;
-            setFormData(prev => ({ ...prev, [name]: checked }));
-        } else {
-            setFormData(prev => ({ ...prev, [name]: value }));
-             if (name === 'gender' && value === Gender.Male) {
-                setFormData(prev => ({ ...prev, isPregnant: false }));
-            }
-        }
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (formData.doctorIds.length === 0) {
-            alert("الرجاء اختيار طبيب واحد على الأقل.");
-            return;
-        }
-        setIsSaving(true);
-        // FIX: Add 'createdAt' property to the object to satisfy the 'Omit<Patient, "id" | "code">' type, which requires it.
-        await onSave({
-            ...formData,
-            age: parseInt(formData.age, 10) || 0,
-            isPregnant: formData.gender === Gender.Female ? formData.isPregnant : false,
-            createdAt: new Date().toISOString(),
-        });
-        setIsSaving(false);
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-lg" role="dialog" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
-                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">إضافة مريض جديد</h2>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
-                </div>
-                <form onSubmit={handleSubmit}>
-                    <div className="p-6 max-h-[70vh] overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label htmlFor="nameAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الاسم</label><input type="text" id="nameAdd" name="name" value={formData.name} onChange={handleChange} required className={inputStyle} /></div>
-                        <div><label htmlFor="ageAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">العمر</label><input type="number" id="ageAdd" name="age" value={formData.age} onChange={handleChange} required className={inputStyle} /></div>
-                        <div><label htmlFor="phoneAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الهاتف</label><input type="tel" id="phoneAdd" name="phone" value={formData.phone} onChange={handleChange} required className={inputStyle} /></div>
-                        <div>
-                            <label htmlFor="gender" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الجنس</label>
-                            <select id="gender" name="gender" value={formData.gender} onChange={handleChange} className={inputStyle}>
-                                <option value={Gender.Male}>ذكر</option>
-                                <option value={Gender.Female}>أنثى</option>
-                            </select>
-                        </div>
-                        {canEditDoctors && (
-                            <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الطبيب المسؤول</label>
-                                {isSecretary ? (
-                                    <select
-                                        name="doctorIds"
-                                        value={formData.doctorIds[0] || ''}
-                                        onChange={(e) => setFormData(prev => ({...prev, doctorIds: [e.target.value]}))}
-                                        required
-                                        className={inputStyle}
-                                    >
-                                        <option value="">-- اختر طبيب --</option>
-                                        {doctors.map(doctor => (
-                                            <option key={doctor.id} value={doctor.id}>{doctor.name}</option>
-                                        ))}
-                                    </select>
-                                ) : (
-                                    <div className="mt-2 p-3 border border-gray-800 dark:border-gray-600 rounded-md h-32 overflow-y-auto space-y-2 bg-white dark:bg-gray-700">
-                                        {doctors.map(doctor => (
-                                            <label key={doctor.id} className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={formData.doctorIds.includes(doctor.id)}
-                                                    onChange={() => handleDoctorIdsChange(doctor.id)}
-                                                    className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary"
-                                                />
-                                                <div>
-                                                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{doctor.name}</span>
-                                                    <span className="text-xs text-gray-500 dark:text-gray-400 block">{doctor.specialty || 'لا يوجد تخصص'}</span>
-                                                </div>
-                                            </label>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {!isSecretary && (
-                            <>
-                                <div className="md:col-span-2"><label htmlFor="drugAllergyAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الحساسية الدوائية</label><textarea id="drugAllergyAdd" name="drugAllergy" value={formData.drugAllergy} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
-                                <div className="md:col-span-2"><label htmlFor="chronicDiseasesAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأمراض المزمنة</label><textarea id="chronicDiseasesAdd" name="chronicDiseases" value={formData.chronicDiseases} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
-                                <div className="md:col-span-2"><label htmlFor="notesAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات عامة</label><textarea id="notesAdd" name="notes" value={formData.notes} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
-                            </>
-                        )}
-                        <div className="md:col-span-2 flex items-center space-x-4 pt-2">
-                           <label className="flex items-center cursor-pointer">
-                                <input type="checkbox" name="isSmoker" checked={formData.isSmoker} onChange={handleChange} className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary" />
-                                <span className="mr-2 text-sm text-gray-700 dark:text-gray-300">مدخن</span>
-                            </label>
-                            {formData.gender === Gender.Female && (
-                                <label className="flex items-center cursor-pointer">
-                                    <input type="checkbox" name="isPregnant" checked={formData.isPregnant} onChange={handleChange} className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary" />
-                                    <span className="mr-2 text-sm text-gray-700 dark:text-gray-300">حامل</span>
-                                </label>
-                            )}
-                        </div>
-                    </div>
-                    <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
-                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-};
-
-
-// ===================================================================
 // AddPaymentModalForPatient Component (NEW)
 // ===================================================================
 interface AddPaymentModalForPatientProps {
@@ -1544,11 +1513,14 @@ const PatientPaymentsPage: React.FC<{ patient: Patient; onBack: () => void; }> =
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const [allPayments, allSessions] = await Promise.all([
-                api.payments.getAll(),
+            // FIX: api.payments.getAll requires arguments and returns a paginated object.
+            const [allPaymentsResponse, allSessions] = await Promise.all([
+                api.payments.getAll({ page: 1, per_page: 9999 }),
                 api.sessions.getAll()
             ]);
 
+            // FIX: The array of payments is in the 'payments' property of the response.
+            const allPayments = allPaymentsResponse.payments;
             const patientPayments = allPayments.filter(p => p.patientId === patient.id);
             const patientSessions = allSessions.filter(s => s.patientId === patient.id);
             setPayments(patientPayments.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
@@ -1760,6 +1732,41 @@ const PatientActivityLogPage: React.FC<{ patient: Patient; onBack: () => void; }
     );
 };
 
+// ===================================================================
+// Pagination Component
+// ===================================================================
+const Pagination: React.FC<{
+    currentPage: number;
+    totalPages: number;
+    onPageChange: (page: number) => void;
+}> = ({ currentPage, totalPages, onPageChange }) => {
+    if (totalPages <= 1) return null;
+
+    return (
+        <nav className="flex items-center justify-center mt-8" aria-label="Pagination">
+            <button
+                onClick={() => onPageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-4 py-2 mx-1 leading-tight text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                السابق
+            </button>
+            <div className="flex items-center mx-4">
+                <span className="text-sm text-gray-700 dark:text-gray-400">
+                    صفحة <span className="font-semibold text-gray-900 dark:text-white">{currentPage}</span> من <span className="font-semibold text-gray-900 dark:text-white">{totalPages}</span>
+                </span>
+            </div>
+            <button
+                onClick={() => onPageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 mx-1 leading-tight text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                التالي
+            </button>
+        </nav>
+    );
+};
+
 
 // ===================================================================
 // Main PatientsPage Component
@@ -1779,32 +1786,77 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
     const [currentPage, setCurrentPage] = useState<'list' | 'details' | 'sessions' | 'payments' | 'gallery' | 'activity'>('list');
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDoctorId, setSelectedDoctorId] = useState('');
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalResults, setTotalResults] = useState(0);
     const [isPrinting, setIsPrinting] = useState<string | null>(null);
+    const [forceRefresh, setForceRefresh] = useState(0);
     
     const { settings } = useAppSettings();
-
-    const fetchAllData = useCallback(async () => {
-        setLoading(true);
-        const [pats, docs] = await Promise.all([
-            api.patients.getAll(),
-            api.doctors.getAll(),
-        ]);
-        setPatients(pats.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-        setDoctors(docs);
-        setLoading(false);
-    }, []);
+    const PATIENTS_PER_PAGE = 10;
 
     useEffect(() => {
-        fetchAllData();
-    }, [fetchAllData, refreshTrigger]);
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                // Fetch doctors only on initial load
+                const doctorsPromise = doctors.length === 0 ? api.doctors.getAll() : Promise.resolve(null);
+
+                const apiParams: { page: number; per_page: number; search?: string; doctorId?: string; } = {
+                    page: page,
+                    per_page: PATIENTS_PER_PAGE,
+                    search: searchTerm,
+                };
+
+                if (user.role === UserRole.Doctor) {
+                    apiParams.doctorId = user.id;
+                } else if (selectedDoctorId) {
+                    apiParams.doctorId = selectedDoctorId;
+                }
+
+                const patientsPromise = api.patients.getAll(apiParams);
+
+                const [docsResult, patientsResult] = await Promise.all([doctorsPromise, patientsPromise]);
+                
+                if (docsResult) {
+                    setDoctors(docsResult);
+                }
+                setPatients(patientsResult.patients);
+                setTotalResults(patientsResult.total);
+                setTotalPages(patientsResult.last_page);
+                setCurrentPage('list'); // Ensure we are on the list view
+                
+            } catch (error) {
+                console.error("Failed to fetch patients:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        const timer = setTimeout(() => {
+            fetchData();
+        }, 300); // Debounce search
+
+        return () => clearTimeout(timer);
+    }, [page, searchTerm, selectedDoctorId, refreshTrigger, doctors.length, forceRefresh, user.id, user.role]);
+
+    const handlePageChange = (newPage: number) => {
+        if (newPage >= 1 && newPage <= totalPages) {
+            setPage(newPage);
+        }
+    };
+
 
     const handlePrintReport = async (patient: Patient) => {
         setIsPrinting(patient.id);
     
-        const [allSessions, allPayments] = await Promise.all([
+        // FIX: api.payments.getAll requires arguments and returns a paginated object.
+        const [allSessions, allPaymentsResponse] = await Promise.all([
             api.sessions.getAll(),
-            api.payments.getAll()
+            api.payments.getAll({ page: 1, per_page: 9999 })
         ]);
+        // FIX: The array of payments is in the 'payments' property of the response.
+        const allPayments = allPaymentsResponse.payments;
         const sessions = allSessions.filter(s => s.patientId === patient.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         const payments = allPayments.filter(p => p.patientId === patient.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
@@ -2003,20 +2055,23 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
     const handleCreatePatient = async (newPatientData: Omit<Patient, 'id' | 'code'>) => {
         await api.patients.create(newPatientData, user.id);
         setIsAddingPatient(false);
-        await fetchAllData();
+        // After creating, go to page 1 and trigger a refresh.
+        // Setting page to 1 won't trigger if it's already 1, so forceRefresh is needed.
+        setPage(1);
+        setForceRefresh(c => c + 1);
     };
 
     const handleUpdatePatient = async (updatedPatient: Patient) => {
         await api.patients.update(updatedPatient.id, updatedPatient, user.id);
         setEditingPatient(null);
-        await fetchAllData();
+        await handlePageChange(currentPage);
     };
 
     const confirmDeletePatient = async () => {
         if (deletingPatient) {
             await api.patients.delete(deletingPatient.id, user.id);
             setDeletingPatient(null);
-            await fetchAllData();
+            await handlePageChange(currentPage);
         }
     };
     
@@ -2025,28 +2080,6 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
         setCurrentPage(page);
     };
 
-    const filteredPatients = useMemo(() => {
-        let list = patients;
-
-        if (user.role === UserRole.Doctor) {
-            list = list.filter(p => p.doctorIds.includes(user.id));
-        }
-
-        if (selectedDoctorId) {
-            list = list.filter(p => p.doctorIds.includes(selectedDoctorId));
-        }
-
-        if (searchTerm) {
-            const lowerCaseSearch = searchTerm.toLowerCase();
-            list = list.filter(p => 
-                p.name.toLowerCase().includes(lowerCaseSearch) ||
-                p.code.toLowerCase().includes(lowerCaseSearch) ||
-                p.phone.includes(searchTerm)
-            );
-        }
-
-        return list;
-    }, [patients, user, searchTerm, selectedDoctorId]);
 
     if (viewingPatient && currentPage === 'details') {
         return <PatientDetailsPage patient={viewingPatient} onBack={() => setCurrentPage('list')} doctors={doctors} />;
@@ -2078,7 +2111,10 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
                        <input
                            type="text"
                            value={searchTerm}
-                           onChange={(e) => setSearchTerm(e.target.value)}
+                           onChange={(e) => {
+                                setSearchTerm(e.target.value);
+                                setPage(1);
+                           }}
                            placeholder="ابحث بالاسم، الكود، أو الهاتف..."
                            className="w-full sm:w-64 pl-3 pr-10 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                        />
@@ -2087,7 +2123,10 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
                          <div className="relative">
                             <select
                                 value={selectedDoctorId}
-                                onChange={(e) => setSelectedDoctorId(e.target.value)}
+                                onChange={(e) => {
+                                    setSelectedDoctorId(e.target.value);
+                                    setPage(1);
+                                }}
                                 className="w-full sm:w-48 px-3 py-2 pr-8 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary appearance-none"
                                 aria-label="Filter by doctor"
                             >
@@ -2109,57 +2148,65 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ user, refreshTrigger }) => 
 
             <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[200px]">
                 {loading ? <CenteredLoadingSpinner /> : (
-                     filteredPatients.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {filteredPatients.map(p => (
-                                <div key={p.id} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col justify-between transition-shadow hover:shadow-lg">
-                                    <div>
-                                        <div className="flex justify-between items-start">
-                                            <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{p.name}</h3>
-                                            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full">{p.code}</span>
+                     patients.length > 0 ? (
+                        <>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {patients.map(p => (
+                                    <div key={p.id} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col justify-between transition-shadow hover:shadow-lg">
+                                        <div>
+                                            <div className="flex justify-between items-start">
+                                                <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{p.name}</h3>
+                                                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full">{p.code}</span>
+                                            </div>
+                                            <div className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-300">
+                                                <p><span className="font-semibold">العمر:</span> {p.age}</p>
+                                                <p><span className="font-semibold">الهاتف:</span> {p.phone}</p>
+                                            </div>
                                         </div>
-                                        <div className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-300">
-                                            <p><span className="font-semibold">العمر:</span> {p.age}</p>
-                                            <p><span className="font-semibold">الهاتف:</span> {p.phone}</p>
-                                        </div>
-                                    </div>
-                                    <div className="mt-4 pt-4 border-t dark:border-gray-600 flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
-                                        <button onClick={() => viewDetails(p, 'details')} className="flex items-center text-gray-600 dark:text-gray-300 hover:text-primary p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-sm" title="عرض التفاصيل"><EyeIcon className="h-4 w-4" /><span className="mr-1">التفاصيل</span></button>
-                                        {user.role !== UserRole.Secretary && (
-                                            <button onClick={() => viewDetails(p, 'sessions')} className="flex items-center text-teal-600 dark:text-teal-400 hover:text-teal-800 p-1 rounded hover:bg-teal-100 dark:hover:bg-teal-900/40 text-sm"><ClipboardListIcon className="h-4 w-4" /><span className="mr-1">الجلسات</span></button>
-                                        )}
-                                        <button onClick={() => viewDetails(p, 'gallery')} className="flex items-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 p-1 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-sm"><PhotographIcon className="h-4 w-4" /><span className="mr-1">الصور</span></button>
-                                        
-                                        {user.role !== UserRole.Doctor && (
-                                            <button onClick={() => viewDetails(p, 'payments')} className="flex items-center text-green-600 dark:text-green-400 hover:text-green-800 p-1 rounded hover:bg-green-100 dark:hover:bg-green-900/40 text-sm"><CurrencyDollarIcon className="h-4 w-4" /><span className="mr-1">المالية</span></button>
-                                        )}
-                                        
-                                        {(user.role === UserRole.Admin || user.role === UserRole.SubManager) && (
-                                            <button onClick={() => viewDetails(p, 'activity')} className="flex items-center text-orange-600 dark:text-orange-400 hover:text-orange-800 p-1 rounded hover:bg-orange-100 dark:hover:bg-orange-900/40 text-sm"><ListBulletIcon className="h-4 w-4" /><span className="mr-1">السجل</span></button>
-                                        )}
-                                        
-                                        {user.role !== UserRole.Doctor && (
-                                            <button 
-                                                onClick={() => handlePrintReport(p)} 
-                                                disabled={isPrinting === p.id}
-                                                className="flex items-center text-red-600 dark:text-red-400 hover:text-red-800 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-sm disabled:opacity-50 disabled:cursor-wait" 
-                                                title="طباعة تقرير"
-                                            >
-                                                {isPrinting === p.id ? <LoadingSpinner className="h-4 w-4" /> : <DocumentTextIcon className="h-4 w-4" />}
-                                                <span className="mr-1">طباعة</span>
-                                            </button>
-                                        )}
+                                        <div className="mt-4 pt-4 border-t dark:border-gray-600 flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+                                            <button onClick={() => viewDetails(p, 'details')} className="flex items-center text-gray-600 dark:text-gray-300 hover:text-primary p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-sm" title="عرض التفاصيل"><EyeIcon className="h-4 w-4" /><span className="mr-1">التفاصيل</span></button>
+                                            {user.role !== UserRole.Secretary && (
+                                                <button onClick={() => viewDetails(p, 'sessions')} className="flex items-center text-teal-600 dark:text-teal-400 hover:text-teal-800 p-1 rounded hover:bg-teal-100 dark:hover:bg-teal-900/40 text-sm"><ClipboardListIcon className="h-4 w-4" /><span className="mr-1">الجلسات</span></button>
+                                            )}
+                                            <button onClick={() => viewDetails(p, 'gallery')} className="flex items-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 p-1 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-sm"><PhotographIcon className="h-4 w-4" /><span className="mr-1">الصور</span></button>
+                                            
+                                            {user.role !== UserRole.Doctor && (
+                                                <button onClick={() => viewDetails(p, 'payments')} className="flex items-center text-green-600 dark:text-green-400 hover:text-green-800 p-1 rounded hover:bg-green-100 dark:hover:bg-green-900/40 text-sm"><CurrencyDollarIcon className="h-4 w-4" /><span className="mr-1">المالية</span></button>
+                                            )}
+                                            
+                                            {(user.role === UserRole.Admin || user.role === UserRole.SubManager) && (
+                                                <button onClick={() => viewDetails(p, 'activity')} className="flex items-center text-orange-600 dark:text-orange-400 hover:text-orange-800 p-1 rounded hover:bg-orange-100 dark:hover:bg-orange-900/40 text-sm"><ListBulletIcon className="h-4 w-4" /><span className="mr-1">السجل</span></button>
+                                            )}
+                                            
+                                            {user.role !== UserRole.Doctor && (
+                                                <button 
+                                                    onClick={() => handlePrintReport(p)} 
+                                                    disabled={isPrinting === p.id}
+                                                    className="flex items-center text-red-600 dark:text-red-400 hover:text-red-800 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-sm disabled:opacity-50 disabled:cursor-wait" 
+                                                    title="طباعة تقرير"
+                                                >
+                                                    {isPrinting === p.id ? <LoadingSpinner className="h-4 w-4" /> : <DocumentTextIcon className="h-4 w-4" />}
+                                                    <span className="mr-1">طباعة</span>
+                                                </button>
+                                            )}
 
-                                        {(user.role === UserRole.Admin || user.role === UserRole.Secretary) && (
-                                            <>
+                                            {(user.role === UserRole.Admin || user.role === UserRole.Secretary || user.role === UserRole.Doctor) && (
                                                 <button onClick={() => setEditingPatient(p)} className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 text-sm"><PencilIcon className="h-4 w-4" /><span className="mr-1">تعديل</span></button>
+                                            )}
+                                            {(user.role === UserRole.Admin || user.role === UserRole.Secretary) && (
                                                 <button onClick={() => setDeletingPatient(p)} className="flex items-center text-red-600 dark:text-red-400 hover:text-red-800 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-sm"><TrashIcon className="h-4 w-4" /><span className="mr-1">حذف</span></button>
-                                            </>
-                                        )}
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                            <div className="mt-6 flex justify-between items-center">
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    عرض {patients.length} من أصل {totalResults} مرضى
+                                </p>
+                                <Pagination currentPage={page} totalPages={totalPages} onPageChange={handlePageChange} />
+                            </div>
+                        </>
                     ) : (
                          <p className="text-center text-gray-500 dark:text-gray-400 py-8">
                             {user.role === UserRole.Doctor ? 'لا يوجد مرضى مسجلون لك حالياً.' : 'لم يتم العثور على مرضى.'}

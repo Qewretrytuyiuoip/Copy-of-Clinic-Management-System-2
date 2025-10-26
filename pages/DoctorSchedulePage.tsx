@@ -40,14 +40,16 @@ const DoctorSchedulePage: React.FC<DoctorSchedulePageProps> = ({ user, refreshTr
         setLoading(true);
         setFetchError(null);
         try {
-            const [allAppointments, allPatients] = await Promise.all([
+            const [allAppointments, allPatientsResponse] = await Promise.all([
                 api.appointments.getAll(),
-                api.patients.getAll(),
+                // FIX: api.patients.getAll requires arguments.
+                api.patients.getAll({ page: 1, per_page: 9999 }),
             ]);
             
             const myAppointments = allAppointments.filter(app => app.doctorId === user.id);
             setAppointments(myAppointments);
-            setPatients(allPatients); // Keep all patients for name lookup
+            // FIX: The API returns a pagination object. We need the 'patients' array from it.
+            setPatients(allPatientsResponse.patients); // Keep all patients for name lookup
         } catch (error) {
             if (error instanceof Error && error.message.includes('Failed to fetch')) {
                 setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { User, Payment, Patient } from '../types';
-import { api } from '../services/api';
+import { api, ApiError } from '../services/api';
 import { PlusIcon, PencilIcon, TrashIcon, XIcon, SearchIcon } from '../components/Icons';
 import { CenteredLoadingSpinner } from '../components/LoadingSpinner';
 
@@ -8,6 +8,42 @@ interface PaymentsPageProps {
     user: User;
     refreshTrigger: number;
 }
+
+// ===================================================================
+// Pagination Component
+// ===================================================================
+const Pagination: React.FC<{
+    currentPage: number;
+    totalPages: number;
+    onPageChange: (page: number) => void;
+}> = ({ currentPage, totalPages, onPageChange }) => {
+    if (totalPages <= 1) return null;
+
+    return (
+        <nav className="flex items-center justify-center mt-8" aria-label="Pagination">
+            <button
+                onClick={() => onPageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-4 py-2 mx-1 leading-tight text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                السابق
+            </button>
+            <div className="flex items-center mx-4">
+                <span className="text-sm text-gray-700 dark:text-gray-400">
+                    صفحة <span className="font-semibold text-gray-900 dark:text-white">{currentPage}</span> من <span className="font-semibold text-gray-900 dark:text-white">{totalPages}</span>
+                </span>
+            </div>
+            <button
+                onClick={() => onPageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 mx-1 leading-tight text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                التالي
+            </button>
+        </nav>
+    );
+};
+
 
 // ===================================================================
 // ConfirmDeleteModal Component
@@ -55,6 +91,32 @@ interface AddPaymentModalProps {
 const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onSave, onClose, patients }) => {
     const [formData, setFormData] = useState({ patientId: '', amount: '', date: new Date().toISOString().split('T')[0] });
     const [isSaving, setIsSaving] = useState(false);
+    const [patientSearch, setPatientSearch] = useState('');
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+    const filteredPatients = patientSearch
+        ? patients.filter(p => p.name.toLowerCase().includes(patientSearch.toLowerCase()) || p.code.includes(patientSearch))
+        : patients;
+
+    const handlePatientSelect = (patient: Patient) => {
+        setFormData(prev => ({ ...prev, patientId: patient.id }));
+        setPatientSearch(patient.name);
+        setIsDropdownOpen(false);
+    };
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsDropdownOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [dropdownRef]);
+
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -93,12 +155,44 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onSave, onClose, pati
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4">
-                        <div>
-                            <label htmlFor="patientId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">المريض</label>
-                            <select id="patientId" name="patientId" value={formData.patientId} onChange={handleChange} required className={inputStyle}>
-                                <option value="">اختر مريض...</option>
-                                {patients.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                            </select>
+                        <div ref={dropdownRef} className="relative">
+                            <label htmlFor="patientSearch" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">المريض</label>
+                            <div className="relative">
+                                <SearchIcon className="absolute top-1/2 right-3 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                <input
+                                    id="patientSearch"
+                                    type="text"
+                                    value={patientSearch}
+                                    onChange={(e) => {
+                                        setPatientSearch(e.target.value);
+                                        setFormData(prev => ({...prev, patientId: ''})); // Clear patientId if user is typing
+                                        setIsDropdownOpen(true);
+                                    }}
+                                    onFocus={() => setIsDropdownOpen(true)}
+                                    placeholder="ابحث عن مريض بالاسم أو الكود..."
+                                    required={!formData.patientId}
+                                    autoComplete="off"
+                                    className={inputStyle + " pr-10"}
+                                />
+                            </div>
+                            
+                            {isDropdownOpen && (
+                                <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                    {filteredPatients.length > 0 ? (
+                                        filteredPatients.map(p => (
+                                            <div
+                                                key={p.id}
+                                                onClick={() => handlePatientSelect(p)}
+                                                className="px-4 py-2 cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-900/40 text-gray-900 dark:text-gray-200"
+                                            >
+                                                {p.name} ({p.code})
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="px-4 py-2 text-gray-500">لا يوجد مرضى مطابقون</div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                         <div>
                             <label htmlFor="amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">المبلغ</label>
@@ -204,17 +298,26 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user, refreshTrigger }) => 
     const [isAddingPayment, setIsAddingPayment] = useState(false);
     const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalResults, setTotalResults] = useState(0);
 
-    const fetchData = useCallback(async () => {
+    const PAYMENTS_PER_PAGE = 8;
+
+    const refreshData = useCallback(async () => {
         setLoading(true);
         setFetchError(null);
         try {
-            const [pays, pats] = await Promise.all([
-                api.payments.getAll(),
-                api.patients.getAll()
-            ]);
-            setPayments(pays);
-            setPatients(pats);
+            const patientsPromise = api.patients.getAll({ page: 1, per_page: 9999 });
+            const paymentsPromise = api.payments.getAll({ page: currentPage, per_page: PAYMENTS_PER_PAGE, search: searchTerm });
+
+            const [patsResponse, paysResponse] = await Promise.all([patientsPromise, paymentsPromise]);
+
+            setPatients(patsResponse.patients);
+            setPayments(paysResponse.payments);
+            setTotalResults(paysResponse.total);
+            setTotalPages(paysResponse.last_page);
+
         } catch (error) {
             if (error instanceof Error && error.message.includes('Failed to fetch')) {
                 setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');
@@ -225,22 +328,36 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user, refreshTrigger }) => 
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [currentPage, searchTerm]);
 
     useEffect(() => {
-        fetchData();
-    }, [fetchData, refreshTrigger]);
+        const timer = setTimeout(() => {
+            refreshData();
+        }, 300); // Debounce search
+        return () => clearTimeout(timer);
+    }, [refreshData, refreshTrigger]);
+
+    const handlePageChange = (newPage: number) => {
+        if (newPage >= 1 && newPage <= totalPages) {
+            setCurrentPage(newPage);
+        }
+    };
+    
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearchTerm(e.target.value);
+        setCurrentPage(1);
+    };
 
     const handleCreatePayment = async (newPaymentData: Omit<Payment, 'id'>) => {
         await api.payments.create(newPaymentData);
         setIsAddingPayment(false);
-        await fetchData();
+        await refreshData();
     };
 
     const handleUpdatePayment = async (updatedPayment: Payment) => {
         await api.payments.update(updatedPayment.id, updatedPayment);
         setEditingPayment(null);
-        await fetchData();
+        await refreshData();
     };
 
     const confirmDeletePayment = async () => {
@@ -248,7 +365,11 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user, refreshTrigger }) => 
             try {
                 await api.payments.delete(paymentToDelete.id);
                 setPaymentToDelete(null);
-                await fetchData();
+                if (payments.length === 1 && currentPage > 1) {
+                    setCurrentPage(prev => prev - 1);
+                } else {
+                    await refreshData();
+                }
             } catch (error) {
                 console.error("Failed to delete payment:", error);
                 alert(`فشل حذف الدفعة: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
@@ -257,10 +378,6 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user, refreshTrigger }) => 
     };
 
     const getPatientName = (id: string) => patients.find(p => p.id === id)?.name || 'مريض غير معروف';
-
-    const filteredPayments = payments.filter(pay =>
-        getPatientName(pay.patientId).toLowerCase().includes(searchTerm.toLowerCase())
-    );
 
     return (
         <div>
@@ -273,7 +390,7 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user, refreshTrigger }) => 
                    <input
                        type="text"
                        value={searchTerm}
-                       onChange={(e) => setSearchTerm(e.target.value)}
+                       onChange={handleSearchChange}
                        placeholder="ابحث عن طريق اسم المريض..."
                        className="w-full pl-3 pr-10 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                    />
@@ -284,32 +401,40 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user, refreshTrigger }) => 
                 </button>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[200px]">
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[400px]">
                 {loading ? <CenteredLoadingSpinner /> : fetchError ? (
                      <div className="text-center py-16 text-red-500 dark:text-red-400"><p>{fetchError}</p></div>
                 ) : (
-                    filteredPayments.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {filteredPayments.map(pay => (
-                                <div key={pay.id} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col justify-between transition-shadow hover:shadow-lg">
-                                    <div>
-                                        <div className="flex justify-between items-start">
-                                            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">{getPatientName(pay.patientId)}</h3>
-                                            <p className="text-xl font-bold text-green-600 dark:text-green-400">${pay.amount.toFixed(2)}</p>
+                    payments.length > 0 ? (
+                        <>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {payments.map(pay => (
+                                    <div key={pay.id} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col justify-between transition-shadow hover:shadow-lg">
+                                        <div>
+                                            <div className="flex justify-between items-start">
+                                                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">{getPatientName(pay.patientId)}</h3>
+                                                <p className="text-xl font-bold text-green-600 dark:text-green-400">${pay.amount.toFixed(2)}</p>
+                                            </div>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{new Date(pay.date).toLocaleDateString()}</p>
                                         </div>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{new Date(pay.date).toLocaleDateString()}</p>
+                                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex items-center justify-end space-x-2">
+                                            <button onClick={() => setEditingPayment(pay)} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل">
+                                                <PencilIcon className="h-5 w-5" />
+                                            </button>
+                                            <button onClick={() => setPaymentToDelete(pay)} className="text-red-600 dark:text-red-400 hover:text-red-800 p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف">
+                                                <TrashIcon className="h-5 w-5" />
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex items-center justify-end space-x-2">
-                                        <button onClick={() => setEditingPayment(pay)} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل">
-                                            <PencilIcon className="h-5 w-5" />
-                                        </button>
-                                        <button onClick={() => setPaymentToDelete(pay)} className="text-red-600 dark:text-red-400 hover:text-red-800 p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف">
-                                            <TrashIcon className="h-5 w-5" />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                            <div className="mt-6 flex justify-between items-center flex-wrap gap-4">
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    عرض {payments.length} من أصل {totalResults} مدفوعات
+                                </p>
+                                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+                            </div>
+                        </>
                     ) : (
                         <p className="text-center text-gray-500 dark:text-gray-400 py-8">لم يتم العثور على مدفوعات.</p>
                     )
