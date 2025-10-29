@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { User, UserRole } from '../../types';
 import { api, ApiError } from '../../services/api';
@@ -13,9 +14,10 @@ interface ConfirmDeleteModalProps {
     onCancel: () => void;
     title: string;
     message: string;
+    isDeleting?: boolean;
 }
 
-const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCancel, title, message }) => (
+const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCancel, title, message, isDeleting }) => (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 transition-opacity" onClick={onCancel}>
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
             <div className="p-6">
@@ -28,10 +30,10 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCa
                 </div>
             </div>
             <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex justify-center gap-4">
-                <button type="button" onClick={onConfirm} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                    نعم، قم بالحذف
+                <button type="button" onClick={onConfirm} disabled={isDeleting} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-red-400 disabled:cursor-not-allowed">
+                    {isDeleting ? 'جاري الحذف...' : 'نعم، قم بالحذف'}
                 </button>
-                <button type="button" onClick={onCancel} className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                <button type="button" onClick={onCancel} disabled={isDeleting} className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed">
                     إلغاء
                 </button>
             </div>
@@ -51,23 +53,45 @@ const AddSecretaryModal: React.FC<AddSecretaryModalProps> = ({ onSave, onClose }
     const [formData, setFormData] = useState({ name: '', email: '', password: '' });
     const [isSaving, setIsSaving] = useState(false);
     const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
+    const [formErrors, setFormErrors] = useState({ email: '', password: '' });
+
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
-         if (validationErrors[name]) {
+        if (validationErrors[name]) {
             setValidationErrors(prev => {
                 const newErrors = { ...prev };
                 delete newErrors[name];
                 return newErrors;
             });
         }
+        if (formErrors[name as keyof typeof formErrors]) {
+            setFormErrors(prev => ({ ...prev, [name]: '' }));
+        }
+    };
+
+     const validateForm = () => {
+        const errors = { email: '', password: '' };
+        const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
+
+        if (!emailRegex.test(formData.email)) {
+            errors.email = 'الرجاء إدخال بريد إلكتروني صحيح.';
+        }
+
+        if (!formData.password) {
+            errors.password = 'كلمة المرور مطلوبة.';
+        } else if (formData.password.length < 6) {
+            errors.password = 'يجب أن تكون كلمة المرور 6 أحرف على الأقل.';
+        }
+
+        setFormErrors(errors);
+        return !errors.email && !errors.password;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.password) {
-            alert('كلمة المرور مطلوبة للسكرتير الجديد.');
+        if (!validateForm()) {
             return;
         }
         setIsSaving(true);
@@ -102,13 +126,13 @@ const AddSecretaryModal: React.FC<AddSecretaryModalProps> = ({ onSave, onClose }
                         <div>
                             <label htmlFor="emailAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">البريد الإلكتروني</label>
                             <input type="email" id="emailAdd" name="email" value={formData.email} onChange={handleChange} required className={inputStyle} />
-                            {validationErrors.email && (
-                                <p className="mt-1 text-sm text-red-600 dark:text-red-400">هذا الايميل موجود بالفعل</p>
-                            )}
+                            {validationErrors.email && <p className="mt-1 text-sm text-red-600 dark:text-red-400">هذا الايميل موجود بالفعل</p>}
+                            {formErrors.email && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.email}</p>}
                         </div>
                         <div>
                             <label htmlFor="passwordAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">كلمة المرور</label>
                             <input type="password" id="passwordAdd" name="password" value={formData.password} onChange={handleChange} required className={inputStyle} />
+                            {formErrors.password && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.password}</p>}
                         </div>
                     </div>
                     <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
@@ -134,6 +158,8 @@ const EditSecretaryModal: React.FC<EditSecretaryModalProps> = ({ secretary, onSa
     const [formData, setFormData] = useState({ name: secretary.name, email: secretary.email, password: '' });
     const [isSaving, setIsSaving] = useState(false);
     const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
+    const [formErrors, setFormErrors] = useState({ email: '', password: '' });
+
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -145,10 +171,32 @@ const EditSecretaryModal: React.FC<EditSecretaryModalProps> = ({ secretary, onSa
                 return newErrors;
             });
         }
+        if (formErrors[name as keyof typeof formErrors]) {
+            setFormErrors(prev => ({ ...prev, [name]: '' }));
+        }
+    };
+
+    const validateForm = () => {
+        const errors = { email: '', password: '' };
+        const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
+
+        if (!emailRegex.test(formData.email)) {
+            errors.email = 'الرجاء إدخال بريد إلكتروني صحيح.';
+        }
+
+        if (formData.password && formData.password.length < 6) {
+            errors.password = 'يجب أن تكون كلمة المرور 6 أحرف على الأقل.';
+        }
+
+        setFormErrors(errors);
+        return !errors.email && !errors.password;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if(!validateForm()){
+            return;
+        }
         setIsSaving(true);
         setValidationErrors({});
         try {
@@ -159,7 +207,7 @@ const EditSecretaryModal: React.FC<EditSecretaryModalProps> = ({ secretary, onSa
             await onSave({ ...secretary, ...updates });
         } catch (error) {
             setIsSaving(false);
-            if (error instanceof ApiError && error.errors) {
+             if (error instanceof ApiError && error.errors) {
                 setValidationErrors(error.errors);
             } else {
                 alert(`فشل في تعديل السكرتير: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
@@ -182,11 +230,14 @@ const EditSecretaryModal: React.FC<EditSecretaryModalProps> = ({ secretary, onSa
                         <div>
                             <label htmlFor="emailEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">البريد الإلكتروني</label>
                             <input type="email" id="emailEdit" name="email" value={formData.email} onChange={handleChange} required className={inputStyle} />
-                            {validationErrors.email && (
-                                <p className="mt-1 text-sm text-red-600 dark:text-red-400">هذا الايميل موجود بالفعل</p>
-                            )}
+                            {validationErrors.email && <p className="mt-1 text-sm text-red-600 dark:text-red-400">هذا الايميل موجود بالفعل</p>}
+                            {formErrors.email && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.email}</p>}
                         </div>
-                        <div><label htmlFor="passwordEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">كلمة المرور (اتركها فارغة لعدم التغيير)</label><input type="password" id="passwordEdit" name="password" value={formData.password} onChange={handleChange} className={inputStyle} /></div>
+                        <div>
+                            <label htmlFor="passwordEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">كلمة المرور (اتركها فارغة لعدم التغيير)</label>
+                            <input type="password" id="passwordEdit" name="password" value={formData.password} onChange={handleChange} className={inputStyle} />
+                            {formErrors.password && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.password}</p>}
+                        </div>
                     </div>
                     <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
@@ -206,6 +257,7 @@ const SecretariesTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
     const [isAddingSecretary, setIsAddingSecretary] = useState(false);
     const [editingSecretary, setEditingSecretary] = useState<User | null>(null);
     const [deletingSecretary, setDeletingSecretary] = useState<User | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
 
     const fetchSecretaries = useCallback(async () => {
@@ -235,7 +287,7 @@ const SecretariesTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
             await api.secretaries.create({ ...newSecretaryData, role: UserRole.Secretary });
             setIsAddingSecretary(false);
             await fetchSecretaries();
-        } catch (error) {
+        } catch(error) {
             console.error("Failed to create secretary:", error);
             throw error;
         }
@@ -246,7 +298,7 @@ const SecretariesTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
             await api.secretaries.update(updatedSecretary.id, updatedSecretary);
             setEditingSecretary(null);
             await fetchSecretaries();
-        } catch (error) {
+        } catch(error) {
             console.error("Failed to update secretary:", error);
             throw error;
         }
@@ -254,13 +306,16 @@ const SecretariesTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
 
     const confirmDeleteSecretary = async () => {
         if (deletingSecretary) {
-            try {
+            setIsDeleting(true);
+             try {
                 await api.secretaries.delete(deletingSecretary.id);
                 setDeletingSecretary(null);
                 await fetchSecretaries();
-            } catch (error) {
-                alert(`فشل حذف السكرتير: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
-            }
+             } catch(error) {
+                 alert(`فشل حذف السكرتير: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+             } finally {
+                setIsDeleting(false);
+             }
         }
     };
 
@@ -268,7 +323,7 @@ const SecretariesTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
         <div className="p-6">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">قائمة السكرتارية</h2>
-                <button onClick={() => setIsAddingSecretary(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
+                <button onClick={() => setIsAddingSecretary(true)} className="hidden lg:flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
                     <PlusIcon className="h-5 w-5 ml-2" />
                     إضافة سكرتير
                 </button>
@@ -276,7 +331,7 @@ const SecretariesTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
             
             <div className="min-h-[200px]">
                 {loading ? <CenteredLoadingSpinner /> : fetchError ? (
-                    <div className="text-center py-16 text-red-500 dark:text-red-400"><p>{fetchError}</p></div>
+                     <div className="text-center py-16 text-red-500 dark:text-red-400"><p>{fetchError}</p></div>
                 ) : (
                      secretaries.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -304,6 +359,15 @@ const SecretariesTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
                     )
                 )}
             </div>
+
+            <button 
+                onClick={() => setIsAddingSecretary(true)} 
+                className="lg:hidden fixed bottom-20 right-4 bg-primary text-white p-4 rounded-full shadow-lg hover:bg-primary-700 transition-colors z-20"
+                aria-label="إضافة سكرتير"
+            >
+                <PlusIcon className="h-6 w-6" />
+            </button>
+            
             {isAddingSecretary && <AddSecretaryModal onClose={() => setIsAddingSecretary(false)} onSave={handleCreateSecretary} />}
             {editingSecretary && <EditSecretaryModal secretary={editingSecretary} onClose={() => setEditingSecretary(null)} onSave={handleUpdateSecretary} />}
             {deletingSecretary && (
@@ -311,11 +375,12 @@ const SecretariesTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
                     title="حذف سكرتير"
                     message={`هل أنت متأكد من رغبتك في حذف ${deletingSecretary.name}؟ لا يمكن التراجع عن هذا الإجراء.`}
                     onConfirm={confirmDeleteSecretary}
-                    onCancel={() => setDeletingSecretary(null)}
+                    onCancel={() => !isDeleting && setDeletingSecretary(null)}
+                    isDeleting={isDeleting}
                 />
             )}
         </div>
     );
 };
-
+// FIX: Added default export to resolve the module import error in UsersPage.tsx
 export default SecretariesTab;

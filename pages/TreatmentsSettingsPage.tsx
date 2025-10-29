@@ -198,7 +198,7 @@ const TreatmentsSettingsPage: React.FC<{ refreshTrigger: number }> = ({ refreshT
                        className="w-full pl-3 pr-10 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                    />
                 </div>
-                <button onClick={() => setIsAdding(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
+                <button onClick={() => setIsAdding(true)} className="hidden lg:flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
                     <PlusIcon className="h-5 w-5 ml-2" />
                     إضافة علاج
                 </button>
@@ -235,6 +235,15 @@ const TreatmentsSettingsPage: React.FC<{ refreshTrigger: number }> = ({ refreshT
                     )
                 )}
             </div>
+            
+            <button 
+                onClick={() => setIsAdding(true)} 
+                className="lg:hidden fixed bottom-20 right-4 bg-primary text-white p-4 rounded-full shadow-lg hover:bg-primary-700 transition-colors z-20"
+                aria-label="إضافة علاج"
+            >
+                <PlusIcon className="h-6 w-6" />
+            </button>
+            
             {(isAdding || editingTreatment) && (
                 <TreatmentFormModal 
                     key={editingTreatment?.id || 'add'}

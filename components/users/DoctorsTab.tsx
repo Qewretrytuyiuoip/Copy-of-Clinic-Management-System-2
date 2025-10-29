@@ -5,38 +5,65 @@ import { PlusIcon, PencilIcon, TrashIcon, XIcon, UserGroupIcon } from '../../com
 import { CenteredLoadingSpinner } from '../../components/LoadingSpinner';
 
 // ===================================================================
-// ConfirmDeleteModal Component
+// ReassignAndDeleteModal Component
 // ===================================================================
-interface ConfirmDeleteModalProps {
+interface ReassignAndDeleteModalProps {
     onConfirm: () => void;
     onCancel: () => void;
-    title: string;
-    message: string;
+    doctorToDelete: User;
+    otherDoctors: User[];
+    targetDoctorId: string;
+    setTargetDoctorId: (id: string) => void;
+    isDeleting?: boolean;
 }
 
-const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCancel, title, message }) => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 transition-opacity" onClick={onCancel}>
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
-            <div className="p-6">
-                <div className="text-center">
-                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30">
-                        <TrashIcon className="h-6 w-6 text-red-600 dark:text-red-400" aria-hidden="true" />
+const ReassignAndDeleteModal: React.FC<ReassignAndDeleteModalProps> = ({ onConfirm, onCancel, doctorToDelete, otherDoctors, targetDoctorId, setTargetDoctorId, isDeleting }) => {
+    const hasOtherDoctors = otherDoctors.length > 0;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 transition-opacity" onClick={onCancel}>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="p-6">
+                    <div className="text-center">
+                        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30">
+                            <TrashIcon className="h-6 w-6 text-red-600 dark:text-red-400" aria-hidden="true" />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-4">حذف الطبيب</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 px-4">
+                            {hasOtherDoctors 
+                                ? `لحذف الطبيب ${doctorToDelete.name}، يجب أولاً نقل مرضاه إلى طبيب آخر.`
+                                : `هل أنت متأكد من رغبتك في حذف الطبيب ${doctorToDelete.name}؟ لا يمكن التراجع عن هذا الإجراء.`
+                            }
+                        </p>
                     </div>
-                    <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-4">{title}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 px-4">{message}</p>
+                    {hasOtherDoctors && (
+                        <div className="mt-4">
+                            <label htmlFor="targetDoctor" className="block text-sm font-medium text-gray-700 dark:text-gray-300">نقل المرضى إلى</label>
+                            <select
+                                id="targetDoctor"
+                                value={targetDoctorId}
+                                onChange={(e) => setTargetDoctorId(e.target.value)}
+                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            >
+                                {otherDoctors.map(doc => (
+                                    <option key={doc.id} value={doc.id}>{doc.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                </div>
+                <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex justify-center gap-4">
+                    <button type="button" onClick={onConfirm} disabled={isDeleting} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-red-400 disabled:cursor-not-allowed">
+                        {isDeleting ? 'جاري الحذف...' : (hasOtherDoctors ? 'تأكيد النقل والحذف' : 'نعم، قم بالحذف')}
+                    </button>
+                    <button type="button" onClick={onCancel} disabled={isDeleting} className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                        إلغاء
+                    </button>
                 </div>
             </div>
-            <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex justify-center gap-4">
-                <button type="button" onClick={onConfirm} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                    نعم، قم بالحذف
-                </button>
-                <button type="button" onClick={onCancel} className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                    إلغاء
-                </button>
-            </div>
         </div>
-    </div>
-);
+    );
+};
 
 
 // ===================================================================
@@ -51,6 +78,7 @@ const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ onSave, onClose }) => {
     const [formData, setFormData] = useState({ name: '', email: '', password: '', specialty: '', is_diagnosis_doctor: false });
     const [isSaving, setIsSaving] = useState(false);
     const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
+    const [formErrors, setFormErrors] = useState({ email: '', password: '' });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type, checked } = e.target;
@@ -62,12 +90,33 @@ const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ onSave, onClose }) => {
                 return newErrors;
             });
         }
+        if (formErrors[name as keyof typeof formErrors]) {
+            setFormErrors(prev => ({ ...prev, [name]: '' }));
+        }
     };
+
+    const validateForm = () => {
+        const errors = { email: '', password: '' };
+        const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
+
+        if (!emailRegex.test(formData.email)) {
+            errors.email = 'الرجاء إدخال بريد إلكتروني صحيح.';
+        }
+
+        if (!formData.password) {
+            errors.password = 'كلمة المرور مطلوبة.';
+        } else if (formData.password.length < 6) {
+            errors.password = 'يجب أن تكون كلمة المرور 6 أحرف على الأقل.';
+        }
+
+        setFormErrors(errors);
+        return !errors.email && !errors.password;
+    };
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.password) {
-            alert('كلمة المرور مطلوبة للطبيب الجديد.');
+        if (!validateForm()) {
             return;
         }
         setIsSaving(true);
@@ -109,10 +158,12 @@ const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ onSave, onClose }) => {
                              {validationErrors.email && (
                                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">هذا الايميل موجود بالفعل</p>
                             )}
+                             {formErrors.email && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.email}</p>}
                         </div>
                         <div>
                             <label htmlFor="passwordAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">كلمة المرور</label>
                             <input type="password" id="passwordAdd" name="password" value={formData.password} onChange={handleChange} required className={inputStyle} />
+                             {formErrors.password && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.password}</p>}
                         </div>
                         <div>
                             <label className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer">
@@ -150,6 +201,7 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ doctor, onSave, onClo
     const [formData, setFormData] = useState({ name: doctor.name, email: doctor.email, password: '', specialty: doctor.specialty || '', is_diagnosis_doctor: doctor.is_diagnosis_doctor || false });
     const [isSaving, setIsSaving] = useState(false);
     const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
+    const [formErrors, setFormErrors] = useState({ email: '', password: '' });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type, checked } = e.target;
@@ -161,10 +213,33 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ doctor, onSave, onClo
                 return newErrors;
             });
         }
+         if (formErrors[name as keyof typeof formErrors]) {
+            setFormErrors(prev => ({ ...prev, [name]: '' }));
+        }
     };
+
+    const validateForm = () => {
+        const errors = { email: '', password: '' };
+        const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
+
+        if (!emailRegex.test(formData.email)) {
+            errors.email = 'الرجاء إدخال بريد إلكتروني صحيح.';
+        }
+
+        if (formData.password && formData.password.length < 6) {
+            errors.password = 'يجب أن تكون كلمة المرور 6 أحرف على الأقل.';
+        }
+
+        setFormErrors(errors);
+        return !errors.email && !errors.password;
+    };
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if(!validateForm()) {
+            return;
+        }
         setIsSaving(true);
         setValidationErrors({});
         try {
@@ -199,11 +274,14 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ doctor, onSave, onClo
                         <div>
                             <label htmlFor="emailEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">البريد الإلكتروني</label>
                             <input type="email" id="emailEdit" name="email" value={formData.email} onChange={handleChange} required className={inputStyle} />
-                            {validationErrors.email && (
-                                <p className="mt-1 text-sm text-red-600 dark:text-red-400">هذا الايميل موجود بالفعل</p>
-                            )}
+                            {validationErrors.email && <p className="mt-1 text-sm text-red-600 dark:text-red-400">هذا الايميل موجود بالفعل</p>}
+                            {formErrors.email && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.email}</p>}
                         </div>
-                        <div><label htmlFor="passwordEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">كلمة المرور (اتركها فارغة لعدم التغيير)</label><input type="password" id="passwordEdit" name="password" value={formData.password} onChange={handleChange} className={inputStyle} /></div>
+                        <div>
+                            <label htmlFor="passwordEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">كلمة المرور (اتركها فارغة لعدم التغيير)</label>
+                            <input type="password" id="passwordEdit" name="password" value={formData.password} onChange={handleChange} className={inputStyle} />
+                            {formErrors.password && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.password}</p>}
+                        </div>
                         <div>
                             <label className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer">
                                 <input
@@ -234,6 +312,8 @@ const DoctorsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
     const [isAddingDoctor, setIsAddingDoctor] = useState(false);
     const [editingDoctor, setEditingDoctor] = useState<User | null>(null);
     const [deletingDoctor, setDeletingDoctor] = useState<User | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [targetDoctorId, setTargetDoctorId] = useState('');
 
     const fetchDoctors = useCallback(async () => {
         setLoading(true);
@@ -279,14 +359,33 @@ const DoctorsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
         }
     };
 
+    const handleDeleteClick = (doctor: User) => {
+        const otherDocs = doctors.filter(d => d.id !== doctor.id);
+        if (otherDocs.length > 0) {
+            setTargetDoctorId(otherDocs[0].id);
+        } else {
+            setTargetDoctorId('');
+        }
+        setDeletingDoctor(doctor);
+    };
+
     const confirmDeleteDoctor = async () => {
         if (deletingDoctor) {
+            setIsDeleting(true);
             try {
-                await api.doctors.delete(deletingDoctor.id);
+                const otherDocs = doctors.filter(d => d.id !== deletingDoctor.id);
+                if (otherDocs.length > 0 && !targetDoctorId) {
+                    alert('يرجى تحديد طبيب لنقل المرضى إليه.');
+                    setIsDeleting(false);
+                    return;
+                }
+                await api.doctors.delete(deletingDoctor.id, targetDoctorId || undefined);
                 setDeletingDoctor(null);
                 await fetchDoctors();
             } catch(error) {
                  alert(`فشل حذف الطبيب: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+            } finally {
+                setIsDeleting(false);
             }
         }
     };
@@ -295,7 +394,7 @@ const DoctorsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
         <div className="p-6">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">قائمة الأطباء</h2>
-                <button onClick={() => setIsAddingDoctor(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
+                <button onClick={() => setIsAddingDoctor(true)} className="hidden lg:flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
                     <PlusIcon className="h-5 w-5 ml-2" />
                     إضافة طبيب
                 </button>
@@ -326,7 +425,7 @@ const DoctorsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
                                             <PencilIcon className="h-4 w-4" />
                                             <span className="mr-1">تعديل</span>
                                         </button>
-                                        <button onClick={() => setDeletingDoctor(doc)} className="flex items-center text-red-600 dark:text-red-400 hover:text-red-800 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-sm">
+                                        <button onClick={() => handleDeleteClick(doc)} className="flex items-center text-red-600 dark:text-red-400 hover:text-red-800 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-sm">
                                             <TrashIcon className="h-4 w-4" />
                                             <span className="mr-1">حذف</span>
                                         </button>
@@ -339,14 +438,26 @@ const DoctorsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
                     )
                 )}
             </div>
+            
+            <button 
+                onClick={() => setIsAddingDoctor(true)} 
+                className="lg:hidden fixed bottom-20 right-4 bg-primary text-white p-4 rounded-full shadow-lg hover:bg-primary-700 transition-colors z-20"
+                aria-label="إضافة طبيب"
+            >
+                <PlusIcon className="h-6 w-6" />
+            </button>
+            
             {isAddingDoctor && <AddDoctorModal onClose={() => setIsAddingDoctor(false)} onSave={handleCreateDoctor} />}
             {editingDoctor && <EditDoctorModal doctor={editingDoctor} onClose={() => setEditingDoctor(null)} onSave={handleUpdateDoctor} />}
             {deletingDoctor && (
-                <ConfirmDeleteModal
-                    title="حذف طبيب"
-                    message={`هل أنت متأكد من رغبتك في حذف ${deletingDoctor.name}؟ لا يمكن التراجع عن هذا الإجراء.`}
+                <ReassignAndDeleteModal
+                    doctorToDelete={deletingDoctor}
+                    otherDoctors={doctors.filter(d => d.id !== deletingDoctor.id)}
+                    targetDoctorId={targetDoctorId}
+                    setTargetDoctorId={setTargetDoctorId}
                     onConfirm={confirmDeleteDoctor}
-                    onCancel={() => setDeletingDoctor(null)}
+                    onCancel={() => !isDeleting && setDeletingDoctor(null)}
+                    isDeleting={isDeleting}
                 />
             )}
         </div>

@@ -53,9 +53,10 @@ interface ConfirmDeleteModalProps {
     onCancel: () => void;
     title: string;
     message: string;
+    isDeleting?: boolean;
 }
 
-const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCancel, title, message }) => (
+const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCancel, title, message, isDeleting }) => (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 transition-opacity" onClick={onCancel}>
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
             <div className="p-6">
@@ -68,10 +69,10 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCa
                 </div>
             </div>
             <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex justify-center gap-4">
-                <button type="button" onClick={onConfirm} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                    نعم، قم بالحذف
+                <button type="button" onClick={onConfirm} disabled={isDeleting} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-red-400 disabled:cursor-not-allowed">
+                    {isDeleting ? 'جاري الحذف...' : 'نعم، قم بالحذف'}
                 </button>
-                <button type="button" onClick={onCancel} className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                <button type="button" onClick={onCancel} disabled={isDeleting} className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed">
                     إلغاء
                 </button>
             </div>
@@ -185,7 +186,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onSave, onClose, pati
                                                 onClick={() => handlePatientSelect(p)}
                                                 className="px-4 py-2 cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-900/40 text-gray-900 dark:text-gray-200"
                                             >
-                                                {p.name} ({p.code})
+                                                {p.name}
                                             </div>
                                         ))
                                     ) : (
@@ -295,6 +296,7 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user, refreshTrigger }) => 
     const [loading, setLoading] = useState(true);
     const [fetchError, setFetchError] = useState<string | null>(null);
     const [paymentToDelete, setPaymentToDelete] = useState<Payment | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [isAddingPayment, setIsAddingPayment] = useState(false);
     const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -362,6 +364,7 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user, refreshTrigger }) => 
 
     const confirmDeletePayment = async () => {
         if (paymentToDelete) {
+            setIsDeleting(true);
             try {
                 await api.payments.delete(paymentToDelete.id);
                 setPaymentToDelete(null);
@@ -373,6 +376,8 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user, refreshTrigger }) => 
             } catch (error) {
                 console.error("Failed to delete payment:", error);
                 alert(`فشل حذف الدفعة: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+            } finally {
+                setIsDeleting(false);
             }
         }
     };
@@ -382,7 +387,6 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user, refreshTrigger }) => 
     return (
         <div>
             <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">مدفوعات المرضى</h1>
                 <div className="relative w-full max-w-sm">
                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                        <SearchIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
@@ -395,7 +399,7 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user, refreshTrigger }) => 
                        className="w-full pl-3 pr-10 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                    />
                 </div>
-                <button onClick={() => setIsAddingPayment(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
+                <button onClick={() => setIsAddingPayment(true)} className="hidden lg:flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
                     <PlusIcon className="h-5 w-5 ml-2" />
                     إضافة دفعة
                 </button>
@@ -418,10 +422,10 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user, refreshTrigger }) => 
                                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{new Date(pay.date).toLocaleDateString()}</p>
                                         </div>
                                         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex items-center justify-end space-x-2">
-                                            <button onClick={() => setEditingPayment(pay)} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل">
+                                            <button onClick={() => setEditingPayment(pay)} className="p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400" title="تعديل">
                                                 <PencilIcon className="h-5 w-5" />
                                             </button>
-                                            <button onClick={() => setPaymentToDelete(pay)} className="text-red-600 dark:text-red-400 hover:text-red-800 p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف">
+                                            <button onClick={() => setPaymentToDelete(pay)} className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400" title="حذف">
                                                 <TrashIcon className="h-5 w-5" />
                                             </button>
                                         </div>
@@ -440,6 +444,15 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user, refreshTrigger }) => 
                     )
                 )}
             </div>
+            
+            <button 
+                onClick={() => setIsAddingPayment(true)} 
+                className="lg:hidden fixed bottom-20 right-4 bg-primary text-white p-4 rounded-full shadow-lg hover:bg-primary-700 transition-colors z-20"
+                aria-label="إضافة دفعة"
+            >
+                <PlusIcon className="h-6 w-6" />
+            </button>
+            
             {isAddingPayment && <AddPaymentModal patients={patients} onSave={handleCreatePayment} onClose={() => setIsAddingPayment(false)} />}
             {editingPayment && (
                 <EditPaymentModal 
@@ -454,7 +467,8 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user, refreshTrigger }) => 
                     title="حذف الدفعة"
                     message={`هل أنت متأكد من حذف دفعة بقيمة SYP ${paymentToDelete.amount.toFixed(2)} للمريض ${getPatientName(paymentToDelete.patientId)}؟`}
                     onConfirm={confirmDeletePayment}
-                    onCancel={() => setPaymentToDelete(null)}
+                    onCancel={() => !isDeleting && setPaymentToDelete(null)}
+                    isDeleting={isDeleting}
                 />
             )}
         </div>

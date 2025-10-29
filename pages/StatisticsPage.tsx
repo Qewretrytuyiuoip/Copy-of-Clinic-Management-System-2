@@ -114,8 +114,6 @@ const StatisticsPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
 
     return (
         <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">الاحصائيات المالية</h1>
-
              <div className="mb-6 p-4 bg-white dark:bg-slate-800 rounded-xl shadow-md flex flex-wrap items-center gap-4">
                 <div className="flex-grow">
                     <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">من تاريخ</label>

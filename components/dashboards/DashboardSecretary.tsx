@@ -28,36 +28,35 @@ const DashboardSecretary: React.FC<DashboardSecretaryProps> = ({ user, refreshTr
     const [stats, setStats] = useState({ appointments: 0, patients: 0 });
     const [loading, setLoading] = useState(true);
 
-    const fetchStats = useCallback(async () => {
-        setLoading(true);
-        try {
-            const [apps, patsResponse] = await Promise.all([
-                api.appointments.getAll(),
-                api.patients.getAll({ page: 1, per_page: 1 }), // Only need total count
-            ]);
-            
-            const today = new Date();
-            const yyyy = today.getFullYear();
-            const mm = String(today.getMonth() + 1).padStart(2, '0');
-            const dd = String(today.getDate()).padStart(2, '0');
-            const todayString = `${yyyy}-${mm}-${dd}`;
-            const todaysAppointmentsCount = apps.filter(app => app.date === todayString).length;
-
-            setStats({
-                appointments: todaysAppointmentsCount,
-                patients: patsResponse.total,
-            });
-
-        } catch (error) {
-            console.error("Failed to fetch secretary dashboard stats:", error);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
     useEffect(() => {
+        const fetchStats = async () => {
+            setLoading(true);
+            try {
+                const [apps, patsResponse] = await Promise.all([
+                    api.appointments.getAll(),
+                    api.patients.getAll({ page: 1, per_page: 1 }), // Only need total count
+                ]);
+                
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                const todayString = `${yyyy}-${mm}-${dd}`;
+                const todaysAppointmentsCount = apps.filter(app => app.date === todayString).length;
+
+                setStats({
+                    appointments: todaysAppointmentsCount,
+                    patients: patsResponse.total,
+                });
+
+            } catch (error) {
+                console.error("Failed to fetch secretary dashboard stats:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
         fetchStats();
-    }, [fetchStats, refreshTrigger]);
+    }, [refreshTrigger]);
 
 
     return (

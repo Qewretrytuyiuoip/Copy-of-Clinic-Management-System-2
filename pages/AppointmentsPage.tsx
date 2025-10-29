@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { User, Appointment, Patient, UserRole, Gender, DaySchedule } from '../types';
 import { api } from '../services/api';
 import { PlusIcon, PencilIcon, TrashIcon, XIcon, EyeIcon, SearchIcon, CalendarIcon, ClockIcon } from '../components/Icons';
@@ -30,9 +30,10 @@ interface ConfirmDeleteModalProps {
     onCancel: () => void;
     title: string;
     message: string;
+    isDeleting?: boolean;
 }
 
-const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCancel, title, message }) => (
+const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCancel, title, message, isDeleting }) => (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 transition-opacity" onClick={onCancel}>
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
             <div className="p-6">
@@ -45,10 +46,10 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCa
                 </div>
             </div>
             <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex justify-center gap-4">
-                <button type="button" onClick={onConfirm} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                    نعم، قم بالحذف
+                <button type="button" onClick={onConfirm} disabled={isDeleting} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-red-400 disabled:cursor-not-allowed">
+                    {isDeleting ? 'جاري الحذف...' : 'نعم، قم بالحذف'}
                 </button>
-                <button type="button" onClick={onCancel} className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                <button type="button" onClick={onCancel} disabled={isDeleting} className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed">
                     إلغاء
                 </button>
             </div>
@@ -98,6 +99,7 @@ interface AppointmentFormModalProps {
     onSave: (data: Omit<Appointment, 'id'> | Appointment, refreshPatients: boolean) => Promise<void>;
     onClose: () => void;
     user: User;
+    initialData?: Partial<Appointment> | null;
 }
 
 const generateTimeSlots = (start: string, end: string, intervalMinutes: number): string[] => {
@@ -125,87 +127,140 @@ const generateTimeSlots = (start: string, end: string, intervalMinutes: number):
 };
 
 
-const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment, patients, doctors, onSave, onClose, user }) => {
+const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment, patients, doctors, onSave, onClose, user, initialData }) => {
     const [formData, setFormData] = useState({
-        patientId: appointment?.patientId || '',
-        doctorId: appointment?.doctorId || '',
-        date: appointment?.date ? new Date(appointment.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        time: appointment?.time || '',
-        notes: appointment?.notes || '',
+        patientId: appointment?.patientId || initialData?.patientId || '',
+        doctorId: appointment?.doctorId || initialData?.doctorId || '',
+        date: (appointment?.date ? new Date(appointment.date) : (initialData?.date ? new Date(initialData.date) : new Date())).toISOString().split('T')[0],
+        time: appointment?.time || initialData?.time || '',
+        notes: appointment?.notes || initialData?.notes || '',
     });
     const [isSaving, setIsSaving] = useState(false);
     const [showNewPatientForm, setShowNewPatientForm] = useState(false);
     const [newPatientData, setNewPatientData] = useState({ name: '', phone: '', age: '', gender: Gender.Male, isSmoker: false, isPregnant: false });
     
+    const [patientSearch, setPatientSearch] = useState('');
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
     const [availableSlots, setAvailableSlots] = useState<{ value: string; label: string; }[]>([]);
     const [slotsLoading, setSlotsLoading] = useState(false);
     const [slotsMessage, setSlotsMessage] = useState('');
 
 
+    useEffect(() => {
+        if (appointment && patients.length > 0) {
+            const currentPatient = patients.find(p => p.id === appointment.patientId);
+            if (currentPatient) {
+                setPatientSearch(currentPatient.name);
+            }
+        }
+        if (initialData?.doctorId && doctors.length > 0) {
+             const doctor = doctors.find(d => d.id === initialData.doctorId);
+             if (doctor) {
+                 // Pre-select patient's doctors if possible
+                 // No, this is wrong, the patient isn't selected yet.
+             }
+        }
+    }, [appointment, initialData, patients, doctors]);
+
+    const filteredPatients = useMemo(() => patientSearch
+        ? patients.filter(p => p.name.toLowerCase().includes(patientSearch.toLowerCase()) || p.code.includes(patientSearch))
+        : patients, [patients, patientSearch]);
+    
+    const handlePatientSelect = (patient: Patient) => {
+        setFormData(prev => {
+            const newState = { ...prev, patientId: patient.id };
+             if (!initialData?.time) { // Do not reset time if coming from available slots
+                newState.time = '';
+             }
+            if (!patient.doctorIds.includes(newState.doctorId)) {
+                newState.doctorId = '';
+            }
+            return newState;
+        });
+        setPatientSearch(patient.name);
+        setIsDropdownOpen(false);
+    };
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsDropdownOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => {
             const newState = { ...prev, [name]: value };
-
-            if (name === 'patientId') {
-                newState.time = ''; // Reset time
-                const selectedPatient = patients.find(p => p.id === value);
-                // Reset doctor if not in the new patient's list
-                if (selectedPatient && !selectedPatient.doctorIds.includes(newState.doctorId)) {
-                    newState.doctorId = '';
-                }
-            }
-
             if (name === 'doctorId' || name === 'date') {
-                newState.time = ''; // Reset time
+                 if (!initialData?.time) { // Do not reset time if coming from available slots
+                    newState.time = '';
+                 }
             }
             return newState;
         });
     };
     
     useEffect(() => {
-        const fetchAvailableSlots = async () => {
+        const fetchAndSetSchedule = async () => {
+            setSlotsLoading(true);
+            setAvailableSlots([]);
+            setSlotsMessage('');
+    
             if (formData.doctorId && formData.date) {
-                setSlotsLoading(true);
-                setAvailableSlots([]);
-                setSlotsMessage('');
                 try {
-                    const schedules = await api.doctorSchedules.getForDoctor(formData.doctorId);
+                    const schedulesPromise = api.doctorSchedules.getForDoctor(formData.doctorId);
+                    const appointmentsPromise = api.appointments.getAll(); 
+    
+                    const [schedules, allAppointments] = await Promise.all([schedulesPromise, appointmentsPromise]);
+                    
                     const selectedDate = new Date(formData.date);
                     selectedDate.setMinutes(selectedDate.getMinutes() + selectedDate.getTimezoneOffset());
                     const dayOfWeek = selectedDate.getDay(); 
                     
                     const daySchedule = schedules.find(s => s.day === dayOfWeek);
-
+    
                     if (!daySchedule || !daySchedule.isWorkDay) {
                         setSlotsMessage('الطبيب غير متاح في هذا اليوم.');
                         return;
                     }
                     
-                    const allAppointments = await api.appointments.getAll();
-                    const bookedSlots = allAppointments
-                        .filter(app => app.doctorId === formData.doctorId && app.date === formData.date && app.id !== appointment?.id)
-                        .map(app => app.time);
-
                     const generatedSlots = generateTimeSlots(daySchedule.startTime, daySchedule.endTime, 30);
+                    
+                    const bookedAppointmentsOnDay = allAppointments
+                        .filter(app => app.doctorId === formData.doctorId && app.date === formData.date && app.id !== appointment?.id);
+    
+                    const bookedSlots = bookedAppointmentsOnDay.map(app => app.time);
                     
                     const freeSlots = generatedSlots.filter(slot => !bookedSlots.includes(slot));
                     
                     if(freeSlots.length === 0) {
                         setSlotsMessage('لا توجد أوقات متاحة في هذا اليوم.');
                     }
-                    setAvailableSlots(freeSlots.map(slot => ({ value: slot, label: formatTo12Hour(slot) })));
-
+                    const slotsWithOptions = freeSlots.map(slot => ({ value: slot, label: formatTo12Hour(slot) }));
+                    if (formData.time && !freeSlots.includes(formData.time)) {
+                        slotsWithOptions.unshift({ value: formData.time, label: `${formatTo12Hour(formData.time)} (محجوز)` });
+                    }
+                    setAvailableSlots(slotsWithOptions);
+    
                 } catch (error) {
                     console.error("Failed to fetch available slots:", error);
                     setSlotsMessage('فشل في تحميل الأوقات المتاحة.');
                 } finally {
                     setSlotsLoading(false);
                 }
+            } else {
+                setSlotsLoading(false);
             }
         };
-        fetchAvailableSlots();
-    }, [formData.doctorId, formData.date, appointment?.id]);
+        fetchAndSetSchedule();
+    }, [formData.doctorId, formData.date, appointment?.id, formData.time]);
+
 
     const patientDoctors = useMemo(() => {
         if (!formData.patientId) {
@@ -243,7 +298,6 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                 if (!newPatientData.name || !newPatientData.phone || !newPatientData.age || !formData.doctorId) {
                     throw new Error('يرجى ملء اسم المريض الجديد ورقم هاتفه وعمره واختيار طبيب.');
                 }
-                // FIX: Add 'createdAt' property to the object to satisfy the 'Omit<Patient, "id" | "code">' type.
                 const newPatient = await api.patients.create({
                     name: newPatientData.name,
                     phone: newPatientData.phone,
@@ -343,9 +397,9 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                                     </div>
                                 </div>
                             ) : (
-                                <div>
+                                <div ref={dropdownRef} className="relative">
                                     <div className="flex justify-between items-center mb-1">
-                                        <label htmlFor="patientId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">المريض</label>
+                                        <label htmlFor="patientSearch" className="block text-sm font-medium text-gray-700 dark:text-gray-300">المريض</label>
                                         <button 
                                             type="button"
                                             onClick={() => setShowNewPatientForm(true)}
@@ -355,16 +409,50 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                                             مريض جديد
                                         </button>
                                     </div>
-                                    <select id="patientId" name="patientId" value={formData.patientId} onChange={handleChange} required className={inputStyle}>
-                                        <option value="">اختر مريض...</option>
-                                        {patients.map(p => <option key={p.id} value={p.id}>{p.name} ({p.code})</option>)}
-                                    </select>
+                                    <div className="relative">
+                                        <SearchIcon className="absolute top-1/2 right-3 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                        <input
+                                            id="patientSearch"
+                                            type="text"
+                                            value={patientSearch}
+                                            onChange={(e) => {
+                                                setPatientSearch(e.target.value);
+                                                if (formData.patientId && patients.find(p => p.id === formData.patientId)?.name !== e.target.value) {
+                                                    setFormData(prev => ({ ...prev, patientId: '' }));
+                                                }
+                                                setIsDropdownOpen(true);
+                                            }}
+                                            onFocus={() => setIsDropdownOpen(true)}
+                                            placeholder="ابحث عن مريض بالاسم أو الكود..."
+                                            required={!formData.patientId}
+                                            autoComplete="off"
+                                            className={inputStyle + " pr-10"}
+                                        />
+                                    </div>
+                                    
+                                    {isDropdownOpen && (
+                                        <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                            {filteredPatients.length > 0 ? (
+                                                filteredPatients.map(p => (
+                                                    <div
+                                                        key={p.id}
+                                                        onClick={() => handlePatientSelect(p)}
+                                                        className="px-4 py-2 cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-900/40 text-gray-900 dark:text-gray-200"
+                                                    >
+                                                        {p.name}
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="px-4 py-2 text-gray-500">لا يوجد مرضى مطابقون</div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
                         <div className="md:col-span-2">
                             <label htmlFor="doctorId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الطبيب</label>
-                            <select id="doctorId" name="doctorId" value={formData.doctorId} onChange={handleChange} required className={inputStyle}>
+                            <select id="doctorId" name="doctorId" value={formData.doctorId} onChange={handleChange} required className={inputStyle} disabled={!!initialData?.doctorId && !formData.patientId}>
                                 <option value="">اختر طبيب...</option>
                                 {patientDoctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                             </select>
@@ -399,12 +487,113 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                             )}
                         </div>
                         <div className="md:col-span-2"><label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={3} className={inputStyle}></textarea></div>
+                        
                     </div>
                     <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
                         <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    );
+};
+
+// ===================================================================
+// AvailableSlotsModal Component
+// ===================================================================
+interface AvailableSlotsModalProps {
+    doctors: User[];
+    allAppointments: Appointment[];
+    onClose: () => void;
+    onSlotSelect: (doctorId: string, time: string) => void;
+}
+
+const AvailableSlotsModal: React.FC<AvailableSlotsModalProps> = ({ doctors, allAppointments, onClose, onSlotSelect }) => {
+    const [schedulesByDoctor, setSchedulesByDoctor] = useState<Record<string, DaySchedule[]>>({});
+    const [loadingSchedules, setLoadingSchedules] = useState(true);
+
+    useEffect(() => {
+        const fetchSchedules = async () => {
+            setLoadingSchedules(true);
+            try {
+                const schedulePromises = doctors.map(doc => api.doctorSchedules.getForDoctor(doc.id));
+                const allSchedulesArrays = await Promise.all(schedulePromises);
+                const schedulesMap = doctors.reduce((acc, doc, index) => {
+                    acc[doc.id] = allSchedulesArrays[index];
+                    return acc;
+                }, {} as Record<string, DaySchedule[]>);
+                setSchedulesByDoctor(schedulesMap);
+            } catch (error) {
+                console.error("Failed to fetch doctor schedules", error);
+            } finally {
+                setLoadingSchedules(false);
+            }
+        };
+        if(doctors.length > 0) fetchSchedules();
+    }, [doctors]);
+    
+    const today = new Date();
+    const todayString = today.toISOString().split('T')[0];
+    const dayOfWeek = today.getDay();
+
+    const renderDoctorSlots = (doctor: User) => {
+        const schedule = schedulesByDoctor[doctor.id];
+        if (!schedule) return null; // Still loading or error for this doc
+        
+        const daySchedule = schedule.find(s => s.day === dayOfWeek);
+        if (!daySchedule || !daySchedule.isWorkDay) {
+            return (
+                <div key={doctor.id} className="p-4 border-b dark:border-gray-700">
+                    <h3 className="font-bold text-lg dark:text-gray-200">{doctor.name}</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">غير متاح اليوم.</p>
+                </div>
+            );
+        }
+
+        const allSlots = generateTimeSlots(daySchedule.startTime, daySchedule.endTime, 30);
+        const bookedSlots = allAppointments
+            .filter(app => app.doctorId === doctor.id && app.date === todayString)
+            .map(app => app.time);
+        
+        const availableSlots = allSlots.filter(slot => !bookedSlots.includes(slot));
+        
+        return (
+            <div key={doctor.id} className="p-4 border-b dark:border-gray-700">
+                <h3 className="font-bold text-lg dark:text-gray-200 mb-2">{doctor.name}</h3>
+                {availableSlots.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                        {availableSlots.map(slot => (
+                            <button
+                                key={slot}
+                                onClick={() => onSlotSelect(doctor.id, slot)}
+                                className="px-3 py-1.5 bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 font-semibold rounded-md hover:bg-primary-200 dark:hover:bg-primary-900/60 transition-colors text-sm"
+                            >
+                                {formatTo12Hour(slot)}
+                            </button>
+                        ))}
+                    </div>
+                ) : (
+                     <p className="text-sm text-gray-500 dark:text-gray-400">لا توجد مواعيد متاحة.</p>
+                )}
+            </div>
+        );
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-3xl" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">المواعيد المتاحة لهذا اليوم ({today.toLocaleDateString('ar-EG')})</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
+                </div>
+                <div className="p-2 max-h-[70vh] overflow-y-auto">
+                    {loadingSchedules ? (
+                        <CenteredLoadingSpinner />
+                    ) : (
+                        doctors.map(renderDoctorSlots)
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -431,24 +620,26 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
     const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
     const [viewingAppointment, setViewingAppointment] = useState<Appointment | null>(null);
     const [deletingAppointment, setDeletingAppointment] = useState<Appointment | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState<ActiveTab>('today');
+    const [isViewingAvailableSlots, setIsViewingAvailableSlots] = useState(false);
+    const [initialAppointmentData, setInitialAppointmentData] = useState<Partial<Appointment> | null>(null);
 
 
-    const fetchData = useCallback(async (refreshPatients = false) => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         setFetchError(null);
         try {
-            const appointmentPromise = api.appointments.getAll();
-            const doctorsPromise = api.doctors.getAll();
-            // FIX: api.patients.getAll requires arguments and returns a pagination object. Using .then to extract the patients array to match types.
-            const patientsPromise = refreshPatients || patients.length === 0 ? api.patients.getAll({ page: 1, per_page: 9999 }).then(r => r.patients) : Promise.resolve(patients);
-
-            const [apps, docs, pats] = await Promise.all([appointmentPromise, doctorsPromise, patientsPromise]);
+            const [apps, docs, patsResponse] = await Promise.all([
+                api.appointments.getAll(),
+                api.doctors.getAll(),
+                api.patients.getAll({ page: 1, per_page: 9999 }),
+            ]);
             
             setAppointments(apps);
             setDoctors(docs);
-            setPatients(pats);
+            setPatients(patsResponse.patients);
         } catch (error) {
              if (error instanceof Error && error.message.includes('Failed to fetch')) {
                 setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');
@@ -459,11 +650,17 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
         } finally {
             setLoading(false);
         }
-    }, [patients]);
+    }, []);
 
     useEffect(() => {
         fetchData();
     }, [fetchData, refreshTrigger]);
+
+    const handleSlotSelect = (doctorId: string, time: string) => {
+        setIsViewingAvailableSlots(false);
+        setInitialAppointmentData({ doctorId, time, date: new Date().toISOString().split('T')[0] });
+        setIsAddingAppointment(true);
+    };
 
     const handleSaveAppointment = async (data: Omit<Appointment, 'id'> | Appointment, refreshPatients: boolean) => {
         try {
@@ -475,7 +672,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
             }
             setIsAddingAppointment(false);
             setEditingAppointment(null);
-            await fetchData(refreshPatients);
+            await fetchData();
         } catch (error) {
             // Error is now handled inside the modal's handleSubmit
             console.error(`Failed to save appointment:`, error);
@@ -485,6 +682,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
 
     const confirmDeleteAppointment = async () => {
         if (deletingAppointment) {
+            setIsDeleting(true);
             try {
                 await api.appointments.delete(deletingAppointment.id);
                 setDeletingAppointment(null);
@@ -492,6 +690,8 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
             } catch (error) {
                 console.error("Failed to delete appointment:", error);
                 alert(`فشل حذف الموعد: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+            } finally {
+                setIsDeleting(false);
             }
         }
     };
@@ -550,7 +750,6 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
     return (
         <div>
             <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">المواعيد</h1>
                 <div className="relative w-full max-w-sm">
                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                        <SearchIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
@@ -563,12 +762,18 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                        className="w-full pl-3 pr-10 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                    />
                 </div>
-                {(user.role === UserRole.Admin || user.role === UserRole.Secretary) && (
-                    <button onClick={() => setIsAddingAppointment(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
-                        <PlusIcon className="h-5 w-5 ml-2" />
-                        موعد جديد
+                 <div className="flex items-center gap-2">
+                    <button onClick={() => setIsViewingAvailableSlots(true)} className="hidden lg:flex items-center bg-teal-600 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-700 transition-colors">
+                        <CalendarIcon className="h-5 w-5 ml-2" />
+                        المواعيد المتاحة
                     </button>
-                )}
+                    {(user.role === UserRole.Admin || user.role === UserRole.Secretary) && (
+                        <button onClick={() => setIsAddingAppointment(true)} className="hidden lg:flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
+                            <PlusIcon className="h-5 w-5 ml-2" />
+                            موعد جديد
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className="mb-6 flex flex-wrap items-center gap-2">
@@ -625,6 +830,34 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                     )
                 )}
             </div>
+             <div className="lg:hidden fixed bottom-20 right-4 flex flex-col gap-3 z-20">
+                <button 
+                    onClick={() => setIsViewingAvailableSlots(true)} 
+                    className="bg-teal-600 text-white p-4 rounded-full shadow-lg hover:bg-teal-700 transition-colors"
+                    aria-label="المواعيد المتاحة"
+                >
+                    <CalendarIcon className="h-6 w-6" />
+                </button>
+                {(user.role === UserRole.Admin || user.role === UserRole.Secretary) && (
+                    <button 
+                        onClick={() => setIsAddingAppointment(true)} 
+                        className="bg-primary text-white p-4 rounded-full shadow-lg hover:bg-primary-700 transition-colors"
+                        aria-label="موعد جديد"
+                    >
+                        <PlusIcon className="h-6 w-6" />
+                    </button>
+                )}
+            </div>
+            
+            {isViewingAvailableSlots && (
+                <AvailableSlotsModal
+                    doctors={doctors}
+                    allAppointments={appointments}
+                    onClose={() => setIsViewingAvailableSlots(false)}
+                    onSlotSelect={handleSlotSelect}
+                />
+            )}
+            
             {(isAddingAppointment || editingAppointment) && (
                 <AppointmentFormModal 
                     key={editingAppointment?.id || 'add'}
@@ -632,8 +865,13 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                     patients={patients}
                     doctors={doctors}
                     onSave={handleSaveAppointment}
-                    onClose={() => { setIsAddingAppointment(false); setEditingAppointment(null); }}
+                    onClose={() => { 
+                        setIsAddingAppointment(false); 
+                        setEditingAppointment(null); 
+                        setInitialAppointmentData(null); 
+                    }}
                     user={user}
+                    initialData={initialAppointmentData}
                 />
             )}
             {viewingAppointment && <ViewAppointmentModal appointment={viewingAppointment} patientName={getPatientName(viewingAppointment.patientId)} doctorName={getDoctorName(viewingAppointment.doctorId)} onClose={() => setViewingAppointment(null)} />}
@@ -642,12 +880,12 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                     title="حذف موعد"
                     message={`هل أنت متأكد من حذف موعد ${getPatientName(deletingAppointment.patientId)}؟`}
                     onConfirm={confirmDeleteAppointment}
-                    onCancel={() => setDeletingAppointment(null)}
+                    onCancel={() => !isDeleting && setDeletingAppointment(null)}
+                    isDeleting={isDeleting}
                 />
             )}
         </div>
     );
 };
 
-// FIX: Add default export to make the component importable in App.tsx.
 export default AppointmentsPage;

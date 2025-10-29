@@ -164,7 +164,6 @@ const DoctorSchedulePage: React.FC<DoctorSchedulePageProps> = ({ user, refreshTr
     return (
         <div>
             <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">جدولي</h1>
                  <div className="relative w-full max-w-sm">
                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                        <SearchIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />

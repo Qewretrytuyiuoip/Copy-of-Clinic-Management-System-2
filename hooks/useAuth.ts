@@ -1,9 +1,10 @@
-import React, { createContext, useState, useContext, ReactNode, useMemo } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect } from 'react';
 import { User, UserRole } from '../types';
-import { login as apiLogin, logout as apiLogout } from '../services/api';
+import { login as apiLogin, logout as apiLogout, getMe as apiGetMe } from '../services/api';
 
 interface AuthContextType {
     user: User | null;
+    isLoading: boolean;
     login: (email: string, password: string) => Promise<User | null>;
     logout: () => void;
     loginSuccessMessage: string | null;
@@ -15,7 +16,17 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const [loginSuccessMessage, setLoginSuccessMessage] = useState<string | null>(null);
+
+    useEffect(() => {
+        const checkLoggedIn = async () => {
+            const currentUser = await apiGetMe();
+            setUser(currentUser);
+            setIsLoading(false);
+        };
+        checkLoggedIn();
+    }, []);
 
     const login = async (email: string, password: string): Promise<User | null> => {
         const loggedInUser = await apiLogin(email, password);
@@ -32,7 +43,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.removeItem('authToken');
     };
 
-    const value = useMemo(() => ({ user, login, logout, loginSuccessMessage, setLoginSuccessMessage, setUser }), [user, loginSuccessMessage]);
+    const value = useMemo(() => ({ user, isLoading, login, logout, loginSuccessMessage, setLoginSuccessMessage, setUser }), [user, isLoading, loginSuccessMessage]);
 
     // FIX: Reverted to using React.createElement because JSX syntax is not supported in .ts files, which was causing a syntax error.
     return React.createElement(AuthContext.Provider, { value }, children);

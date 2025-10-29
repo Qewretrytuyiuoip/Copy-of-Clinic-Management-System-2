@@ -43,8 +43,6 @@ const UsersPage: React.FC<UsersPageProps> = ({ refreshTrigger }) => {
 
     return (
         <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">إدارة المستخدمين</h1>
-            
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md">
                 <div className="flex border-b border-gray-200 dark:border-gray-700">
                     <TabButton tabName="doctors" label="الأطباء" icon={UserGroupIcon} />

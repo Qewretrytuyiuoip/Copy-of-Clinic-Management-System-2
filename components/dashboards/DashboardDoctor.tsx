@@ -1,5 +1,7 @@
 
 
+
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { User, Patient, Appointment } from '../../types';
 import { api } from '../../services/api';
@@ -31,33 +33,32 @@ const DashboardDoctor: React.FC<DashboardDoctorProps> = ({ user, refreshTrigger 
     const [todaysAppointments, setTodaysAppointments] = useState(0);
     const [loading, setLoading] = useState(true);
 
-    const fetchData = useCallback(async () => {
-        setLoading(true);
-        try {
-            const [myPatientsResponse, allAppointments] = await Promise.all([
-                api.patients.getAll({ page: 1, per_page: 1, doctorId: user.id }),
-                api.appointments.getAll()
-            ]);
-            
-            setPatientCount(myPatientsResponse.total);
-            
-            const today = new Date();
-            const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-            
-            const myTodaysAppointmentsCount = allAppointments.filter(a => 
-                a.doctorId === user.id && a.date === todayString
-            ).length;
-            setTodaysAppointments(myTodaysAppointmentsCount);
-        } catch (error) {
-            console.error("Failed to fetch doctor dashboard stats:", error);
-        } finally {
-            setLoading(false);
-        }
-    }, [user.id]);
-
     useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                const [myPatientsResponse, allAppointments] = await Promise.all([
+                    api.patients.getAll({ page: 1, per_page: 1, doctorId: user.id }),
+                    api.appointments.getAll()
+                ]);
+                
+                setPatientCount(myPatientsResponse.total);
+                
+                const today = new Date();
+                const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                
+                const myTodaysAppointmentsCount = allAppointments.filter(a => 
+                    a.doctorId === user.id && a.date === todayString
+                ).length;
+                setTodaysAppointments(myTodaysAppointmentsCount);
+            } catch (error) {
+                console.error("Failed to fetch doctor dashboard stats:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
         fetchData();
-    }, [fetchData, refreshTrigger]);
+    }, [user.id, refreshTrigger]);
 
 
     return (

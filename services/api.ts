@@ -126,7 +126,7 @@ export const login = async (email: string, password: string): Promise<User | nul
                 email: userFromApi.email,
                 role: userFromApi.role, // Assuming API role string matches UserRole enum
                 specialty: userFromApi.specialty,
-                is_diagnosis_doctor: !!userFromApi.is_diagnosis_doctor,
+                is_diagnosis_doctor: userFromApi.is_diagnosis_doctor == 1,
             };
 
             if (data.token) {
@@ -173,6 +173,11 @@ export const logout = async (): Promise<void> => {
     }
 };
 
+export const getMe = async (): Promise<User | null> => {
+    // Disabled auto-login as per user request by removing the /me endpoint call.
+    return null;
+};
+
 // Includes a simple cache to avoid redundant network calls.
 const getAllUsers = async (forceRefresh: boolean = false): Promise<User[]> => {
     if (allUsersCache && !forceRefresh) {
@@ -194,7 +199,7 @@ const getAllUsers = async (forceRefresh: boolean = false): Promise<User[]> => {
             email: apiUser.email,
             role: apiUser.role as UserRole,
             specialty: apiUser.specialty,
-            is_diagnosis_doctor: !!apiUser.is_diagnosis_doctor,
+            is_diagnosis_doctor: apiUser.is_diagnosis_doctor == 1,
         }));
         return allUsersCache;
     } catch (error) {
@@ -271,7 +276,7 @@ const createUserCRUD = (role: UserRole) => ({
             email: createdApiUser.email,
             role: createdApiUser.role as UserRole,
             specialty: createdApiUser.specialty,
-            is_diagnosis_doctor: !!createdApiUser.is_diagnosis_doctor,
+            is_diagnosis_doctor: createdApiUser.is_diagnosis_doctor == 1,
         };
 
         allUsersCache = null; // Invalidate cache after creation
@@ -317,17 +322,27 @@ const createUserCRUD = (role: UserRole) => ({
             email: updatedApiUser.email,
             role: updatedApiUser.role as UserRole,
             specialty: updatedApiUser.specialty,
-            is_diagnosis_doctor: !!updatedApiUser.is_diagnosis_doctor,
+            is_diagnosis_doctor: updatedApiUser.is_diagnosis_doctor == 1,
         };
         
         allUsersCache = null; // Invalidate cache after update
         return updatedUser;
     },
-    delete: async (id: string): Promise<boolean> => {
+    delete: async (id: string, targetDoctorId?: string): Promise<boolean> => {
         const formData = new FormData();
-        formData.append('id', id);
+        let endpoint = 'users/delete';
 
-        await apiFetch('users/delete', {
+        if (role === UserRole.Doctor) {
+            endpoint = 'users/delete-doctor';
+            formData.append('doctor_id', id);
+            if (targetDoctorId) {
+                formData.append('new_doctor_id', targetDoctorId);
+            }
+        } else {
+            formData.append('id', id);
+        }
+
+        await apiFetch(endpoint, {
             method: 'POST',
             body: formData,
         });
@@ -347,11 +362,13 @@ const mapApiPatientToPatient = (p: any): Patient => ({
     notes: p.notes ?? undefined,
     doctorIds: p.doctors ? p.doctors.map((doc: any) => String(doc.id)) : [],
     gender: p.gender === 'female' ? Gender.Female : Gender.Male,
-    isSmoker: !!p.is_smoker,
-    isPregnant: !!p.is_pregnant,
+    isSmoker: p.is_smoker == 1,
+    isPregnant: p.is_pregnant == 1,
     drugAllergy: p.drug_allergy ?? undefined,
     chronicDiseases: p.chronic_diseases ?? undefined,
     createdAt: p.created_at,
+    completed: p.completed == 1,
+    payment_completed: p.payment_completed == 1,
 });
 
 const mapApiPaymentToPayment = (p: any): Payment => ({
@@ -404,7 +421,7 @@ const mapApiSessionTreatmentToSessionTreatment = (st: any, treatmentsByName: Map
         sessionId: String(st.session_id),
         sessionPrice: parseFloat(st.treatment_price),
         sessionNotes: st.treatment_notes ?? undefined,
-        completed: !!st.completed,
+        completed: st.completed == 1,
         treatmentDate: st.treatment_date ? new Date(st.treatment_date).toISOString().split('T')[0] : undefined,
         additionalCosts: st.additional_costs ? parseFloat(st.additional_costs) : undefined,
     };
@@ -419,6 +436,7 @@ const mapApiSessionToSessionBase = (s: any): Session => ({
     date: s.date,
     notes: s.notes ?? '',
     treatments: [], // Will be populated separately
+    completed: s.completed == 1,
 });
 
 // Helper to format time from API's ISO string to HH:MM for time inputs
@@ -439,7 +457,7 @@ const formatTimeFromISO = (isoString: string | null): string => {
 const mapApiScheduleToDaySchedule = (apiSchedule: any): DaySchedule => ({
     id: String(apiSchedule.id),
     day: apiSchedule.day_of_week,
-    isWorkDay: !!apiSchedule.is_work_day,
+    isWorkDay: apiSchedule.is_work_day == 1,
     startTime: formatTimeFromISO(apiSchedule.start_time),
     endTime: formatTimeFromISO(apiSchedule.end_time),
 });
@@ -512,18 +530,26 @@ const mapApiActivityLog = (log: any): ActivityLog => ({
 });
 
 export const api = {
+    cache: {
+        invalidateAll: () => {
+            allUsersCache = null;
+            allTreatmentSettingsCache = null;
+        },
+    },
     doctors: createUserCRUD(UserRole.Doctor),
     secretaries: createUserCRUD(UserRole.Secretary),
     admins: createUserCRUD(UserRole.Admin),
     subManagers: createUserCRUD(UserRole.SubManager),
     patients: {
-        getAll: async (params: { page: number; per_page: number; search?: string; doctorId?: string; }): Promise<{ patients: Patient[], total: number, last_page: number }> => {
+        getAll: async (params: { page: number; per_page: number; search?: string; doctorId?: string; completed?: '0' | '1'; payment_completed?: '0' | '1'; }): Promise<{ patients: Patient[], total: number, last_page: number }> => {
             try {
                 const formData = new FormData();
                 formData.append('page', String(params.page));
                 formData.append('per_page', String(params.per_page));
                 if (params.search) formData.append('search', params.search);
                 if (params.doctorId) formData.append('doctor_id', params.doctorId);
+                if (params.completed !== undefined) formData.append('completed', params.completed);
+                if (params.payment_completed !== undefined) formData.append('payment_completed', params.payment_completed);
 
                 const response = await apiFetch('patients/all', { method: 'POST', body: formData });
                 
@@ -546,7 +572,7 @@ export const api = {
             try {
                 const formData = new FormData();
                 formData.append('id', id);
-                const responseData = await apiFetch('patients/get', { method: 'POST', body: formData });
+                const responseData = await apiFetch('patients/one', { method: 'POST', body: formData });
                 const p = responseData.patient; 
                 if (!p) return null;
                 return mapApiPatientToPatient(p);
@@ -612,6 +638,7 @@ export const api = {
                 if (updates.notes) formData.append('notes', updates.notes);
                 if (updates.drugAllergy) formData.append('drug_allergy', updates.drugAllergy);
                 if (updates.chronicDiseases) formData.append('chronic_diseases', updates.chronicDiseases);
+                if (updates.completed !== undefined) formData.append('completed', updates.completed ? '1' : '0');
 
                 const responseData = await apiFetch('patients/edit', { method: 'POST', body: formData });
                 
@@ -811,7 +838,7 @@ export const api = {
                 formData.append('id', id);
 
                 const [responseData, groupedTreatments] = await Promise.all([
-                    apiFetch('sessions/get', { method: 'POST', body: formData }),
+                    apiFetch('sessions/one', { method: 'POST', body: formData }),
                     getGroupedSessionTreatments()
                 ]);
                 
@@ -859,6 +886,8 @@ export const api = {
                 if (updates.title !== undefined) formData.append('title', updates.title);
                 if (updates.date) formData.append('date', updates.date.split('T')[0]);
                 if (updates.notes !== undefined) formData.append('notes', updates.notes);
+                if (updates.completed !== undefined) formData.append('completed', updates.completed ? '1' : '0');
+                if (updates.doctorId) formData.append('doctor_id', updates.doctorId);
                 
                 const responseData = await apiFetch('sessions/edit', { method: 'POST', body: formData });
                 
@@ -921,7 +950,7 @@ export const api = {
 
                 const responseData = await apiFetch('appointments/add', { method: 'POST', body: formData });
 
-                if (responseData.message !== "Appointment created") {
+                if (responseData.message !== "Appointment created and notification sent to assigned doctor") {
                     throw new Error(responseData.message || "Failed to create appointment.");
                 }
                 const createdApiApp = responseData.data;
@@ -947,7 +976,7 @@ export const api = {
 
                 const responseData = await apiFetch('appointments/edit', { method: 'POST', body: formData });
                 
-                if (responseData.message !== "Appointment updated successfully") {
+                if (responseData.message !== "Appointment updated") {
                     throw new Error(responseData.message || "Failed to update appointment.");
                 }
 
@@ -1213,6 +1242,25 @@ export const api = {
             await Promise.all(promises);
         }
     },
+};
+
+export const updatePatientCompletionStatus = async (patientId: string, userId: string): Promise<void> => {
+    try {
+        const allSessions = await api.sessions.getAll();
+        const patientSessions = allSessions.filter(s => s.patientId === patientId);
+
+        const isCompleted = patientSessions.length > 0 && patientSessions.every(s => s.completed);
+
+        const patient = await api.patients.getById(patientId);
+        if (!patient || patient.completed === isCompleted) {
+            return; // No update needed
+        }
+
+        await api.patients.update(patientId, { completed: isCompleted }, userId);
+    } catch (error) {
+        console.error(`Failed to update completion status for patient ${patientId}:`, error);
+        // Silently fail, it's a background task.
+    }
 };
 
 // Custom getters

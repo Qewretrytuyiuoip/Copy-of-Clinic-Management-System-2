@@ -1,11 +1,10 @@
-
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { User } from '../../types';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
 import { useAuth } from '../../hooks/useAuth';
+import { NAV_ITEMS } from '../../constants';
 
 interface LayoutProps {
     user: User;
@@ -19,6 +18,7 @@ const Layout: React.FC<LayoutProps> = ({ user, currentPage, setCurrentPage, onRe
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { loginSuccessMessage, setLoginSuccessMessage } = useAuth();
 
+
     useEffect(() => {
         if (loginSuccessMessage) {
             const timer = setTimeout(() => {
@@ -27,6 +27,25 @@ const Layout: React.FC<LayoutProps> = ({ user, currentPage, setCurrentPage, onRe
             return () => clearTimeout(timer);
         }
     }, [loginSuccessMessage, setLoginSuccessMessage]);
+    
+    const pageTitle = useMemo(() => {
+        const specialTitles: { [key: string]: string } = {
+            'sessions': 'جلسات المريض',
+            'plan': 'خطة العلاج',
+            'details': 'تفاصيل المريض',
+            'financial': 'البيان المالي للمريض',
+            'photos': 'معرض صور المريض',
+            'activity': 'سجل نشاط المريض',
+        };
+
+        if (specialTitles[currentPage]) {
+            return specialTitles[currentPage];
+        }
+        
+        const allNavItems = Object.values(NAV_ITEMS).flat();
+        const currentNavItem = allNavItems.find(item => item.page === currentPage);
+        return currentNavItem ? currentNavItem.name : '';
+    }, [currentPage]);
 
     return (
         <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
@@ -65,7 +84,7 @@ const Layout: React.FC<LayoutProps> = ({ user, currentPage, setCurrentPage, onRe
                 setSidebarOpen={setSidebarOpen}
             />
             <div className="flex-1 flex flex-col overflow-hidden">
-                <Header user={user} setSidebarOpen={setSidebarOpen} onRefresh={onRefresh} />
+                <Header user={user} setSidebarOpen={setSidebarOpen} onRefresh={onRefresh} pageName={pageTitle} />
                 <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-gray-900 p-4 md:p-6 pb-20 lg:pb-6">
                     {children}
                 </main>

@@ -49,6 +49,7 @@ export interface Session {
     date: string; // ISO string
     notes: string;
     treatments: SessionTreatment[];
+    completed?: boolean;
 }
 
 export interface Patient {
@@ -65,6 +66,8 @@ export interface Patient {
     drugAllergy?: string;
     chronicDiseases?: string;
     createdAt: string;
+    completed?: boolean;
+    payment_completed?: boolean;
 }
 
 export interface Appointment {

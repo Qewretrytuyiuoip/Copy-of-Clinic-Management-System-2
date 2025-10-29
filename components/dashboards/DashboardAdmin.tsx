@@ -55,58 +55,57 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger })
     const [dateFilter, setDateFilter] = useState('');
     const isInitialMount = useRef(true);
 
-    const fetchData = useCallback(async () => {
-        setLoading(true);
-        setFetchError(null);
-        try {
-            // FIX: api.payments.getAll requires pagination arguments.
-            const [doctors, fetchedPatients, appointments, paymentsResponse] = await Promise.all([
-                api.doctors.getAll(),
-                // FIX: api.patients.getAll requires arguments. Fetching 1 to get total count.
-                api.patients.getAll({ page: 1, per_page: 1 }),
-                api.appointments.getAll(),
-                api.payments.getAll({ page: 1, per_page: 9999 }),
-            ]);
-            
-            // FIX: The API returns a paginated object, use 'payments' property for the array.
-            const totalRevenue = paymentsResponse.payments.reduce((sum, p) => sum + p.amount, 0);
-
-            const today = new Date();
-            const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-            const todaysAppointmentsCount = appointments.filter(a => a.date === todayString).length;
-
-            setStats({
-                doctors: doctors.length,
-                // FIX: The API returns a pagination object, use 'total' for patient count.
-                patients: fetchedPatients.total,
-                appointments: todaysAppointmentsCount,
-                revenue: totalRevenue
-            });
-
-            // Fetch first page of logs
-            const logData = await api.activityLogs.getAll({ page: 1, per_page: LOGS_PER_PAGE, search: '', date: '' });
-            setLogs(logData.logs);
-            setHasMore(logData.hasMore);
-            setCurrentPage(1);
-            setSearchTerm('');
-            setDateFilter('');
-
-        } catch (error) {
-            if (error instanceof Error && error.message.includes('Failed to fetch')) {
-                setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');
-            } else {
-                setFetchError('حدث خطأ غير متوقع.');
-                console.error("Failed to fetch admin dashboard data:", error);
-            }
-        } finally {
-            setLoading(false);
-            isInitialMount.current = false;
-        }
-    }, []);
-
     useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            setFetchError(null);
+            try {
+                // FIX: api.payments.getAll requires pagination arguments.
+                const [doctors, fetchedPatients, appointments, paymentsResponse] = await Promise.all([
+                    api.doctors.getAll(),
+                    // FIX: api.patients.getAll requires arguments. Fetching 1 to get total count.
+                    api.patients.getAll({ page: 1, per_page: 1 }),
+                    api.appointments.getAll(),
+                    api.payments.getAll({ page: 1, per_page: 9999 }),
+                ]);
+                
+                // FIX: The API returns a paginated object, use 'payments' property for the array.
+                const totalRevenue = paymentsResponse.payments.reduce((sum, p) => sum + p.amount, 0);
+
+                const today = new Date();
+                const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                const todaysAppointmentsCount = appointments.filter(a => a.date === todayString).length;
+
+                setStats({
+                    doctors: doctors.length,
+                    // FIX: The API returns a pagination object, use 'total' for patient count.
+                    patients: fetchedPatients.total,
+                    appointments: todaysAppointmentsCount,
+                    revenue: totalRevenue
+                });
+
+                // Fetch first page of logs
+                const logData = await api.activityLogs.getAll({ page: 1, per_page: LOGS_PER_PAGE, search: '', date: '' });
+                setLogs(logData.logs);
+                setHasMore(logData.hasMore);
+                setCurrentPage(1);
+                setSearchTerm('');
+                setDateFilter('');
+
+            } catch (error) {
+                if (error instanceof Error && error.message.includes('Failed to fetch')) {
+                    setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');
+                } else {
+                    setFetchError('حدث خطأ غير متوقع.');
+                    console.error("Failed to fetch admin dashboard data:", error);
+                }
+            } finally {
+                setLoading(false);
+                isInitialMount.current = false;
+            }
+        };
         fetchData();
-    }, [fetchData, refreshTrigger]);
+    }, [refreshTrigger]);
 
      useEffect(() => {
         if (isInitialMount.current) return;

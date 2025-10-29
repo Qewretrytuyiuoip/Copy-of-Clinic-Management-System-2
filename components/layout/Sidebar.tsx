@@ -1,9 +1,10 @@
-import React, { Fragment } from 'react';
+import React, { Fragment, useState, useEffect } from 'react';
 import { User } from '../../types';
 import { NAV_ITEMS } from '../../constants';
-import { XIcon } from '../Icons';
+import { XIcon, BellIcon, BellSlashIcon, CheckIcon } from '../Icons';
 import { useAppSettings } from '../../hooks/useAppSettings';
-
+import LoadingSpinner from '../LoadingSpinner';
+import { API_BASE_URL } from '../../config';
 interface SidebarProps {
     user: User;
     currentPage: string;
@@ -12,9 +13,156 @@ interface SidebarProps {
     setSidebarOpen: (open: boolean) => void;
 }
 
+const PUBLIC_VAPID_KEY = 'BHaNdTdoCkF0IzrmmhbuuggJllWdP3JQIKdpChIhangVyCWH0rcMs3XXH8YsI61_lkrZ23RpwWW8V5hafK7hYnA';
+
+function urlBase64ToUint8Array(base64String: string) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
 const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, sidebarOpen, setSidebarOpen }) => {
     const navItems = NAV_ITEMS[user.role];
     const { settings } = useAppSettings();
+
+    const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
+    const [isSubscribed, setIsSubscribed] = useState(false);
+    const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+    const [isSupported, setIsSupported] = useState(false);
+    
+    useEffect(() => {
+        if ('serviceWorker' in navigator && 'PushManager' in window) {
+            setIsSupported(true);
+            setPermissionStatus(Notification.permission);
+            navigator.serviceWorker.ready.then(reg => {
+                reg.pushManager.getSubscription().then(sub => {
+                    if (sub && !(sub.expirationTime && Date.now() > sub.expirationTime - 5 * 60 * 1000)) {
+                        setIsSubscribed(true);
+                    }
+                    setSubscriptionLoading(false);
+                });
+            });
+        } else {
+            setSubscriptionLoading(false);
+        }
+    }, []);
+
+   const handleToggleSubscription = async () => {
+    if (Notification.permission === 'denied') {
+        alert('تم حظر الإشعارات. يرجى تغيير الإعدادات في متصفحك.');
+        return;
+    }
+
+    setSubscriptionLoading(true);
+
+    try {
+        const reg = await navigator.serviceWorker.ready;
+        const currentSubscription = await reg.pushManager.getSubscription();
+
+        if (currentSubscription) {
+            // إلغاء الاشتراك
+            await currentSubscription.unsubscribe();
+
+            // حذف الاشتراك من الـ backend
+            await fetch(`${API_BASE_URL}delete-subscription`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: currentSubscription.endpoint })
+            });
+
+            console.log('Unsubscribed successfully.');
+            setIsSubscribed(false);
+        } else {
+            // عمل subscribe جديد
+            const subscription = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+            });
+
+            // إرسال الاشتراك للـ backend لحفظه
+           const saveResponse = await fetch(`${API_BASE_URL}save-subscription`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                endpoint: subscription.endpoint,
+                keys: {
+                  p256dh: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('p256dh')!))),
+                  auth: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('auth')!))),
+                },
+                user_id: user.id,
+                encoding: 'aesgcm',
+              })
+            });
+            
+            if (!saveResponse.ok) {
+                throw new Error(`Failed to save subscription on server: ${saveResponse.statusText}`);
+            }
+
+            const saveData = await saveResponse.json();
+            if (!saveData.success) {
+                throw new Error('Backend failed to save subscription.');
+            }
+
+
+            console.log('Subscribed successfully:', JSON.stringify(subscription));
+            setIsSubscribed(true);
+        }
+    } catch(err) {
+        console.error('Failed to subscribe/unsubscribe', err);
+        alert('فشل في تحديث حالة الإشعارات. الرجاء المحاولة مرة أخرى.');
+    } finally {
+        setSubscriptionLoading(false);
+    }
+};
+
+
+    const renderNotificationButton = () => {
+        if (!isSupported) {
+            return null;
+        }
+
+        if (subscriptionLoading) {
+            return (
+                 <div className="flex items-center mt-4 py-2 px-6 text-gray-600 dark:text-gray-300">
+                    <LoadingSpinner className="h-6 w-6" />
+                    <span className="mx-3">جاري التحميل...</span>
+                </div>
+            )
+        }
+        
+        if (permissionStatus === 'denied') {
+            return (
+                <div
+                    className="flex items-center mt-4 py-2 px-6 text-red-600 dark:text-red-400 cursor-help"
+                    title="تم حظر الإشعارات. يرجى تغيير الإعدادات في متصفحك."
+                >
+                    <BellSlashIcon className="h-6 w-6" />
+                    <span className="mx-3">الإشعارات محظورة</span>
+                </div>
+            );
+        }
+
+        const buttonText = isSubscribed ? 'إيقاف الإشعارات' : 'تفعيل الإشعارات';
+        const Icon = isSubscribed ? BellSlashIcon : BellIcon;
+        const hoverClasses = isSubscribed 
+            ? 'hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400' 
+            : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300';
+
+        return (
+             <a
+                href="#"
+                onClick={(e) => {
+                    e.preventDefault();
+                    handleToggleSubscription();
+                }}
+                className={`flex items-center mt-4 py-2 px-6 rounded-md transition-colors duration-200 ${hoverClasses}`}
+            >
+                <Icon className="h-6 w-6" />
+                <span className="mx-3">{buttonText}</span>
+            </a>
+        );
+    };
 
     const handleNavigation = (page: string) => {
         setCurrentPage(page);
@@ -48,6 +196,11 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
                     <span className="mx-3">{item.name}</span>
                 </a>
             ))}
+            {isSupported && (
+                <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+                    {renderNotificationButton()}
+                </div>
+            )}
         </nav>
     );
 
