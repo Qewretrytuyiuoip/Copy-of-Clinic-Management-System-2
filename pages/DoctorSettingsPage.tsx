@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { User, DaySchedule } from '../types';
 import { api } from '../services/api';
 import { DAY_NAMES } from '../constants';
@@ -24,11 +24,13 @@ const DoctorSettingsPage: React.FC<DoctorSettingsPageProps> = ({ user, refreshTr
     
             const fullSchedule = DAY_NAMES.map((_, index) => {
                 const dayData = data.find(d => d.day === index);
+                // FIX: Add doctorId to the fallback object to match the updated DaySchedule type.
                 return dayData || {
                     day: index,
                     isWorkDay: false,
                     startTime: '09:00',
                     endTime: '17:00',
+                    doctorId: user.id,
                 };
             });
     

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { useAppSettings } from '../hooks/useAppSettings';
+import { appSettings } from '../appSettings';
 import { EyeIcon, EyeSlashIcon, ArrowDownOnSquareIcon } from '../components/Icons';
 
 const LoginPage: React.FC = () => {
@@ -11,7 +11,7 @@ const LoginPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const { login } = useAuth();
-    const { settings } = useAppSettings();
+    const settings = appSettings;
     const [installPrompt, setInstallPrompt] = useState<any>(null);
     const [isInstallable, setIsInstallable] = useState(false);
 

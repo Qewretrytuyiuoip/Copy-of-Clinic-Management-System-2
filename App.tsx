@@ -1,11 +1,8 @@
-
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Patient, User, UserRole } from './types';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { ThemeProvider } from './hooks/useTheme';
-import { AppSettingsProvider } from './hooks/useAppSettings';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import Layout from './components/layout/Layout';
@@ -24,6 +21,7 @@ import PatientPhotosPage from './pages/PatientPhotosPage';
 import PatientActivityLogPage from './pages/PatientActivityLogPage';
 import { api } from './services/api';
 import { CenteredLoadingSpinner } from './components/LoadingSpinner';
+import { setupSyncListeners } from './services/sync';
 
 const queryClient = new QueryClient();
 
@@ -160,15 +158,17 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
+    useEffect(() => {
+        setupSyncListeners();
+    }, []);
+
     return (
         <QueryClientProvider client={queryClient}>
             <ThemeProvider>
                 <AuthProvider>
-                    <AppSettingsProvider>
-                        <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
-                            <AppContent />
-                        </div>
-                    </AppSettingsProvider>
+                    <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
+                        <AppContent />
+                    </div>
                 </AuthProvider>
             </ThemeProvider>
         </QueryClientProvider>

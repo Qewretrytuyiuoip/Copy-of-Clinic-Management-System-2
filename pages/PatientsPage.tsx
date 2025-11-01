@@ -1,11 +1,10 @@
-
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { User, Patient, UserRole, Session, Gender } from '../types';
 import { api } from '../services/api';
 import { PlusIcon, PencilIcon, TrashIcon, XIcon, BeakerIcon, EyeIcon, CurrencyDollarIcon, SearchIcon, PhotographIcon, ListBulletIcon, DocumentTextIcon, CheckIcon } from '../components/Icons';
 import LoadingSpinner, { CenteredLoadingSpinner } from '../components/LoadingSpinner';
-import { useAppSettings } from '../hooks/useAppSettings';
+import { appSettings } from '../appSettings';
 
 
 // ===================================================================
@@ -462,7 +461,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
     const [patientToPrint, setPatientToPrint] = useState<Patient | null>(null);
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
     
-    const { settings } = useAppSettings();
+    const settings = appSettings;
     const PATIENTS_PER_PAGE = 10;
     
     useEffect(() => {
@@ -690,17 +689,15 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                     }
                   }
                 }
-              </script>
+              <\/script>
               <style>
                 @media print {
                   @page { size: A4; margin: 20mm; }
                   body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                  .no-print { display: none !important; }
                 }
-                body { font-family: sans-serif; }
               </style>
             </head>
-            <body class="bg-white">
+            <body class="bg-white font-sans">
               <div id="printable-report" class="p-6 md:p-8">
                 <header class="flex justify-between items-start border-b border-gray-300 pb-4 mb-6">
                     <div>

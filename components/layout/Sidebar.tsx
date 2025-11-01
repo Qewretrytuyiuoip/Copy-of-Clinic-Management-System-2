@@ -2,7 +2,7 @@ import React, { Fragment, useState, useEffect } from 'react';
 import { User } from '../../types';
 import { NAV_ITEMS } from '../../constants';
 import { XIcon, BellIcon, BellSlashIcon, CheckIcon } from '../Icons';
-import { useAppSettings } from '../../hooks/useAppSettings';
+import { appSettings } from '../../appSettings';
 import LoadingSpinner from '../LoadingSpinner';
 import { API_BASE_URL } from '../../config';
 interface SidebarProps {
@@ -24,7 +24,7 @@ function urlBase64ToUint8Array(base64String: string) {
 
 const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, sidebarOpen, setSidebarOpen }) => {
     const navItems = NAV_ITEMS[user.role];
-    const { settings } = useAppSettings();
+    const settings = appSettings;
 
     const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
     const [isSubscribed, setIsSubscribed] = useState(false);
@@ -170,9 +170,19 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
     }
     
     const sidebarHeader = (
-        <div className="flex items-center justify-center h-20 border-b dark:border-gray-700 px-4 space-x-2 rtl:space-x-reverse">
-            <img src={settings.appLogo} alt="شعار التطبيق" className="h-10 w-10" />
-            <h1 className="text-xl font-bold text-primary truncate">{settings.appName}</h1>
+        <div className="flex items-center justify-between lg:justify-center h-20 border-b dark:border-gray-700 px-4">
+            <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                <img src={settings.appLogo} alt="شعار التطبيق" className="h-10 w-10" />
+                <h1 className="text-xl font-bold text-primary truncate">{settings.appName}</h1>
+            </div>
+            <button
+                type="button"
+                className="lg:hidden p-2 -mr-2 text-gray-500 dark:text-gray-400 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+                onClick={() => setSidebarOpen(false)}
+            >
+                <span className="sr-only">إغلاق الشريط الجانبي</span>
+                <XIcon className="h-6 w-6" aria-hidden="true" />
+            </button>
         </div>
     );
 
@@ -209,16 +219,6 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
             {/* Mobile Sidebar with Overlay */}
             <div className={`fixed inset-0 z-30 flex transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
                 <div className="relative flex w-64 max-w-xs flex-1 flex-col bg-white dark:bg-slate-800">
-                    <div className="absolute top-0 left-0 -ml-12 pt-2">
-                        <button
-                            type="button"
-                            className="mr-1 flex h-10 w-10 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
-                            onClick={() => setSidebarOpen(false)}
-                        >
-                            <span className="sr-only">إغلاق الشريط الجانبي</span>
-                            <XIcon className="h-6 w-6 text-white" aria-hidden="true" />
-                        </button>
-                    </div>
                     {sidebarHeader}
                     {navLinks}
                 </div>

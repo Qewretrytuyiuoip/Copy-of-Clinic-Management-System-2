@@ -13,7 +13,7 @@
       } else {
         document.documentElement.classList.remove('dark');
       }
-
+// يتم حذفهم ليس لهم داعي عند الانتاج 
       tailwind.config = {
         darkMode: 'class', // Enable dark mode based on the 'dark' class
         theme: {
@@ -44,10 +44,12 @@
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
-    "@tanstack/react-query": "https://aistudiocdn.com/@tanstack/react-query@^5.51.1"
+    "@tanstack/react-query": "https://aistudiocdn.com/@tanstack/react-query@^5.51.1",
+    "dexie": "https://aistudiocdn.com/dexie@^4.2.1"
   }
 }
 </script>
+<script src="https://unpkg.com/dexie@3/dist/dexie.js"></script>
 <link rel="icon" type="image/png" href="/assets/favicon-96x96.png" sizes="96x96" />
 <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
 <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png" />

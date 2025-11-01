@@ -107,6 +107,8 @@ export interface DaySchedule {
     isWorkDay: boolean;
     startTime: string; // HH:MM
     endTime: string; // HH:MM
+    // FIX: Added doctorId to make the type consistent with the database schema and usage in the app.
+    doctorId: string;
 }
 
 export interface DoctorAvailability {

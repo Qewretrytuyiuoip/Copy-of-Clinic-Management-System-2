@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Patient, PatientPhoto, CreatePatientPhotosPayload } from '../types';
 import { api } from '../services/api';
 import { CenteredLoadingSpinner } from '../components/LoadingSpinner';
-import { PlusIcon, PencilIcon, TrashIcon, XIcon, ArrowBackIcon, PhotographIcon } from '../components/Icons';
+import { PlusIcon, PencilIcon, TrashIcon, XIcon, ArrowBackIcon, PhotographIcon, MinusIcon, ResetIcon } from '../components/Icons';
 
 
 // ===================================================================
@@ -252,11 +252,6 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({ imageUrl, onClose }
     
     const zoomIn = () => setScale(s => Math.min(s * 1.2, 5));
     const zoomOut = () => setScale(s => Math.max(s / 1.2, 0.5));
-    
-    const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>;
-    const MinusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M18 12H6" /></svg>;
-    const ResetIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.664 0l3.181-3.183m-11.664 0l-3.181-3.183a8.25 8.25 0 0111.664 0l3.181 3.183" /></svg>;
-    const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>;
 
     return (
         <div 
@@ -274,10 +269,9 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({ imageUrl, onClose }
                     ref={imageRef}
                     src={imageUrl}
                     alt="Full screen view"
-                    className="max-w-none max-h-none transition-transform duration-100"
+                    className={`max-w-none max-h-none transition-transform duration-100 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
                     style={{
                         transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-                        cursor: isDragging ? 'grabbing' : 'grab',
                     }}
                     onMouseDown={handleMouseDown}
                     onMouseLeave={handleMouseUp}
@@ -286,13 +280,13 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({ imageUrl, onClose }
             
             <div className="absolute top-4 right-4 flex flex-col gap-2">
                  <button onClick={onClose} className="p-2 bg-gray-800 bg-opacity-50 text-white rounded-full hover:bg-opacity-75 focus:outline-none">
-                    <CloseIcon />
+                    <XIcon className="w-6 h-6" />
                 </button>
             </div>
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 bg-gray-800 bg-opacity-50 text-white rounded-full">
-                <button onClick={zoomOut} className="p-2 hover:bg-gray-700 rounded-full focus:outline-none"><MinusIcon /></button>
-                <button onClick={reset} className="p-2 hover:bg-gray-700 rounded-full focus:outline-none"><ResetIcon /></button>
-                <button onClick={zoomIn} className="p-2 hover:bg-gray-700 rounded-full focus:outline-none"><PlusIcon /></button>
+                <button onClick={zoomOut} className="p-2 hover:bg-gray-700 rounded-full focus:outline-none"><MinusIcon className="w-6 h-6" /></button>
+                <button onClick={reset} className="p-2 hover:bg-gray-700 rounded-full focus:outline-none"><ResetIcon className="w-6 h-6" /></button>
+                <button onClick={zoomIn} className="p-2 hover:bg-gray-700 rounded-full focus:outline-none"><PlusIcon className="w-6 h-6" /></button>
             </div>
         </div>
     );

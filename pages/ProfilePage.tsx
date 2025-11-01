@@ -30,11 +30,13 @@ const DoctorAvailabilitySettings: React.FC<DoctorAvailabilitySettingsProps> = ({
     
             const fullSchedule = DAY_NAMES.map((_, index) => {
                 const dayData = data.find(d => d.day === index);
+                // FIX: Add doctorId to the fallback object to match the DaySchedule type, which requires it.
                 return dayData || {
                     day: index,
                     isWorkDay: false,
                     startTime: '09:00',
                     endTime: '17:00',
+                    doctorId: user.id,
                 };
             });
     
