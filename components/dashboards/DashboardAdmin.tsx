@@ -1,7 +1,3 @@
-
-
-
-
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { User, Appointment, Payment, ActivityLog, ActivityLogActionType } from '../../types';
 import { api } from '../../services/api';
@@ -44,7 +40,7 @@ const ActionIcon: React.FC<{ action: ActivityLogActionType }> = ({ action }) => 
 const LOGS_PER_PAGE = 5;
 
 const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger }) => {
-    const [stats, setStats] = useState({ doctors: 0, patients: 0, appointments: 0, revenue: 0 });
+    const [stats, setStats] = useState({ doctors: 0, patients: 0, appointments: 0 });
     const [logs, setLogs] = useState<ActivityLog[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
@@ -60,17 +56,11 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger })
             setLoading(true);
             setFetchError(null);
             try {
-                // FIX: api.payments.getAll requires pagination arguments.
-                const [doctors, fetchedPatients, appointments, paymentsResponse] = await Promise.all([
+                const [doctors, fetchedPatients, appointments] = await Promise.all([
                     api.doctors.getAll(),
-                    // FIX: api.patients.getAll requires arguments. Fetching 1 to get total count.
                     api.patients.getAll({ page: 1, per_page: 1 }),
                     api.appointments.getAll(),
-                    api.payments.getAll({ page: 1, per_page: 9999 }),
                 ]);
-                
-                // FIX: The API returns a paginated object, use 'payments' property for the array.
-                const totalRevenue = paymentsResponse.payments.reduce((sum, p) => sum + p.amount, 0);
 
                 const today = new Date();
                 const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -78,10 +68,8 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger })
 
                 setStats({
                     doctors: doctors.length,
-                    // FIX: The API returns a pagination object, use 'total' for patient count.
                     patients: fetchedPatients.total,
                     appointments: todaysAppointmentsCount,
-                    revenue: totalRevenue
                 });
 
                 // Fetch first page of logs
@@ -150,11 +138,10 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger })
 
     return (
         <div>
-            <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3">
                 <StatCard title="إجمالي الأطباء" value={stats.doctors} icon={UsersIcon} />
                 <StatCard title="إجمالي المرضى" value={stats.patients} icon={UserGroupIcon} />
                 <StatCard title="مواعيد اليوم" value={stats.appointments} icon={CalendarIcon} />
-                <StatCard title="إجمالي الإيرادات" value={`SYP ${stats.revenue.toLocaleString()}`} icon={CurrencyDollarIcon} />
             </div>
             <div className="mt-8 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md">
                 <h2 className="text-xl font-semibold mb-4 dark:text-gray-100">النشاط الأخير</h2>

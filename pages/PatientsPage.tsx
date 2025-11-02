@@ -438,7 +438,6 @@ interface PatientsPageProps {
     onViewDetails: (patient: Patient) => void;
     onViewFinancial: (patient: Patient) => void;
     onViewPhotos: (patient: Patient) => void;
-    onViewActivity: (patient: Patient) => void;
     refreshTrigger: number;
 }
 const PatientsPage: React.FC<PatientsPageProps> = ({ 
@@ -448,7 +447,6 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
     onViewDetails,
     onViewFinancial,
     onViewPhotos,
-    onViewActivity,
     refreshTrigger
 }) => {
     const [isAddingPatient, setIsAddingPatient] = useState(false);
@@ -772,7 +770,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
 
     return (
         <div>
-            <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+            <div className="flex justify-center items-center mb-6 flex-wrap gap-4">
                 <div className="flex items-center gap-4 flex-wrap">
                     <div className="relative">
                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
@@ -874,9 +872,6 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                                                     )}
                                                     <button onClick={() => onViewPhotos(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 rounded-md hover:bg-purple-200 dark:hover:bg-purple-900/60"><PhotographIcon className="h-4 w-4" /><span>الصور</span></button>
                                                     <button onClick={() => onViewPlan(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-blue-900/60"><ListBulletIcon className="h-4 w-4" /><span>الخطة</span></button>
-                                                    {(user.role === UserRole.Admin || user.role === UserRole.SubManager) && (
-                                                        <button onClick={() => onViewActivity(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300 rounded-md hover:bg-yellow-200 dark:hover:bg-yellow-900/60"><ListBulletIcon className="h-4 w-4" /><span>السجل</span></button>
-                                                    )}
                                                     <button onClick={() => setPatientToPrint(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-gray-100 dark:bg-gray-900/40 text-gray-800 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-900/60">
                                                         {isPrinting === p.id ? <LoadingSpinner className="h-4 w-4" /> : <DocumentTextIcon className="h-4 w-4" />}<span>طباعة</span>
                                                     </button>

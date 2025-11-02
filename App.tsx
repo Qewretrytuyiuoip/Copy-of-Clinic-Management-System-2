@@ -18,7 +18,6 @@ import PatientPlanPage from './pages/PatientPlanPage';
 import PatientDetailsPage from './pages/PatientDetailsPage';
 import PatientFinancialPage from './pages/PatientFinancialPage';
 import PatientPhotosPage from './pages/PatientPhotosPage';
-import PatientActivityLogPage from './pages/PatientActivityLogPage';
 import { api } from './services/api';
 import { CenteredLoadingSpinner } from './components/LoadingSpinner';
 import { setupSyncListeners } from './services/sync';
@@ -78,11 +77,6 @@ const AppContent: React.FC = () => {
         setActivePatient(patient);
         setCurrentPage('photos');
     };
-    
-    const handleViewPatientActivity = (patient: Patient) => {
-        setActivePatient(patient);
-        setCurrentPage('activity');
-    };
 
     if (isLoading) {
         return <CenteredLoadingSpinner containerClassName="min-h-screen" />;
@@ -100,7 +94,6 @@ const AppContent: React.FC = () => {
             onViewDetails: handleViewPatientDetails,
             onViewFinancial: handleViewPatientFinancial,
             onViewPhotos: handleViewPatientPhotos,
-            onViewActivity: handleViewPatientActivity,
             refreshTrigger: refreshTrigger,
         };
         const fallback = <PatientsPage {...patientsPageProps} />;
@@ -129,10 +122,6 @@ const AppContent: React.FC = () => {
             case 'photos':
                 return activePatient
                     ? <PatientPhotosPage patient={activePatient} onBack={() => handleNavigation('patients')} refreshTrigger={refreshTrigger} />
-                    : fallback;
-            case 'activity':
-                 return activePatient
-                    ? <PatientActivityLogPage patient={activePatient} onBack={() => handleNavigation('patients')} refreshTrigger={refreshTrigger} />
                     : fallback;
             case 'users':
                 return (user.role === UserRole.Admin || user.role === UserRole.SubManager) ? <UsersPage refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;

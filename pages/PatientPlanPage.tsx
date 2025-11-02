@@ -135,10 +135,19 @@ const PatientPlanPage: React.FC<PatientPlanPageProps> = ({ patient, user, onBack
     }, [fetchPlanData, refreshTrigger]);
 
     const handleAddSession = () => {
+        let defaultDoctorId = '';
+        if (user.role === UserRole.Doctor) {
+            // If the logged-in user is a doctor, they are the default
+            defaultDoctorId = user.id;
+        } else {
+            // For other roles, pick the first doctor assigned to the patient
+            defaultDoctorId = patient.doctorIds[0] || '';
+        }
+
         const newSession: PlanSession = {
             clientId: `new-${Date.now()}`,
             title: `جلسة ${planSessions.length + 1}`,
-            doctorId: patient.doctorIds.includes(user.id) ? user.id : patient.doctorIds[0] || '',
+            doctorId: defaultDoctorId,
             date: new Date().toISOString().split('T')[0],
             notes: '',
             treatments: [],
@@ -327,9 +336,18 @@ const PatientPlanPage: React.FC<PatientPlanPageProps> = ({ patient, user, onBack
                                         </div>
                                          <div>
                                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الطبيب</label>
-                                            <select value={session.doctorId} onChange={(e) => handleSessionChange(session.clientId, 'doctorId', e.target.value)} className={inputStyle}>
-                                                {patientDoctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                            </select>
+                                            {user.role === UserRole.Doctor ? (
+                                                <input 
+                                                    type="text" 
+                                                    value={getDoctorName(session.doctorId)} 
+                                                    readOnly 
+                                                    className={inputStyle + " bg-gray-100 dark:bg-gray-800 cursor-not-allowed"} 
+                                                />
+                                            ) : (
+                                                <select value={session.doctorId} onChange={(e) => handleSessionChange(session.clientId, 'doctorId', e.target.value)} className={inputStyle}>
+                                                    {patientDoctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                                </select>
+                                            )}
                                         </div>
                                          <div>
                                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاريخ الجلسة</label>

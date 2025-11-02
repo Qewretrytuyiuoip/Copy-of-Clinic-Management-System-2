@@ -750,9 +750,9 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                     case 'today':
                         return appDate.getTime() === today.getTime();
                     case 'week':
-                        return appDate >= today && appDate <= endOfWeek;
+                        return appDate > today && appDate <= endOfWeek;
                     case 'month':
-                        return appDate >= today && appDate <= endOfMonth;
+                        return appDate > today && appDate <= endOfMonth;
                     case 'finished':
                         return appDate.getTime() < today.getTime();
                     case 'all':
@@ -785,7 +785,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
 
     return (
         <div>
-            <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+            <div className="flex justify-center items-center mb-6 flex-wrap gap-4">
                 <div className="relative w-full max-w-sm">
                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                        <SearchIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
@@ -812,7 +812,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                 </div>
             </div>
 
-            <div className="mb-6 flex flex-wrap items-center gap-2">
+            <div className="mb-6 flex flex-wrap justify-center items-center gap-2">
                 <TabButton tab="all" text="كل المواعيد" />
                 <TabButton tab="today" text="مواعيد اليوم" />
                 <TabButton tab="week" text="هذا الأسبوع" />
