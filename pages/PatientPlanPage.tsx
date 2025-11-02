@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { User, Patient, Session, SessionTreatment, Treatment, UserRole } from '../types';
-import { api, getSessionsByPatient, updatePatientCompletionStatus } from '../services/api';
+import { api, getSessionsByPatient } from '../services/api';
 import { PlusIcon, XIcon, ArrowBackIcon, CheckIcon, ListBulletIcon, DocumentTextIcon, UserCircleIcon, CalendarIcon, ChevronDownIcon, TrashIcon } from '../components/Icons';
 import LoadingSpinner, { CenteredLoadingSpinner } from '../components/LoadingSpinner';
 
@@ -227,7 +227,6 @@ const PatientPlanPage: React.FC<PatientPlanPageProps> = ({ patient, user, onBack
                         date: planSession.date,
                         notes: planSession.notes,
                         doctorId: planSession.doctorId,
-                        treatments: []
                     });
                     
                     for (const treatment of planSession.treatments) {
@@ -242,7 +241,7 @@ const PatientPlanPage: React.FC<PatientPlanPageProps> = ({ patient, user, onBack
                     }
                 }
             }
-            await updatePatientCompletionStatus(patient.id, user.id);
+            await api.patients.updateCompletionStatus(patient.id, user.id);
             alert("تم حفظ الخطة بنجاح!");
             onBack();
         } catch (err) {

@@ -439,6 +439,7 @@ interface PatientsPageProps {
     onViewFinancial: (patient: Patient) => void;
     onViewPhotos: (patient: Patient) => void;
     onViewActivity: (patient: Patient) => void;
+    refreshTrigger: number;
 }
 const PatientsPage: React.FC<PatientsPageProps> = ({ 
     user, 
@@ -447,7 +448,8 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
     onViewDetails,
     onViewFinancial,
     onViewPhotos,
-    onViewActivity
+    onViewActivity,
+    refreshTrigger
 }) => {
     const [isAddingPatient, setIsAddingPatient] = useState(false);
     const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
@@ -455,12 +457,23 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
     const [isDeleting, setIsDeleting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDoctorId, setSelectedDoctorId] = useState('');
-    const [statusFilter, setStatusFilter] = useState('incomplete_unpaid');
+    const isDoctor = user.role === UserRole.Doctor;
+    const [statusFilter, setStatusFilter] = useState('all');
     const [page, setPage] = useState(1);
     const [isPrinting, setIsPrinting] = useState<string | null>(null);
     const [patientToPrint, setPatientToPrint] = useState<Patient | null>(null);
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
     
+    const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+    const prevRefreshTrigger = useRef(refreshTrigger);
+
+    useEffect(() => {
+        if (prevRefreshTrigger.current !== refreshTrigger) {
+            setIsManualRefreshing(true);
+            prevRefreshTrigger.current = refreshTrigger;
+        }
+    }, [refreshTrigger]);
+
     const settings = appSettings;
     const PATIENTS_PER_PAGE = 10;
     
@@ -478,8 +491,8 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
     });
     const doctors = doctorsData || [];
     
-    const { data: patientsResult, isLoading: isLoadingPatients, refetch: refetchPatients } = useQuery({
-        queryKey: ['patients', page, debouncedSearchTerm, selectedDoctorId, statusFilter, user.id, user.role],
+    const { data: patientsResult, isLoading: isLoadingPatients, isFetching: isFetchingPatients, refetch: refetchPatients } = useQuery({
+        queryKey: ['patients', page, debouncedSearchTerm, selectedDoctorId, statusFilter, user.id, user.role, refreshTrigger],
         queryFn: async () => {
             const apiParams: { page: number; per_page: number; search?: string; doctorId?: string; completed?: '0' | '1'; payment_completed?: '0' | '1'; } = {
                 page: page,
@@ -506,17 +519,26 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                     apiParams.completed = '1';
                     apiParams.payment_completed = '1';
                     break;
+                case 'all':
+                    // No specific status filters
+                    break;
             }
             return api.patients.getAll(apiParams);
         },
         refetchInterval: 60000, // 1 minute
         placeholderData: (previousData) => previousData,
     });
+
+    useEffect(() => {
+        if (!isFetchingPatients && isManualRefreshing) {
+            setIsManualRefreshing(false);
+        }
+    }, [isFetchingPatients, isManualRefreshing]);
     
     const patients = patientsResult?.patients || [];
     const totalResults = patientsResult?.total || 0;
     const totalPages = patientsResult?.last_page || 1;
-    const loading = isLoadingPatients || isLoadingDoctors;
+    const showLoadingSpinner = isLoadingPatients || isManualRefreshing;
 
     const handlePageChange = (newPage: number) => {
         if (newPage >= 1 && newPage <= totalPages) {
@@ -675,21 +697,6 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
               <meta charset="UTF-8" />
               <title>تقرير - ${patient.name}</title>
               <script src="https://cdn.tailwindcss.com"></script>
-              <script>
-                tailwind.config = {
-                  theme: {
-                    extend: {
-                      colors: {
-                        primary: {
-                          DEFAULT: '#06b6d4', '50': '#ecfeff', '100': '#cffafe', '200': '#a5f3fd',
-                          '300': '#67e8f9', '400': '#22d3ee', '500': '#06b6d4', '600': '#0891b2',
-                          '700': '#0e7490', '800': '#155e75', '900': '#164e63', '950': '#083344',
-                        },
-                      }
-                    }
-                  }
-                }
-              <\/script>
               <style>
                 @media print {
                   @page { size: A4; margin: 20mm; }
@@ -728,6 +735,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
             printWindow.onload = () => {
                 printWindow.focus();
                 printWindow.print();
+                // printWindow.close(); // Optional: close the window after printing
             };
         }
         
@@ -822,7 +830,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
             </div>
 
             <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[200px]">
-                {loading ? <CenteredLoadingSpinner /> : (
+                {showLoadingSpinner ? <CenteredLoadingSpinner /> : (
                      patients.length > 0 ? (
                         <>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -861,7 +869,9 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                                                 </div>
                                                 <div className="flex items-center flex-wrap justify-end gap-2">
                                                     <button onClick={() => onViewSessions(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-teal-100 dark:bg-teal-900/40 text-teal-800 dark:text-teal-300 rounded-md hover:bg-teal-200 dark:hover:bg-teal-900/60"><BeakerIcon className="h-4 w-4" /><span>الجلسات</span></button>
-                                                    <button onClick={() => onViewFinancial(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 rounded-md hover:bg-green-200 dark:hover:bg-green-900/60"><CurrencyDollarIcon className="h-4 w-4" /><span>المالية</span></button>
+                                                    {!isDoctor && (
+                                                        <button onClick={() => onViewFinancial(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 rounded-md hover:bg-green-200 dark:hover:bg-green-900/60"><CurrencyDollarIcon className="h-4 w-4" /><span>المالية</span></button>
+                                                    )}
                                                     <button onClick={() => onViewPhotos(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 rounded-md hover:bg-purple-200 dark:hover:bg-purple-900/60"><PhotographIcon className="h-4 w-4" /><span>الصور</span></button>
                                                     <button onClick={() => onViewPlan(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-blue-900/60"><ListBulletIcon className="h-4 w-4" /><span>الخطة</span></button>
                                                     {(user.role === UserRole.Admin || user.role === UserRole.SubManager) && (

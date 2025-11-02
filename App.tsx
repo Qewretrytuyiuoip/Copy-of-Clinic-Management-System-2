@@ -101,6 +101,7 @@ const AppContent: React.FC = () => {
             onViewFinancial: handleViewPatientFinancial,
             onViewPhotos: handleViewPatientPhotos,
             onViewActivity: handleViewPatientActivity,
+            refreshTrigger: refreshTrigger,
         };
         const fallback = <PatientsPage {...patientsPageProps} />;
 

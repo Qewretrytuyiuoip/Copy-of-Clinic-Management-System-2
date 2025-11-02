@@ -3,6 +3,7 @@ import { User, Appointment, Patient, UserRole, Gender, DaySchedule } from '../ty
 import { api } from '../services/api';
 import { PlusIcon, PencilIcon, TrashIcon, XIcon, EyeIcon, SearchIcon, CalendarIcon, ClockIcon } from '../components/Icons';
 import { CenteredLoadingSpinner } from '../components/LoadingSpinner';
+import { DAY_NAMES } from '../constants';
 
 const formatTo12Hour = (time24: string): string => {
     if (!time24 || !time24.includes(':')) {
@@ -164,9 +165,22 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
         }
     }, [appointment, initialData, patients, doctors]);
 
-    const filteredPatients = useMemo(() => patientSearch
-        ? patients.filter(p => p.name.toLowerCase().includes(patientSearch.toLowerCase()) || p.code.includes(patientSearch))
-        : patients, [patients, patientSearch]);
+    const filteredPatients = useMemo(() => {
+        let patientsToList = patients;
+
+        if (formData.doctorId) {
+            patientsToList = patients.filter(p => p.doctorIds.includes(formData.doctorId));
+        }
+        
+        if (patientSearch) {
+            return patientsToList.filter(p => 
+                p.name.toLowerCase().includes(patientSearch.toLowerCase()) || 
+                p.code.includes(patientSearch)
+            );
+        }
+        
+        return patientsToList;
+    }, [patients, patientSearch, formData.doctorId]);
     
     const handlePatientSelect = (patient: Patient) => {
         setFormData(prev => {
@@ -195,10 +209,23 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
+
         setFormData(prev => {
             const newState = { ...prev, [name]: value };
+            
+            // Clear patientId and search text if the newly selected doctor
+            // is not associated with the currently selected patient.
+            if (name === 'doctorId') {
+                 const currentPatient = patients.find(p => p.id === prev.patientId);
+                 if (currentPatient && !currentPatient.doctorIds.includes(value)) {
+                     newState.patientId = '';
+                     setPatientSearch('');
+                 }
+            }
+
+            // Reset time when doctor or date changes
             if (name === 'doctorId' || name === 'date') {
-                 if (!initialData?.time) { // Do not reset time if coming from available slots
+                 if (!initialData?.time) {
                     newState.time = '';
                  }
             }
@@ -608,7 +635,7 @@ interface AppointmentsPageProps {
     refreshTrigger: number;
 }
 
-type ActiveTab = 'all' | 'today' | 'month' | 'finished';
+type ActiveTab = 'all' | 'today' | 'week' | 'month' | 'finished';
 
 const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigger }) => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -703,6 +730,13 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay());
+
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+        
         const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
         endOfMonth.setHours(23, 59, 59, 999);
 
@@ -715,8 +749,10 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                 switch (activeTab) {
                     case 'today':
                         return appDate.getTime() === today.getTime();
+                    case 'week':
+                        return appDate >= today && appDate <= endOfWeek;
                     case 'month':
-                        return appDate > today && appDate <= endOfMonth;
+                        return appDate >= today && appDate <= endOfMonth;
                     case 'finished':
                         return appDate.getTime() < today.getTime();
                     case 'all':
@@ -779,6 +815,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
             <div className="mb-6 flex flex-wrap items-center gap-2">
                 <TabButton tab="all" text="كل المواعيد" />
                 <TabButton tab="today" text="مواعيد اليوم" />
+                <TabButton tab="week" text="هذا الأسبوع" />
                 <TabButton tab="month" text="هذا الشهر" />
                 <TabButton tab="finished" text="المنتهية" />
             </div>
@@ -796,6 +833,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                                 appDate.setMinutes(appDate.getMinutes() + appDate.getTimezoneOffset());
                                 appDate.setHours(0, 0, 0, 0);
                                 const isFinished = appDate.getTime() < today.getTime();
+                                const dayName = DAY_NAMES[appDate.getDay()];
 
                                 return (
                                 <div key={app.id} className={`border rounded-xl p-4 flex flex-col transition-shadow hover:shadow-lg ${
@@ -806,7 +844,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                                     <div className="flex-grow">
                                         <div className="flex justify-between items-baseline">
                                             <h3 className={`text-lg font-bold ${isFinished ? 'text-gray-600 dark:text-gray-400' : 'text-primary'}`}>{getPatientName(app.patientId)}</h3>
-                                            <span className={`text-xs font-semibold px-2 py-1 rounded-full ${isFinished ? 'bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-300' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>{new Date(app.date).toLocaleDateString()}</span>
+                                            <span className={`text-xs font-semibold px-2 py-1 rounded-full ${isFinished ? 'bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-300' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>{`${dayName}, ${appDate.toLocaleDateString('ar-SA')}`}</span>
                                         </div>
                                         <p className={`font-bold text-3xl my-2 ${isFinished ? 'text-gray-700 dark:text-gray-300' : 'text-gray-800 dark:text-gray-100'}`}>{formatTo12Hour(app.time)}</p>
                                         <p className={`text-sm ${isFinished ? 'text-gray-500 dark:text-gray-400' : 'text-gray-500 dark:text-gray-400'}`}>مع الطبيب: {getDoctorName(app.doctorId)}</p>

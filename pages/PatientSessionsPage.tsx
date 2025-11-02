@@ -1,7 +1,9 @@
 
+
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { User, Patient, Session, SessionTreatment, Treatment, UserRole } from '../types';
-import { api, updatePatientCompletionStatus } from '../services/api';
+import { api } from '../services/api';
 import { PlusIcon, PencilIcon, TrashIcon, XIcon, ClipboardListIcon, BeakerIcon, ArrowBackIcon, EyeIcon, CheckIcon } from '../components/Icons';
 import LoadingSpinner, { CenteredLoadingSpinner } from '../components/LoadingSpinner';
 import { useAuth } from '../hooks/useAuth';
@@ -536,7 +538,7 @@ const PatientSessionsPage: React.FC<PatientSessionsPageProps> = ({ patient, onBa
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             setSessions(patientSessions);
             setDoctors(allDoctors);
-            updatePatientCompletionStatus(patient.id, user.id);
+            api.patients.updateCompletionStatus(patient.id, user.id);
         } catch (error) {
             console.error("Failed to fetch sessions:", error);
             alert("فشل في تحميل الجلسات.");
@@ -571,7 +573,7 @@ const PatientSessionsPage: React.FC<PatientSessionsPageProps> = ({ patient, onBa
             if (viewingTreatmentsForSession?.id === sessionId) {
                 setViewingTreatmentsForSession(finalSession);
             }
-            updatePatientCompletionStatus(patient.id, user.id);
+            api.patients.updateCompletionStatus(patient.id, user.id);
     
         } catch (error) {
             console.error(`Failed to re-evaluate session status for ${sessionId}`, error);
@@ -580,7 +582,8 @@ const PatientSessionsPage: React.FC<PatientSessionsPageProps> = ({ patient, onBa
     }, [fetchPageData, viewingTreatmentsForSession?.id, patient.id, user.id]);
 
     const handleCreateSession = async (newSessionData: Omit<Session, 'id' | 'treatments'>) => {
-        await api.sessions.create({ ...newSessionData, treatments: [] });
+        // FIX: The `treatments` property is not expected by `api.sessions.create`.
+        await api.sessions.create(newSessionData);
         setIsAddingSession(false);
         await fetchPageData();
     };
@@ -639,7 +642,7 @@ const PatientSessionsPage: React.FC<PatientSessionsPageProps> = ({ patient, onBa
         setUpdatingTreatmentId(treatment.instanceId);
         try {
             await api.sessionTreatments.update(treatment.instanceId, { completed: !treatment.completed });
-            updatePatientCompletionStatus(patient.id, user.id);
+            api.patients.updateCompletionStatus(patient.id, user.id);
             
             // After successful update, manually update the local state to reflect the change
             setViewingTreatmentsForSession(currentSession => {
