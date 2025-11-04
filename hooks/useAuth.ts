@@ -40,7 +40,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const logout = async () => {
         await apiLogout();
         setUser(null);
-        localStorage.removeItem('authToken');
     };
 
     const value = useMemo(() => ({ user, isLoading, login, logout, loginSuccessMessage, setLoginSuccessMessage, setUser }), [user, isLoading, loginSuccessMessage]);

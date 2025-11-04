@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ActivityLog, ActivityLogActionType } from '../types';
 import { api } from '../services/api';
 import { CenteredLoadingSpinner } from '../components/LoadingSpinner';
@@ -19,29 +19,30 @@ const Pagination: React.FC<{
     if (totalPages <= 1) return null;
 
     return (
-        <nav className="flex items-center justify-center gap-2" aria-label="Pagination">
+        <nav className="flex items-center justify-center" aria-label="Pagination">
             <button
                 onClick={() => onPageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="px-4 py-2 leading-tight text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 mx-1 leading-tight text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 السابق
             </button>
-            <div className="flex items-center">
-                <span className="text-sm text-gray-700 dark:text-gray-400 px-2">
+            <div className="flex items-center mx-4">
+                <span className="text-sm text-gray-700 dark:text-gray-400">
                     صفحة <span className="font-semibold text-gray-900 dark:text-white">{currentPage}</span> من <span className="font-semibold text-gray-900 dark:text-white">{totalPages}</span>
                 </span>
             </div>
             <button
                 onClick={() => onPageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="px-4 py-2 leading-tight text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 mx-1 leading-tight text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 التالي
             </button>
         </nav>
     );
 };
+
 
 const ActionIcon: React.FC<{ action: ActivityLogActionType }> = ({ action }) => {
     const iconProps = { className: "h-5 w-5" };
@@ -57,7 +58,6 @@ const ActionIcon: React.FC<{ action: ActivityLogActionType }> = ({ action }) => 
     }
 };
 
-
 const ActivityArchivesPage: React.FC<ActivityArchivesPageProps> = ({ onBack, refreshTrigger }) => {
     const [logs, setLogs] = useState<ActivityLog[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
@@ -67,37 +67,38 @@ const ActivityArchivesPage: React.FC<ActivityArchivesPageProps> = ({ onBack, ref
     const [fetchError, setFetchError] = useState<string | null>(null);
     const [dateFilter, setDateFilter] = useState('');
 
-    const fetchArchives = useCallback(async () => {
-        setLoading(true);
-        setFetchError(null);
-        try {
-            const response = await api.activityArchives.getAll({ 
-                page: currentPage, 
-                per_page: LOGS_PER_PAGE, 
-                date: dateFilter 
-            });
-            setLogs(response.logs);
-            setTotalPages(response.last_page || 1);
-            setTotalResults(response.total || 0);
-        } catch (error) {
-            if (error instanceof Error && error.message.includes('Failed to fetch')) {
-                setFetchError('فشل جلب البيانات. يرجى التأكد من اتصالك بالإنترنت.');
-            } else {
-                setFetchError('حدث خطأ غير متوقع.');
-                console.error("Failed to fetch activity archives:", error);
+    useEffect(() => {
+        const fetchArchives = async () => {
+            setLoading(true);
+            setFetchError(null);
+            try {
+                const response = await api.activityArchives.getAll({ 
+                    page: currentPage, 
+                    per_page: LOGS_PER_PAGE, 
+                    date: dateFilter || undefined
+                });
+                setLogs(response.logs);
+                setTotalPages(response.last_page || 1);
+                setTotalResults(response.total || 0);
+            } catch (error) {
+                if (error instanceof Error && error.message.includes('Failed to fetch')) {
+                    setFetchError('فشل جلب البيانات. يرجى التأكد من اتصالك بالإنترنت.');
+                } else {
+                    setFetchError('حدث خطأ غير متوقع.');
+                    console.error("Failed to fetch activity archives:", error);
+                }
+            } finally {
+                setLoading(false);
             }
-        } finally {
-            setLoading(false);
-        }
-    }, [currentPage, dateFilter]);
+        };
 
-    useEffect(() => {
         fetchArchives();
-    }, [fetchArchives, refreshTrigger]);
+    }, [currentPage, dateFilter, refreshTrigger]);
 
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [dateFilter]);
+    const handleDateFilterChange = (newDate: string) => {
+        setDateFilter(newDate);
+        setCurrentPage(1); // Reset to first page when filter changes
+    };
 
     const handlePageChange = (newPage: number) => {
         if (newPage >= 1 && newPage <= totalPages) {
@@ -118,25 +119,30 @@ const ActivityArchivesPage: React.FC<ActivityArchivesPageProps> = ({ onBack, ref
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">أرشيف الأحداث</h1>
             </div>
 
-             <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[400px]">
-                <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                    <input
-                        type="date"
-                        value={dateFilter}
-                        onChange={(e) => setDateFilter(e.target.value)}
-                        className="px-3 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                    />
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-md flex flex-col">
+                <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <input
+                            type="date"
+                            value={dateFilter}
+                            onChange={(e) => handleDateFilterChange(e.target.value)}
+                            className="px-3 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                        />
+                    </div>
                 </div>
-                 {loading ? <CenteredLoadingSpinner /> : fetchError ? (
-                     <div className="text-center py-16 text-red-500 dark:text-red-400"><p>{fetchError}</p></div>
-                 ) : logs.length > 0 ? (
-                    <>
+
+                <div className="p-6 flex-grow">
+                    {loading ? (
+                        <div className="flex justify-center items-center py-20"><CenteredLoadingSpinner /></div>
+                    ) : fetchError ? (
+                        <div className="text-center py-20 text-red-500 dark:text-red-400"><p>{fetchError}</p></div>
+                    ) : logs.length > 0 ? (
                         <div className="space-y-4">
                             {logs.map(log => (
                                 <div key={log.id} className="flex items-start space-x-4 rtl:space-x-reverse p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50">
                                     <ActionIcon action={log.actionType} />
-                                    <div className="flex-grow">
-                                        <p className="text-sm text-gray-800 dark:text-gray-200">{log.description}</p>
+                                    <div className="flex-grow min-w-0">
+                                        <p className="text-sm text-gray-800 dark:text-gray-200 break-words">{log.description}</p>
                                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                             بواسطة {log.userName} &bull; {new Date(log.timestamp).toLocaleString('ar-SA', { dateStyle: 'medium', timeStyle: 'short' })}
                                         </p>
@@ -144,24 +150,27 @@ const ActivityArchivesPage: React.FC<ActivityArchivesPageProps> = ({ onBack, ref
                                 </div>
                             ))}
                         </div>
-                        <div className="mt-8 flex justify-center items-center flex-wrap gap-x-6 gap-y-4">
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                                عرض {logs.length} من أصل {totalResults} سجلات
-                            </p>
-                            {totalPages > 1 && (
-                                <Pagination 
-                                    currentPage={currentPage}
-                                    totalPages={totalPages}
-                                    onPageChange={handlePageChange}
-                                />
-                            )}
+                    ) : (
+                        <div className="text-center py-20 text-gray-500 dark:text-gray-400">
+                            <p>{dateFilter ? 'لا يوجد أرشيف لعرضه للتاريخ المحدد.' : 'لا يوجد سجلات في الأرشيف.'}</p>
                         </div>
-                    </>
-                 ) : (
-                    <div className="text-center py-10 text-gray-500 dark:text-gray-400">
-                        <p>لا يوجد أرشيف لعرضه للتاريخ المحدد.</p>
+                    )}
+                </div>
+                
+                {!loading && totalPages > 1 && (
+                    <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                        <div className="flex flex-col sm:flex-row justify-between items-center flex-wrap gap-4">
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                                عرض {logs.length > 0 ? ((currentPage - 1) * LOGS_PER_PAGE) + 1 : 0} - {((currentPage - 1) * LOGS_PER_PAGE) + logs.length} من أصل {totalResults} سجلات
+                            </p>
+                            <Pagination 
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={handlePageChange}
+                            />
+                        </div>
                     </div>
-                 )}
+                )}
             </div>
         </div>
     );

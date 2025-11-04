@@ -858,7 +858,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                                                             <CheckIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
                                                         </div>
                                                     )}
-                                                    {p.payment_completed && (
+                                                    {p.payment_completed === true && (
                                                         <div className="p-1 bg-blue-100 dark:bg-blue-900/40 rounded-full" title="مدفوع بالكامل">
                                                             <CurrencyDollarIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                                                         </div>

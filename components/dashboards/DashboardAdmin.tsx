@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { User, Appointment, ActivityLog, ActivityLogActionType } from '../../types';
 import { api } from '../../services/api';
-import { UserGroupIcon, CalendarIcon, UsersIcon, PlusIcon, PencilIcon, TrashIcon, SearchIcon, DocumentTextIcon } from '../Icons';
+import { UserGroupIcon, CalendarIcon, UsersIcon, PlusIcon, PencilIcon, TrashIcon, SearchIcon, DocumentTextIcon, XIcon } from '../Icons';
 import { CenteredLoadingSpinner } from '../LoadingSpinner';
 
 interface DashboardAdminProps {
@@ -32,6 +32,32 @@ const StatCard: React.FC<{ title: string; value: string | number; icon: React.El
     );
 };
 
+const OnDutyDoctorsModal: React.FC<{ doctors: User[]; onClose: () => void }> = ({ doctors, onClose }) => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">الأطباء المداومون اليوم</h2>
+                <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
+            </div>
+            <div className="p-6 max-h-[60vh] overflow-y-auto">
+                {doctors.length > 0 ? (
+                    <ul className="space-y-3">
+                        {doctors.map(doctor => (
+                            <li key={doctor.id} className="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg flex items-center justify-between">
+                                <span className="font-semibold text-gray-800 dark:text-gray-100">{doctor.name}</span>
+                                <span className="text-sm text-gray-500 dark:text-gray-400">{doctor.specialty}</span>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-center text-gray-500 dark:text-gray-400">لا يوجد أطباء مداومون اليوم.</p>
+                )}
+            </div>
+        </div>
+    </div>
+);
+
+
 const ActionIcon: React.FC<{ action: ActivityLogActionType }> = ({ action }) => {
     const iconProps = { className: "h-5 w-5" };
     switch (action) {
@@ -50,6 +76,8 @@ const LOGS_PER_PAGE = 10;
 
 const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger, setCurrentPage }) => {
     const [stats, setStats] = useState({ doctors: 0, patients: 0, appointments: 0 });
+    const [onDutyDoctors, setOnDutyDoctors] = useState<User[]>([]);
+    const [isModalOpen, setIsModalOpen] = useState(false);
     
     const [logs, setLogs] = useState<ActivityLog[]>([]);
     const [currentPage, setCurrentPageNum] = useState(1);
@@ -65,19 +93,31 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger, s
             setLoading(true);
             setFetchError(null);
             try {
-                const [doctors, fetchedPatients, appointments] = await Promise.all([
+                const [doctors, allPatientsResponse, appointments, allSchedules] = await Promise.all([
                     api.doctors.getAll(),
-                    api.patients.getAll({ page: 1, per_page: 1 }),
+                    api.patients.getAll({ page: 1, per_page: 9999 }),
                     api.appointments.getAll(),
+                    api.doctorSchedules.getAll(),
                 ]);
 
                 const today = new Date();
                 const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
                 const todaysAppointmentsCount = appointments.filter(a => a.date === todayString).length;
 
+                const todayDayOfWeek = today.getDay();
+                const onDutyDoctorIds = new Set(
+                    allSchedules
+                        .filter(schedule => schedule.day === todayDayOfWeek && schedule.isWorkDay)
+                        .map(schedule => schedule.doctorId)
+                );
+                const onDuty = doctors.filter(doctor => onDutyDoctorIds.has(doctor.id));
+                setOnDutyDoctors(onDuty);
+                
+                const incompletePatientsCount = allPatientsResponse.patients.filter(p => !p.completed).length;
+
                 setStats({
-                    doctors: doctors.length,
-                    patients: fetchedPatients.total,
+                    doctors: onDuty.length,
+                    patients: incompletePatientsCount,
                     appointments: todaysAppointmentsCount,
                 });
 
@@ -143,9 +183,10 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger, s
     
     return (
         <div>
+            {isModalOpen && <OnDutyDoctorsModal doctors={onDutyDoctors} onClose={() => setIsModalOpen(false)} />}
             <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
-                <StatCard title="إجمالي الأطباء" value={stats.doctors} icon={UsersIcon} />
-                <StatCard title="إجمالي المرضى" value={stats.patients} icon={UserGroupIcon} />
+                <StatCard title="الأطباء المداومون اليوم" value={stats.doctors} icon={UsersIcon} onClick={() => setIsModalOpen(true)} />
+                <StatCard title="المرضى الغير مكتملين" value={stats.patients} icon={UserGroupIcon} />
                 <StatCard title="مواعيد اليوم" value={stats.appointments} icon={CalendarIcon} />
                 <StatCard title="ارشيف الاحداث" value="عرض" icon={DocumentTextIcon} onClick={() => setCurrentPage('activity-archives')} />
             </div>

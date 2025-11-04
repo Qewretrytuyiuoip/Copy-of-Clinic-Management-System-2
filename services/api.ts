@@ -153,6 +153,7 @@ export const login = async (email: string, password: string): Promise<User | nul
 
             if (data.token) {
                 localStorage.setItem('authToken', data.token);
+                localStorage.setItem('currentUser', JSON.stringify(user));
             }
             
             return user;
@@ -169,6 +170,10 @@ export const login = async (email: string, password: string): Promise<User | nul
 
 export const logout = async (): Promise<void> => {
     const token = localStorage.getItem('authToken');
+    // Clear local storage immediately for responsive UI
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('currentUser');
+
     if (!token) { return; }
 
     try {
@@ -188,6 +193,24 @@ export const logout = async (): Promise<void> => {
 };
 
 export const getMe = async (): Promise<User | null> => {
+    const token = localStorage.getItem('authToken');
+    const storedUser = localStorage.getItem('currentUser');
+
+    if (token && storedUser) {
+        try {
+            const user = JSON.parse(storedUser) as User;
+            // Basic validation of the stored user object
+            if (user && user.id && user.name && user.role) {
+                return user;
+            }
+        } catch (error) {
+            console.error('Failed to parse stored user.', error);
+        }
+    }
+
+    // If no token, no stored user, or parsing fails, clear everything.
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('currentUser');
     return null;
 };
 
@@ -806,13 +829,32 @@ export const api = {
             return newPayment;
         },
         update: async (id: string, updates: Partial<Payment>): Promise<Payment | null> => {
+             const formData = new FormData();
+             formData.append('id', id);
+             if (updates.amount !== undefined) formData.append('amount', String(updates.amount));
+             if (updates.date) formData.append('date', updates.date);
+            
+             const res = await apiFetch('payments/edit', { method: 'POST', body: formData });
+             
              await db.payments.update(id, updates);
-             // queue for sync
+
+             if (res.offline) {
+                return (await db.payments.get(id)) || null;
+             }
+
+             if (res.payment) {
+                const finalPayment = mapApiPaymentToPayment(res.payment);
+                await db.payments.put(finalPayment);
+                return finalPayment;
+             }
+
              return (await db.payments.get(id)) || null;
         },
         delete: async (id: string): Promise<boolean> => {
+            const formData = new FormData();
+            formData.append('id', id);
+            await apiFetch('payments/delete', { method: 'POST', body: formData });
             await db.payments.delete(id);
-             // queue for sync
             return true;
         },
     },
@@ -896,6 +938,17 @@ export const api = {
         },
     },
     doctorSchedules: {
+        getAll: async (): Promise<DaySchedule[]> => {
+            try {
+                const apiSchedules = await performApiFetch('doctor_schedules/all', { method: 'POST' });
+               if (!Array.isArray(apiSchedules)) { return []; }
+               const allSchedules = apiSchedules.map(mapApiScheduleToDaySchedule);
+               await db.doctor_schedules.bulkPut(allSchedules);
+               return allSchedules;
+            } catch (e) {
+               return db.doctor_schedules.toArray();
+            }
+       },
         getForDoctor: async (doctorId: string): Promise<DaySchedule[]> => {
              try {
                  const apiSchedules = await performApiFetch('doctor_schedules/all', { method: 'POST' });
