@@ -35,6 +35,7 @@ const Layout: React.FC<LayoutProps> = ({ user, currentPage, setCurrentPage, onRe
             'details': 'تفاصيل المريض',
             'financial': 'البيان المالي للمريض',
             'photos': 'معرض صور المريض',
+            'activity-archives': 'أرشيف الأحداث',
         };
 
         if (specialTitles[currentPage]) {

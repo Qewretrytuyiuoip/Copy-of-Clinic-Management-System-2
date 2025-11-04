@@ -18,9 +18,12 @@ import PatientPlanPage from './pages/PatientPlanPage';
 import PatientDetailsPage from './pages/PatientDetailsPage';
 import PatientFinancialPage from './pages/PatientFinancialPage';
 import PatientPhotosPage from './pages/PatientPhotosPage';
+import ContactPage from './pages/ContactPage';
+import ActivityArchivesPage from './pages/ActivityArchivesPage';
 import { api } from './services/api';
 import { CenteredLoadingSpinner } from './components/LoadingSpinner';
 import { setupSyncListeners } from './services/sync';
+import { playTouchSound } from './services/touchSound';
 
 const queryClient = new QueryClient();
 
@@ -100,7 +103,7 @@ const AppContent: React.FC = () => {
 
         switch (currentPage) {
             case 'dashboard':
-                return <DashboardPage user={user} refreshTrigger={refreshTrigger} />;
+                return <DashboardPage user={user} refreshTrigger={refreshTrigger} setCurrentPage={handleNavigation} />;
             case 'patients':
                 return <PatientsPage {...patientsPageProps} />;
             case 'sessions':
@@ -121,7 +124,7 @@ const AppContent: React.FC = () => {
                     : fallback;
             case 'photos':
                 return activePatient
-                    ? <PatientPhotosPage patient={activePatient} onBack={() => handleNavigation('patients')} refreshTrigger={refreshTrigger} />
+                    ? <PatientPhotosPage patient={activePatient} user={user} onBack={() => handleNavigation('patients')} refreshTrigger={refreshTrigger} />
                     : fallback;
             case 'users':
                 return (user.role === UserRole.Admin || user.role === UserRole.SubManager) ? <UsersPage refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;
@@ -135,8 +138,12 @@ const AppContent: React.FC = () => {
                 return user.role === UserRole.Doctor ? <DoctorSchedulePage user={user} refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;
             case 'profile':
                 return <ProfilePage refreshTrigger={refreshTrigger} />;
+            case 'contact':
+                return <ContactPage />;
+            case 'activity-archives':
+                return <ActivityArchivesPage onBack={() => handleNavigation('dashboard')} refreshTrigger={refreshTrigger} />;
             default:
-                return <DashboardPage user={user} refreshTrigger={refreshTrigger} />;
+                return <DashboardPage user={user} refreshTrigger={refreshTrigger} setCurrentPage={handleNavigation} />;
         }
     };
     
@@ -150,6 +157,43 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
     useEffect(() => {
         setupSyncListeners();
+
+        // Check for mobile/touch device to enable touch sounds
+        const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+        if (!isMobile) {
+            return;
+        }
+
+        const handleInteraction = (event: Event) => {
+            let target = event.target as HTMLElement;
+
+            // Bubble up to find an interactive element to play sound for
+            while (target && target !== document.body) {
+                const tagName = target.tagName.toLowerCase();
+                const role = target.getAttribute('role');
+
+                if (
+                    tagName === 'button' ||
+                    tagName === 'a' ||
+                    (tagName === 'input' && ['button', 'submit', 'reset', 'checkbox', 'radio'].includes(target.getAttribute('type') || '')) ||
+                    (role === 'button') ||
+                    target.hasAttribute('onclick')
+                ) {
+                    playTouchSound();
+                    return; // Play sound once per event bubble
+                }
+                target = target.parentElement as HTMLElement;
+            }
+        };
+        
+        // Use 'click' event in the capture phase. Mobile browsers emulate clicks
+        // from touches, and this is more specific to intentional taps than 'touchstart'.
+        document.addEventListener('click', handleInteraction, { capture: true });
+
+        return () => {
+            document.removeEventListener('click', handleInteraction, { capture: true });
+        };
     }, []);
 
     return (

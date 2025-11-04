@@ -1,5 +1,5 @@
 import React from 'react';
-import { User } from '../../types';
+import { User, UserRole } from '../../types';
 import { NAV_ITEMS } from '../../constants';
 
 interface BottomNavProps {
@@ -9,7 +9,11 @@ interface BottomNavProps {
 }
 
 const BottomNav: React.FC<BottomNavProps> = ({ user, currentPage, setCurrentPage }) => {
-    const navItems = NAV_ITEMS[user.role].filter(item => item.page !== 'profile');
+    let navItems = NAV_ITEMS[user.role].filter(item => item.page !== 'profile');
+
+    if (user.role === UserRole.Doctor || user.role === UserRole.Secretary || user.role === UserRole.Admin) {
+        navItems = navItems.filter(item => item.page !== 'contact');
+    }
 
     return (
         <div className="lg:hidden fixed bottom-0 left-0 z-10 w-full h-16 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-gray-700">

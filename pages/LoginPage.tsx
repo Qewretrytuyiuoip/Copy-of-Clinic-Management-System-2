@@ -61,6 +61,14 @@ const LoginPage: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+
+        // Basic security validation to prevent XSS and simple SQL injection patterns
+        const maliciousPattern = /[<>;]|--/;
+        if (maliciousPattern.test(email) || maliciousPattern.test(password)) {
+            setError('تم اكتشاف أحرف غير صالحة. يرجى إزالتها والمحاولة مرة أخرى.');
+            return;
+        }
+        
         setLoading(true);
         try {
             const user = await login(email, password);

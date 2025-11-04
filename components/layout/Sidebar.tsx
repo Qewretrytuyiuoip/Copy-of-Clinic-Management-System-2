@@ -4,7 +4,7 @@ import { NAV_ITEMS } from '../../constants';
 import { XIcon, BellIcon, BellSlashIcon, CheckIcon } from '../Icons';
 import { appSettings } from '../../appSettings';
 import LoadingSpinner from '../LoadingSpinner';
-import { API_BASE_URL } from '../../config';
+import { API_BASE_URL } from '../../appSettings';
 interface SidebarProps {
     user: User;
     currentPage: string;
@@ -186,9 +186,12 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
         </div>
     );
 
+    const contactItem = navItems.find(item => item.page === 'contact');
+    const mainNavItems = navItems.filter(item => item.page !== 'contact');
+
     const navLinks = (
         <nav className="mt-8 px-2">
-            {navItems.map((item) => (
+            {mainNavItems.map((item) => (
                 <a
                     key={item.name}
                     href="#"
@@ -206,9 +209,27 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
                     <span className="mx-3">{item.name}</span>
                 </a>
             ))}
-            {isSupported && (
+            {(contactItem || isSupported) && (
                 <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
-                    {renderNotificationButton()}
+                    {contactItem && (
+                        <a
+                            key={contactItem.name}
+                            href="#"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                handleNavigation(contactItem.page);
+                            }}
+                            className={`flex items-center py-2 px-6 rounded-md transition-colors duration-200 ${
+                                currentPage === contactItem.page
+                                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                            }`}
+                        >
+                            <contactItem.icon className="h-6 w-6" />
+                            <span className="mx-3">{contactItem.name}</span>
+                        </a>
+                    )}
+                    {isSupported && renderNotificationButton()}
                 </div>
             )}
         </nav>
@@ -220,7 +241,12 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
             <div className={`fixed inset-0 z-30 flex transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
                 <div className="relative flex w-64 max-w-xs flex-1 flex-col bg-white dark:bg-slate-800">
                     {sidebarHeader}
-                    {navLinks}
+                    <div className="flex-1 overflow-y-auto">
+                        {navLinks}
+                    </div>
+                    <div className="p-4 text-center text-xs text-gray-500 dark:text-gray-400">
+                        الإصدار {settings.appVersion}
+                    </div>
                 </div>
                 <div className="w-14 flex-shrink-0" aria-hidden="true"></div>
             </div>
@@ -231,6 +257,9 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
                 {sidebarHeader}
                 <div className="flex-1 overflow-y-auto">
                    {navLinks}
+                </div>
+                <div className="p-4 text-center text-xs text-gray-500 dark:text-gray-400">
+                    الإصدار {settings.appVersion}
                 </div>
             </aside>
         </>

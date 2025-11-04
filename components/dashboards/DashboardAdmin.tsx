@@ -1,27 +1,36 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { User, Appointment, Payment, ActivityLog, ActivityLogActionType } from '../../types';
+import { User, Appointment, ActivityLog, ActivityLogActionType } from '../../types';
 import { api } from '../../services/api';
-import { CurrencyDollarIcon, UserGroupIcon, CalendarIcon, UsersIcon, PlusIcon, PencilIcon, TrashIcon, SearchIcon } from '../Icons';
+import { UserGroupIcon, CalendarIcon, UsersIcon, PlusIcon, PencilIcon, TrashIcon, SearchIcon, DocumentTextIcon } from '../Icons';
 import { CenteredLoadingSpinner } from '../LoadingSpinner';
 
 interface DashboardAdminProps {
     user: User;
     refreshTrigger: number;
+    setCurrentPage: (page: string) => void;
 }
 
-const StatCard: React.FC<{ title: string; value: string | number; icon: React.ElementType }> = ({ title, value, icon: Icon }) => (
-    <div className="p-4 sm:p-6 bg-white dark:bg-slate-800 rounded-xl shadow-md flex items-center space-x-4">
-        <div className="flex-shrink-0">
-            <div className="p-3 bg-primary-100 dark:bg-primary-900/40 rounded-full">
-                <Icon className="h-6 w-6 text-primary dark:text-primary-300" />
+const StatCard: React.FC<{ title: string; value: string | number; icon: React.ElementType; onClick?: () => void }> = ({ title, value, icon: Icon, onClick }) => {
+    const Component = onClick ? 'button' : 'div';
+    const props = onClick ? { onClick, type: 'button' as const } : {};
+
+    return (
+        <Component
+            {...props}
+            className={`p-4 sm:p-6 bg-white dark:bg-slate-800 rounded-xl shadow-md flex items-center space-x-4 rtl:space-x-reverse text-right w-full ${onClick ? 'hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors' : ''}`}
+        >
+            <div className="flex-shrink-0">
+                <div className="p-3 bg-primary-100 dark:bg-primary-900/40 rounded-full">
+                    <Icon className="h-6 w-6 text-primary dark:text-primary-300" />
+                </div>
             </div>
-        </div>
-        <div>
-            <div className="text-lg sm:text-xl font-medium text-black dark:text-white">{value}</div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
-        </div>
-    </div>
-);
+            <div>
+                <div className="text-lg sm:text-xl font-medium text-black dark:text-white">{value}</div>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
+            </div>
+        </Component>
+    );
+};
 
 const ActionIcon: React.FC<{ action: ActivityLogActionType }> = ({ action }) => {
     const iconProps = { className: "h-5 w-5" };
@@ -37,20 +46,20 @@ const ActionIcon: React.FC<{ action: ActivityLogActionType }> = ({ action }) => 
     }
 };
 
-const LOGS_PER_PAGE = 5;
+const LOGS_PER_PAGE = 10;
 
-const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger }) => {
+const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger, setCurrentPage }) => {
     const [stats, setStats] = useState({ doctors: 0, patients: 0, appointments: 0 });
+    
     const [logs, setLogs] = useState<ActivityLog[]>([]);
-    const [currentPage, setCurrentPage] = useState(1);
+    const [currentPage, setCurrentPageNum] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [fetchError, setFetchError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [dateFilter, setDateFilter] = useState('');
     const isInitialMount = useRef(true);
-
+    
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
@@ -72,13 +81,11 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger })
                     appointments: todaysAppointmentsCount,
                 });
 
-                // Fetch first page of logs
-                const logData = await api.activityLogs.getAll({ page: 1, per_page: LOGS_PER_PAGE, search: '', date: '' });
+                const logData = await api.activityLogs.getAll({ page: 1, per_page: LOGS_PER_PAGE, search: '' });
                 setLogs(logData.logs);
                 setHasMore(logData.hasMore);
-                setCurrentPage(1);
+                setCurrentPageNum(1);
                 setSearchTerm('');
-                setDateFilter('');
 
             } catch (error) {
                 if (error instanceof Error && error.message.includes('Failed to fetch')) {
@@ -101,29 +108,30 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger })
         const handler = setTimeout(async () => {
             setLoading(true);
             try {
-                const { logs: newLogs, hasMore: newHasMore } = await api.activityLogs.getAll({ page: 1, per_page: LOGS_PER_PAGE, search: searchTerm, date: dateFilter });
+                const { logs: newLogs, hasMore: newHasMore } = await api.activityLogs.getAll({ page: 1, per_page: LOGS_PER_PAGE, search: searchTerm });
                 setLogs(newLogs);
                 setHasMore(newHasMore);
-                setCurrentPage(1);
+                setCurrentPageNum(1);
             } catch (err) {
                  setFetchError('فشل في جلب سجل النشاط.');
             } finally {
                 setLoading(false);
             }
-        }, 500); // Debounce search
+        }, 500);
 
         return () => clearTimeout(handler);
-    }, [searchTerm, dateFilter]);
+    }, [searchTerm]);
+
 
     const handleShowMore = async () => {
         if (loadingMore || !hasMore) return;
         setLoadingMore(true);
         try {
             const nextPage = currentPage + 1;
-            const { logs: newLogs, hasMore: newHasMore } = await api.activityLogs.getAll({ page: nextPage, per_page: LOGS_PER_PAGE, search: searchTerm, date: dateFilter });
+            const { logs: newLogs, hasMore: newHasMore } = await api.activityLogs.getAll({ page: nextPage, per_page: LOGS_PER_PAGE, search: searchTerm });
             setLogs(prev => [...prev, ...newLogs]);
             setHasMore(newHasMore);
-            setCurrentPage(nextPage);
+            setCurrentPageNum(nextPage);
         } catch(err) {
             setFetchError('فشل في تحميل المزيد من السجلات.');
         } finally {
@@ -132,72 +140,68 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger })
     };
 
     if (loading && logs.length === 0) return <CenteredLoadingSpinner />;
-    if (fetchError && logs.length === 0) {
-        return <div className="text-center py-16 text-red-500 dark:text-red-400 bg-white dark:bg-slate-800 rounded-xl shadow-md"><p>{fetchError}</p></div>;
-    }
-
+    
     return (
         <div>
-            <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
                 <StatCard title="إجمالي الأطباء" value={stats.doctors} icon={UsersIcon} />
                 <StatCard title="إجمالي المرضى" value={stats.patients} icon={UserGroupIcon} />
                 <StatCard title="مواعيد اليوم" value={stats.appointments} icon={CalendarIcon} />
+                <StatCard title="ارشيف الاحداث" value="عرض" icon={DocumentTextIcon} onClick={() => setCurrentPage('activity-archives')} />
             </div>
-            <div className="mt-8 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md">
-                <h2 className="text-xl font-semibold mb-4 dark:text-gray-100">النشاط الأخير</h2>
-                 <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                    <div className="relative flex-grow">
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                            <SearchIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-                        </div>
-                        <input
-                            type="text"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="ابحث بالوصف، اسم المريض أو المستخدم..."
-                            className="w-full pl-3 pr-10 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                        />
-                    </div>
-                    <input
-                        type="date"
-                        value={dateFilter}
-                        onChange={(e) => setDateFilter(e.target.value)}
-                        className="px-3 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                    />
+            <div className="mt-8 bg-white dark:bg-slate-800 rounded-xl shadow-md">
+                 <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                    <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">النشاط الأخير</h2>
                 </div>
-                
-                {loading && logs.length === 0 ? <CenteredLoadingSpinner /> : logs.length > 0 ? (
-                    <div className="space-y-4">
-                        {logs.map(log => (
-                            <div key={log.id} className="flex items-start space-x-4 rtl:space-x-reverse p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50">
-                                <ActionIcon action={log.actionType} />
-                                <div className="flex-grow">
-                                    <p className="text-sm text-gray-800 dark:text-gray-200">{log.description}</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                        بواسطة {log.userName} &bull; {new Date(log.timestamp).toLocaleString('ar-SA', { dateStyle: 'medium', timeStyle: 'short' })}
-                                    </p>
-                                </div>
+                <div className="p-6">
+                    <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                        <div className="relative flex-grow">
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                <SearchIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
                             </div>
-                        ))}
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="ابحث بالوصف، اسم المريض أو المستخدم..."
+                                className="w-full pl-3 pr-10 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                            />
+                        </div>
                     </div>
-                ) : (
-                    <div className="text-center py-10 text-gray-500 dark:text-gray-400">
-                        <p>لا يوجد نشاط يطابق بحثك.</p>
-                    </div>
-                )}
-                {fetchError && <p className="text-center text-sm text-red-500 mt-4">{fetchError}</p>}
+                    
+                    {loading && logs.length === 0 ? <CenteredLoadingSpinner /> : logs.length > 0 ? (
+                        <div className="space-y-4">
+                            {logs.map(log => (
+                                <div key={log.id} className="flex items-start space-x-4 rtl:space-x-reverse p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                                    <ActionIcon action={log.actionType} />
+                                    <div className="flex-grow">
+                                        <p className="text-sm text-gray-800 dark:text-gray-200">{log.description}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                            بواسطة {log.userName} &bull; {new Date(log.timestamp).toLocaleString('ar-SA', { dateStyle: 'medium', timeStyle: 'short' })}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-10 text-gray-500 dark:text-gray-400">
+                            <p>لا يوجد نشاط يطابق بحثك.</p>
+                        </div>
+                    )}
+                    {fetchError && <p className="text-center text-sm text-red-500 mt-4">{fetchError}</p>}
 
-                {hasMore && (
-                    <div className="mt-6 text-center">
-                        <button
-                            onClick={handleShowMore}
-                            disabled={loadingMore}
-                            className="px-6 py-2 bg-primary text-white font-semibold rounded-lg shadow-md hover:bg-primary-700 transition-colors disabled:bg-primary-300 disabled:cursor-not-allowed"
-                        >
-                            {loadingMore ? 'جاري التحميل...' : 'عرض المزيد'}
-                        </button>
-                    </div>
-                )}
+                    {hasMore && (
+                        <div className="mt-6 text-center">
+                            <button
+                                onClick={handleShowMore}
+                                disabled={loadingMore}
+                                className="px-6 py-2 bg-primary text-white font-semibold rounded-lg shadow-md hover:bg-primary-700 transition-colors disabled:bg-primary-300 disabled:cursor-not-allowed"
+                            >
+                                {loadingMore ? 'جاري التحميل...' : 'عرض المزيد'}
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

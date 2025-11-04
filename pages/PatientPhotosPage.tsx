@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Patient, PatientPhoto, CreatePatientPhotosPayload } from '../types';
+import { Patient, PatientPhoto, CreatePatientPhotosPayload, User } from '../types';
 import { api } from '../services/api';
 import { CenteredLoadingSpinner } from '../components/LoadingSpinner';
-import { PlusIcon, PencilIcon, TrashIcon, XIcon, ArrowBackIcon, PhotographIcon, MinusIcon, ResetIcon } from '../components/Icons';
+import { PlusIcon, PencilIcon, TrashIcon, XIcon, ArrowBackIcon, PhotographIcon, MinusIcon, ResetIcon, ArrowDownOnSquareIcon } from '../components/Icons';
 
 
 // ===================================================================
@@ -209,17 +209,47 @@ interface ImageViewerModalProps {
     onClose: () => void;
 }
 
+const getDistance = (touches: React.TouchList): number => {
+    const [touch1, touch2] = [touches[0], touches[1]];
+    return Math.sqrt(
+      Math.pow(touch2.clientX - touch1.clientX, 2) +
+      Math.pow(touch2.clientY - touch1.clientY, 2)
+    );
+  };
+  
+  const getMidpoint = (touches: React.TouchList): { x: number; y: number } => {
+    const [touch1, touch2] = [touches[0], touches[1]];
+    return {
+      x: (touch1.clientX + touch2.clientX) / 2,
+      y: (touch1.clientY + touch2.clientY) / 2,
+    };
+  };
+
 const ImageViewerModal: React.FC<ImageViewerModalProps> = ({ imageUrl, onClose }) => {
     const [scale, setScale] = useState(1);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const [startDrag, setStartDrag] = useState({ x: 0, y: 0 });
-    const imageRef = useRef<HTMLImageElement>(null);
+    const [pinchDistance, setPinchDistance] = useState<number | null>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+
 
     const handleWheel = (e: React.WheelEvent) => {
         e.preventDefault();
         const newScale = e.deltaY > 0 ? scale / 1.1 : scale * 1.1;
-        setScale(Math.min(Math.max(0.5, newScale), 5));
+        const clampedScale = Math.min(Math.max(0.5, newScale), 5);
+    
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+    
+        const zoomPointOnScreenX = e.clientX - rect.left;
+        const zoomPointOnScreenY = e.clientY - rect.top;
+    
+        const newPosX = zoomPointOnScreenX - (zoomPointOnScreenX - position.x) * (clampedScale / scale);
+        const newPosY = zoomPointOnScreenY - (zoomPointOnScreenY - position.y) * (clampedScale / scale);
+    
+        setScale(clampedScale);
+        setPosition({ x: newPosX, y: newPosY });
     };
 
     const handleMouseDown = (e: React.MouseEvent) => {
@@ -245,6 +275,59 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({ imageUrl, onClose }
         setIsDragging(false);
     };
 
+    const handleTouchStart = (e: React.TouchEvent) => {
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            setIsDragging(false);
+            setPinchDistance(getDistance(e.touches));
+        } else if (e.touches.length === 1) {
+            setIsDragging(true);
+            setStartDrag({
+                x: e.touches[0].clientX - position.x,
+                y: e.touches[0].clientY - position.y,
+            });
+        }
+    };
+    
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (e.touches.length === 2 && pinchDistance !== null) {
+            e.preventDefault();
+            const newDistance = getDistance(e.touches);
+            const scaleRatio = newDistance / pinchDistance;
+            const newScale = Math.min(Math.max(0.5, scale * scaleRatio), 5);
+            
+            const midpoint = getMidpoint(e.touches);
+            const rect = containerRef.current?.getBoundingClientRect();
+            if (!rect) return;
+    
+            const zoomPointOnScreenX = midpoint.x - rect.left;
+            const zoomPointOnScreenY = midpoint.y - rect.top;
+    
+            const newPosX = zoomPointOnScreenX - (zoomPointOnScreenX - position.x) * (newScale / scale);
+            const newPosY = zoomPointOnScreenY - (zoomPointOnScreenY - position.y) * (newScale / scale);
+    
+            setScale(newScale);
+            setPosition({ x: newPosX, y: newPosY });
+            setPinchDistance(newDistance);
+    
+        } else if (isDragging && e.touches.length === 1) {
+            setPosition({
+                x: e.touches[0].clientX - startDrag.x,
+                y: e.touches[0].clientY - startDrag.y,
+            });
+        }
+    };
+    
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        if (e.touches.length < 2) {
+            setPinchDistance(null);
+        }
+        if (e.touches.length < 1) {
+            setIsDragging(false);
+        }
+    };
+
+
     const reset = () => {
         setScale(1);
         setPosition({ x: 0, y: 0 });
@@ -259,19 +342,23 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({ imageUrl, onClose }
             onClick={onClose}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
         >
             <div 
+                ref={containerRef}
                 className="relative w-full h-full flex justify-center items-center overflow-hidden"
                 onWheel={handleWheel}
                 onClick={e => e.stopPropagation()}
+                onTouchStart={handleTouchStart}
             >
                 <img
-                    ref={imageRef}
                     src={imageUrl}
                     alt="Full screen view"
-                    className={`max-w-none max-h-none transition-transform duration-100 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                    className={`max-w-[90vw] max-h-[90vh] object-contain transition-transform duration-100 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
                     style={{
                         transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+                        touchAction: 'none'
                     }}
                     onMouseDown={handleMouseDown}
                     onMouseLeave={handleMouseUp}
@@ -284,9 +371,9 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({ imageUrl, onClose }
                 </button>
             </div>
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 bg-gray-800 bg-opacity-50 text-white rounded-full">
-                <button onClick={zoomOut} className="p-2 hover:bg-gray-700 rounded-full focus:outline-none"><MinusIcon className="w-6 h-6" /></button>
-                <button onClick={reset} className="p-2 hover:bg-gray-700 rounded-full focus:outline-none"><ResetIcon className="w-6 h-6" /></button>
-                <button onClick={zoomIn} className="p-2 hover:bg-gray-700 rounded-full focus:outline-none"><PlusIcon className="w-6 h-6" /></button>
+                <button onClick={(e) => { e.stopPropagation(); zoomOut(); }} className="p-2 hover:bg-gray-700 rounded-full focus:outline-none"><MinusIcon className="w-6 h-6" /></button>
+                <button onClick={(e) => { e.stopPropagation(); reset(); }} className="p-2 hover:bg-gray-700 rounded-full focus:outline-none"><ResetIcon className="w-6 h-6" /></button>
+                <button onClick={(e) => { e.stopPropagation(); zoomIn(); }} className="p-2 hover:bg-gray-700 rounded-full focus:outline-none"><PlusIcon className="w-6 h-6" /></button>
             </div>
         </div>
     );
@@ -297,11 +384,12 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({ imageUrl, onClose }
 // ===================================================================
 interface PatientPhotosPageProps {
     patient: Patient;
+    user: User;
     onBack: () => void;
     refreshTrigger: number;
 }
 
-const PatientPhotosPage: React.FC<PatientPhotosPageProps> = ({ patient, onBack, refreshTrigger }) => {
+const PatientPhotosPage: React.FC<PatientPhotosPageProps> = ({ patient, user, onBack, refreshTrigger }) => {
     const [photos, setPhotos] = useState<PatientPhoto[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
@@ -323,9 +411,9 @@ const PatientPhotosPage: React.FC<PatientPhotosPageProps> = ({ patient, onBack, 
 
     const handleSavePhoto = async (data: PatientPhoto | CreatePatientPhotosPayload) => {
         if ('id' in data) {
-            await api.patientPhotos.update(data.id, data);
+            await api.patientPhotos.update(data.id, data, user.id);
         } else {
-            await api.patientPhotos.create(data);
+            await api.patientPhotos.create(data, user.id);
         }
         setIsAdding(false);
         setEditingPhoto(null);
@@ -336,7 +424,7 @@ const PatientPhotosPage: React.FC<PatientPhotosPageProps> = ({ patient, onBack, 
         if (deletingPhoto) {
             setIsDeleting(true);
             try {
-                await api.patientPhotos.delete(deletingPhoto.id);
+                await api.patientPhotos.delete(deletingPhoto.id, user.id);
                 setDeletingPhoto(null);
                 await fetchPhotos();
             } catch (error) {
@@ -346,6 +434,23 @@ const PatientPhotosPage: React.FC<PatientPhotosPageProps> = ({ patient, onBack, 
             }
         }
     };
+    
+    const handleDownload = (imageUrl: string, filename: string) => {
+        try {
+            const a = document.createElement('a');
+            a.href = imageUrl;
+            a.download = filename;
+            a.target = '_blank'; // Open in new tab as a fallback for cross-origin
+            a.rel = 'noopener noreferrer';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error('Download failed:', error);
+            alert('فشل تحميل الصورة. يرجى المحاولة مرة أخرى.');
+        }
+    };
+
 
     return (
         <div>
@@ -369,11 +474,25 @@ const PatientPhotosPage: React.FC<PatientPhotosPageProps> = ({ patient, onBack, 
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                         {photos.map(photo => (
                             <div key={photo.id} className="border bg-gray-50 dark:bg-gray-800 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-shadow">
-                                <img src={photo.imageUrl} alt={photo.caption} className="w-full h-48 object-cover cursor-pointer" onClick={() => setViewingPhotoUrl(photo.imageUrl)} />
+                                <img
+                                    src={photo.imageUrl}
+                                    alt={photo.caption}
+                                    className="w-full h-48 object-cover cursor-pointer"
+                                    onClick={() => setViewingPhotoUrl(photo.imageUrl)}
+                                    loading="lazy"
+                                    decoding="async"
+                                />
                                 <div className="p-4">
                                     <p className="font-semibold text-gray-800 dark:text-gray-100">{photo.caption || "بدون تعليق"}</p>
                                     <p className="text-sm text-gray-500 dark:text-gray-400">{new Date(photo.date).toLocaleDateString()}</p>
                                     <div className="mt-4 flex justify-end gap-2">
+                                        <button 
+                                            onClick={() => handleDownload(photo.imageUrl, `patient_${patient.code}_photo_${photo.id}.jpg`)}
+                                            className="p-2 rounded-full hover:bg-green-100 dark:hover:bg-green-900/40 text-green-600 dark:text-green-400"
+                                            title="تحميل الصورة"
+                                        >
+                                            <ArrowDownOnSquareIcon className="h-5 w-5" />
+                                        </button>
                                         <button onClick={() => setEditingPhoto(photo)} className="p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
                                         <button onClick={() => setDeletingPhoto(photo)} className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400" title="حذف"><TrashIcon className="h-5 w-5" /></button>
                                     </div>

@@ -6,6 +6,39 @@ import LoadingSpinner, { CenteredLoadingSpinner } from '../components/LoadingSpi
 
 // This file contains components related to the patient's treatment plan.
 
+interface ConfirmDeleteModalProps {
+    onConfirm: () => void;
+    onCancel: () => void;
+    title: string;
+    message: string;
+    isDeleting?: boolean;
+}
+
+const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCancel, title, message, isDeleting }) => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 transition-opacity" onClick={onCancel}>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+                <div className="text-center">
+                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30">
+                        <TrashIcon className="h-6 w-6 text-red-600 dark:text-red-400" aria-hidden="true" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-4">{title}</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 px-4">{message}</p>
+                </div>
+            </div>
+            <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex justify-center gap-4">
+                <button type="button" onClick={onConfirm} disabled={isDeleting} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-red-400 disabled:cursor-not-allowed">
+                    {isDeleting ? 'جاري الحذف...' : 'نعم، قم بالحذف'}
+                </button>
+                <button type="button" onClick={onCancel} disabled={isDeleting} className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                    إلغاء
+                </button>
+            </div>
+        </div>
+    </div>
+);
+
+
 // Interface for a session within the plan editor
 interface PlanSession {
     id?: string; // for tracking existing sessions
@@ -91,6 +124,8 @@ const PatientPlanPage: React.FC<PatientPlanPageProps> = ({ patient, user, onBack
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [expandedSessions, setExpandedSessions] = useState<string[]>([]);
+    const [sessionToDelete, setSessionToDelete] = useState<PlanSession | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const toggleSessionExpansion = (clientId: string) => {
         setExpandedSessions(prev =>
@@ -136,13 +171,12 @@ const PatientPlanPage: React.FC<PatientPlanPageProps> = ({ patient, user, onBack
 
     const handleAddSession = () => {
         let defaultDoctorId = '';
-        if (user.role === UserRole.Doctor) {
-            // If the logged-in user is a doctor, they are the default
+        if (user.role === UserRole.Doctor && patient.doctorIds.includes(user.id)) {
             defaultDoctorId = user.id;
-        } else {
-            // For other roles, pick the first doctor assigned to the patient
-            defaultDoctorId = patient.doctorIds[0] || '';
+        } else if (patient.doctorIds.length > 0) {
+            defaultDoctorId = patient.doctorIds[0];
         }
+
 
         const newSession: PlanSession = {
             clientId: `new-${Date.now()}`,
@@ -161,9 +195,31 @@ const PatientPlanPage: React.FC<PatientPlanPageProps> = ({ patient, user, onBack
         setPlanSessions(prev => prev.map(s => s.clientId === clientId ? { ...s, [field]: value } : s));
     };
 
-    const handleRemoveSession = (clientId: string) => {
-        if(window.confirm("هل أنت متأكد من حذف هذه الجلسة من الخطة؟")) {
-            setPlanSessions(prev => prev.filter(s => s.clientId !== clientId));
+    const handleRemoveSessionClick = (session: PlanSession) => {
+        setSessionToDelete(session);
+    };
+
+    const confirmDeleteSession = async () => {
+        if (!sessionToDelete) return;
+    
+        if (sessionToDelete.clientId.startsWith('new-')) {
+            setPlanSessions(prev => prev.filter(s => s.clientId !== sessionToDelete.clientId));
+            setSessionToDelete(null);
+            return;
+        }
+    
+        if (sessionToDelete.id) {
+            setIsDeleting(true);
+            try {
+                await api.sessions.delete(sessionToDelete.id);
+                await fetchPlanData();
+            } catch (err) {
+                console.error("Failed to delete session:", err);
+                alert("فشل حذف الجلسة.");
+            } finally {
+                setIsDeleting(false);
+                setSessionToDelete(null);
+            }
         }
     };
 
@@ -250,7 +306,7 @@ const PatientPlanPage: React.FC<PatientPlanPageProps> = ({ patient, user, onBack
                     }
                 }
             }
-            await api.patients.updateCompletionStatus(patient.id, user.id);
+            await Zi(patient.id, user.id);
             alert("تم حفظ الخطة بنجاح!");
             onBack();
         } catch (err) {
@@ -273,6 +329,11 @@ const PatientPlanPage: React.FC<PatientPlanPageProps> = ({ patient, user, onBack
 
     return (
         <div>
+            {saving && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 z-[100] flex justify-center items-center">
+                    <CenteredLoadingSpinner />
+                </div>
+            )}
             {/* Header */}
             <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
                  <div className="flex items-center gap-4">
@@ -317,8 +378,9 @@ const PatientPlanPage: React.FC<PatientPlanPageProps> = ({ patient, user, onBack
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <button 
-                                        onClick={(e) => { e.stopPropagation(); handleRemoveSession(session.clientId); }} 
-                                        className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40" 
+                                        onClick={(e) => { e.stopPropagation(); handleRemoveSessionClick(session); }} 
+                                        disabled={saving || isDeleting}
+                                        className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 disabled:opacity-50" 
                                         title="حذف الجلسة"
                                     >
                                         <TrashIcon className="h-5 w-5" />
@@ -336,18 +398,9 @@ const PatientPlanPage: React.FC<PatientPlanPageProps> = ({ patient, user, onBack
                                         </div>
                                          <div>
                                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الطبيب</label>
-                                            {user.role === UserRole.Doctor ? (
-                                                <input 
-                                                    type="text" 
-                                                    value={getDoctorName(session.doctorId)} 
-                                                    readOnly 
-                                                    className={inputStyle + " bg-gray-100 dark:bg-gray-800 cursor-not-allowed"} 
-                                                />
-                                            ) : (
-                                                <select value={session.doctorId} onChange={(e) => handleSessionChange(session.clientId, 'doctorId', e.target.value)} className={inputStyle}>
-                                                    {patientDoctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                                </select>
-                                            )}
+                                            <select value={session.doctorId} onChange={(e) => handleSessionChange(session.clientId, 'doctorId', e.target.value)} className={inputStyle}>
+                                                 {patientDoctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                            </select>
                                         </div>
                                          <div>
                                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاريخ الجلسة</label>
@@ -398,8 +451,16 @@ const PatientPlanPage: React.FC<PatientPlanPageProps> = ({ patient, user, onBack
             >
                 <PlusIcon className="h-6 w-6" />
             </button>
+            {sessionToDelete && (
+                <ConfirmDeleteModal
+                    title="حذف الجلسة"
+                    message={`هل أنت متأكد من حذف هذه الجلسة "${sessionToDelete.title}" من الخطة؟`}
+                    onConfirm={confirmDeleteSession}
+                    onCancel={() => !isDeleting && setSessionToDelete(null)}
+                    isDeleting={isDeleting}
+                />
+            )}
         </div>
     );
 };
-// FIX: Added default export to resolve the import error in App.tsx.
 export default PatientPlanPage;

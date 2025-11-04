@@ -456,7 +456,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDoctorId, setSelectedDoctorId] = useState('');
     const isDoctor = user.role === UserRole.Doctor;
-    const [statusFilter, setStatusFilter] = useState('all');
+    const [statusFilter, setStatusFilter] = useState(isDoctor ? 'incomplete' : 'all');
     const [page, setPage] = useState(1);
     const [isPrinting, setIsPrinting] = useState<string | null>(null);
     const [patientToPrint, setPatientToPrint] = useState<Patient | null>(null);
@@ -516,6 +516,12 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                 case 'complete_paid':
                     apiParams.completed = '1';
                     apiParams.payment_completed = '1';
+                    break;
+                case 'complete':
+                    apiParams.completed = '1';
+                    break;
+                case 'incomplete':
+                    apiParams.completed = '0';
                     break;
                 case 'all':
                     // No specific status filters
@@ -812,10 +818,19 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                             className="w-full sm:w-48 px-3 py-2 pr-8 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary appearance-none"
                             aria-label="تصفية حسب الحالة"
                         >
-                            <option value="all">كل الحالات</option>
-                            <option value="incomplete_unpaid">غير مكتمل وغير مسدد</option>
-                            <option value="complete_unpaid">مكتمل وغير مسدد</option>
-                            <option value="complete_paid">مكتمل ومسدد</option>
+                            {isDoctor ? (
+                                <>
+                                    <option value="incomplete">غير مكتمل</option>
+                                    <option value="complete">مكتمل</option>
+                                </>
+                            ) : (
+                                <>
+                                    <option value="all">كل الحالات</option>
+                                    <option value="incomplete_unpaid">غير مكتمل وغير مسدد</option>
+                                    <option value="complete_unpaid">مكتمل وغير مسدد</option>
+                                    <option value="complete_paid">مكتمل ومسدد</option>
+                                </>
+                            )}
                         </select>
                     </div>
                      {(user.role === UserRole.Admin || user.role === UserRole.SubManager || user.role === UserRole.Secretary || user.role === UserRole.Doctor) && (
@@ -857,15 +872,15 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                                             </div>
                                         </div>
                                         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-                                            <div className="flex items-center justify-between flex-wrap gap-y-2">
-                                                <div className="flex items-center gap-2">
+                                            <div className="flex flex-col gap-3">
+                                                <div className="flex items-center justify-start gap-2">
                                                     <button onClick={() => setEditingPatient(p)} className="p-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
                                                     {(user.role === UserRole.Admin || user.role === UserRole.SubManager) && (
                                                         <button onClick={() => setDeletingPatient(p)} className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف"><TrashIcon className="h-5 w-5" /></button>
                                                     )}
                                                     <button onClick={() => onViewDetails(p)} className="p-2 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600" title="تفاصيل"><EyeIcon className="h-5 w-5" /></button>
                                                 </div>
-                                                <div className="flex items-center flex-wrap justify-end gap-2">
+                                                <div className="flex items-center flex-wrap justify-start gap-2">
                                                     <button onClick={() => onViewSessions(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-teal-100 dark:bg-teal-900/40 text-teal-800 dark:text-teal-300 rounded-md hover:bg-teal-200 dark:hover:bg-teal-900/60"><BeakerIcon className="h-4 w-4" /><span>الجلسات</span></button>
                                                     {!isDoctor && (
                                                         <button onClick={() => onViewFinancial(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 rounded-md hover:bg-green-200 dark:hover:bg-green-900/60"><CurrencyDollarIcon className="h-4 w-4" /><span>المالية</span></button>

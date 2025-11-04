@@ -166,9 +166,10 @@ interface ConfirmTreatmentDeleteModalProps {
     onCancel: () => void;
     title: string;
     message: string;
+    isDeleting?: boolean;
 }
 
-const ConfirmTreatmentDeleteModal: React.FC<ConfirmTreatmentDeleteModalProps> = ({ onConfirm, onCancel, title, message }) => (
+const ConfirmTreatmentDeleteModal: React.FC<ConfirmTreatmentDeleteModalProps> = ({ onConfirm, onCancel, title, message, isDeleting }) => (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 transition-opacity" onClick={onCancel}>
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
             <div className="p-6">
@@ -181,10 +182,10 @@ const ConfirmTreatmentDeleteModal: React.FC<ConfirmTreatmentDeleteModalProps> = 
                 </div>
             </div>
             <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex justify-center gap-4">
-                <button type="button" onClick={onConfirm} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                    نعم، قم بالحذف
+                <button type="button" onClick={onConfirm} disabled={isDeleting} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-red-400 disabled:cursor-not-allowed">
+                    {isDeleting ? 'جاري الحذف...' : 'نعم، قم بالحذف'}
                 </button>
-                <button type="button" onClick={onCancel} className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                <button type="button" onClick={onCancel} disabled={isDeleting} className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed">
                     إلغاء
                 </button>
             </div>
@@ -276,6 +277,7 @@ const TreatmentsSettingsSection: React.FC<{ user: User, refreshTrigger: number }
     const [isAdding, setIsAdding] = useState(false);
     const [editingTreatment, setEditingTreatment] = useState<Treatment | null>(null);
     const [deletingTreatment, setDeletingTreatment] = useState<Treatment | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
     const fetchTreatments = useCallback(async () => {
@@ -318,12 +320,15 @@ const TreatmentsSettingsSection: React.FC<{ user: User, refreshTrigger: number }
 
     const confirmDelete = async () => {
         if (deletingTreatment) {
+            setIsDeleting(true);
             try {
                 await api.treatmentSettings.delete(deletingTreatment.id);
                 setDeletingTreatment(null);
                 await fetchTreatments();
             } catch (error) {
                 alert(`فشل حذف العلاج: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+            } finally {
+                setIsDeleting(false);
             }
         }
     };
@@ -400,7 +405,8 @@ const TreatmentsSettingsSection: React.FC<{ user: User, refreshTrigger: number }
                     title="حذف العلاج"
                     message={`هل أنت متأكد من رغبتك في حذف ${deletingTreatment.name}؟ لا يمكن التراجع عن هذا الإجراء.`}
                     onConfirm={confirmDelete}
-                    onCancel={() => setDeletingTreatment(null)}
+                    onCancel={() => !isDeleting && setDeletingTreatment(null)}
+                    isDeleting={isDeleting}
                 />
             )}
         </div>

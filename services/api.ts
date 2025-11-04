@@ -1,6 +1,6 @@
 // FIX: Removed 'SubManager' from import as it is not an exported member of '../types'.
 import { User, UserRole, Patient, Treatment, Session, Appointment, Payment, DoctorAvailability, SessionTreatment, Gender, DaySchedule, PatientPhoto, ActivityLog, ActivityLogActionType, CreatePatientPhotosPayload } from '../types';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL } from '../appSettings';
 import { db } from './db';
 
 export class ApiError extends Error {
@@ -826,32 +826,34 @@ export const api = {
                 return db.patient_photos.toArray();
             }
         },
-        create: async (item: CreatePatientPhotosPayload): Promise<void> => {
+        create: async (item: CreatePatientPhotosPayload, userId: string): Promise<void> => {
              // Offline photo upload is complex and not implemented in this pass
             if (!navigator.onLine) {
                 alert('لا يمكن رفع الصور أثناء عدم الاتصال بالإنترنت.');
                 throw new Error('Offline');
             }
             const formData = new FormData();
+            formData.append('user_id', userId);
             formData.append('patient_id', item.patientId);
             item.imageUrls.forEach((dataUrl, index) => { if (dataUrl.startsWith('data:image')) { const blob = dataUrlToBlob(dataUrl); formData.append('images[]', blob, `upload_${index}.${blob.type.split('/')[1] || 'jpg'}`); } });
             item.captions.forEach((caption) => { formData.append('captions[]', caption || ''); });
             await performApiFetch('patient_photos/add', { method: 'POST', body: formData });
         },
-        // update and delete omitted for brevity
-        update: async (id: string, updates: Partial<PatientPhoto>): Promise<void> => {
+        update: async (id: string, updates: Partial<PatientPhoto>, userId: string): Promise<void> => {
             const formData = new FormData();
+            formData.append('user_id', userId);
             formData.append('id', id);
             if(updates.patientId) formData.append('patient_id', updates.patientId);
-            if(updates.caption) formData.append('captions[]', updates.caption);
+            if(updates.caption) formData.append('caption', updates.caption);
             if (updates.imageUrl && updates.imageUrl.startsWith('data:image')) {
                 const blob = dataUrlToBlob(updates.imageUrl);
-                formData.append('images[]', blob, `upload_0.${blob.type.split('/')[1] || 'jpg'}`);
+                formData.append('image', blob, `upload_0.${blob.type.split('/')[1] || 'jpg'}`);
             }
             await performApiFetch('patient_photos/edit', { method: 'POST', body: formData });
         },
-        delete: async (id: string): Promise<boolean> => {
+        delete: async (id: string, userId: string): Promise<boolean> => {
             const formData = new FormData();
+            formData.append('user_id', userId);
             formData.append('id', id);
             await performApiFetch('patient_photos/delete', { method: 'POST', body: formData });
             return true;
@@ -872,6 +874,24 @@ export const api = {
             } catch (e) {
                 const logs = await db.activity_logs.toArray();
                 return { logs, hasMore: false };
+            }
+        },
+    },
+    activityArchives: {
+        getAll: async(params: { page: number; per_page: number; date?: string; }): Promise<{logs: ActivityLog[], total: number, last_page: number}> => {
+            try {
+                 const formData = new FormData();
+                 formData.append('page', String(params.page || 1));
+                 formData.append('per_page', String(params.per_page || 10));
+                 if (params.date) formData.append('date', params.date);
+                 const data = await performApiFetch('activity-archives/all', { method: 'POST', body: formData });
+                 if (!data || !Array.isArray(data.data)) {
+                     throw new Error('Invalid API response for activity archives');
+                 }
+                 return { logs: data.data.map(mapApiActivityLog), total: data.total, last_page: data.last_page };
+            } catch (e) {
+                console.error("Failed to fetch activity archives:", e);
+                throw e;
             }
         },
     },

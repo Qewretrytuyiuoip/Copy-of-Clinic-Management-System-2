@@ -7,13 +7,15 @@ import DashboardSecretary from '../components/dashboards/DashboardSecretary';
 interface DashboardPageProps {
     user: User;
     refreshTrigger: number;
+    setCurrentPage: (page: string) => void;
 }
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ user, refreshTrigger }) => {
+const DashboardPage: React.FC<DashboardPageProps> = ({ user, refreshTrigger, setCurrentPage }) => {
     const renderDashboard = () => {
         switch (user.role) {
             case UserRole.Admin:
-                return <DashboardAdmin user={user} refreshTrigger={refreshTrigger} />;
+            case UserRole.SubManager:
+                return <DashboardAdmin user={user} refreshTrigger={refreshTrigger} setCurrentPage={setCurrentPage} />;
             case UserRole.Doctor:
                 return <DashboardDoctor user={user} refreshTrigger={refreshTrigger} />;
             case UserRole.Secretary:

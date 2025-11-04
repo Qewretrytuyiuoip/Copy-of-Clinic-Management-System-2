@@ -1,6 +1,3 @@
-
-
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { User, Patient, Session, SessionTreatment, Treatment, UserRole } from '../types';
 import { api } from '../services/api';
@@ -16,9 +13,10 @@ interface ConfirmDeleteModalProps {
     onCancel: () => void;
     title: string;
     message: string;
+    isDeleting?: boolean;
 }
 
-const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCancel, title, message }) => (
+const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCancel, title, message, isDeleting }) => (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 transition-opacity" onClick={onCancel}>
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
             <div className="p-6">
@@ -31,10 +29,10 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCa
                 </div>
             </div>
             <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex justify-center gap-4">
-                <button type="button" onClick={onConfirm} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                    نعم، قم بالحذف
+                <button type="button" onClick={onConfirm} disabled={isDeleting} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-red-400 disabled:cursor-not-allowed">
+                    {isDeleting ? 'جاري الحذف...' : 'نعم، قم بالحذف'}
                 </button>
-                <button type="button" onClick={onCancel} className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                <button type="button" onClick={onCancel} disabled={isDeleting} className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed">
                     إلغاء
                 </button>
             </div>
@@ -523,6 +521,7 @@ const PatientSessionsPage: React.FC<PatientSessionsPageProps> = ({ patient, onBa
     const [viewingTreatment, setViewingTreatment] = useState<SessionTreatment | null>(null);
     const [viewingTreatmentsForSession, setViewingTreatmentsForSession] = useState<Session | null>(null);
     const [updatingTreatmentId, setUpdatingTreatmentId] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const getDoctorName = (doctorId: string) => doctors.find(d => d.id === doctorId)?.name || 'غير معروف';
 
@@ -601,9 +600,14 @@ const PatientSessionsPage: React.FC<PatientSessionsPageProps> = ({ patient, onBa
 
     const confirmDeleteSession = async () => {
         if (sessionToDelete) {
-            await api.sessions.delete(sessionToDelete.id);
-            setSessionToDelete(null);
-            await fetchPageData();
+            setIsDeleting(true);
+            try {
+                await api.sessions.delete(sessionToDelete.id);
+                setSessionToDelete(null);
+                await fetchPageData();
+            } finally {
+                setIsDeleting(false);
+            }
         }
     };
 
@@ -631,10 +635,15 @@ const PatientSessionsPage: React.FC<PatientSessionsPageProps> = ({ patient, onBa
 
     const confirmDeleteTreatment = async () => {
         if (treatmentToDelete) {
-            const sessionId = treatmentToDelete.sessionId;
-            await api.sessionTreatments.delete(treatmentToDelete.instanceId);
-            setTreatmentToDelete(null);
-            await reevaluateSessionStatus(sessionId);
+            setIsDeleting(true);
+            try {
+                const sessionId = treatmentToDelete.sessionId;
+                await api.sessionTreatments.delete(treatmentToDelete.instanceId);
+                setTreatmentToDelete(null);
+                await reevaluateSessionStatus(sessionId);
+            } finally {
+                setIsDeleting(false);
+            }
         }
     };
 
@@ -806,10 +815,10 @@ const PatientSessionsPage: React.FC<PatientSessionsPageProps> = ({ patient, onBa
             
             {isAddingSession && <AddSessionModal onSave={handleCreateSession} onClose={() => setIsAddingSession(false)} patientId={patient.id} doctors={doctors} user={user} patient={patient} />}
             {editingSession && <EditSessionModal session={editingSession} onSave={handleUpdateSession} onClose={() => setEditingSession(null)} />}
-            {sessionToDelete && <ConfirmDeleteModal title="حذف الجلسة" message="هل أنت متأكد من حذف هذه الجلسة وجميع علاجاتها؟" onConfirm={confirmDeleteSession} onCancel={() => setSessionToDelete(null)} />}
+            {sessionToDelete && <ConfirmDeleteModal title="حذف الجلسة" message="هل أنت متأكد من حذف هذه الجلسة وجميع علاجاتها؟" onConfirm={confirmDeleteSession} onCancel={() => !isDeleting && setSessionToDelete(null)} isDeleting={isDeleting} />}
             {addingTreatmentToSession && <AddTreatmentToSessionModal session={addingTreatmentToSession} onSave={handleSaveTreatment} onClose={() => setAddingTreatmentToSession(null)} user={user} />}
             {editingTreatment && <EditSessionTreatmentModal treatment={editingTreatment} onSave={handleUpdateTreatment} onClose={() => setEditingTreatment(null)} user={user} />}
-            {treatmentToDelete && <ConfirmDeleteModal title="حذف العلاج" message={`هل أنت متأكد من حذف علاج "${treatmentToDelete.name}" من الجلسة؟`} onConfirm={confirmDeleteTreatment} onCancel={() => setTreatmentToDelete(null)} />}
+            {treatmentToDelete && <ConfirmDeleteModal title="حذف العلاج" message={`هل أنت متأكد من حذف علاج "${treatmentToDelete.name}" من الجلسة؟`} onConfirm={confirmDeleteTreatment} onCancel={() => !isDeleting && setTreatmentToDelete(null)} isDeleting={isDeleting} />}
             {viewingTreatment && <ViewTreatmentDetailsModal treatment={viewingTreatment} onClose={() => setViewingTreatment(null)} user={user} />}
         </div>
     );
