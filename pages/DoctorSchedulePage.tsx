@@ -192,18 +192,21 @@ const DoctorSchedulePage: React.FC<DoctorSchedulePageProps> = ({ user, refreshTr
                 ) : (
                     filteredAppointments.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {filteredAppointments.map(app => (
+                            {filteredAppointments.map(app => {
+                                const appDate = new Date(app.date);
+                                appDate.setMinutes(appDate.getMinutes() + appDate.getTimezoneOffset());
+                                return (
                                 <div key={app.id} className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col shadow-md transition-shadow hover:shadow-lg">
                                     <div className="flex-grow">
                                         <h3 className="text-xl font-bold text-primary">{getPatientName(app.patientId)}</h3>
                                         <div className="mt-3 space-y-2 text-gray-700 dark:text-gray-300">
-                                            <p className="flex items-center"><CalendarIcon className="h-5 w-5 ml-2 text-gray-500 dark:text-gray-400" /> {new Date(app.date).toLocaleDateString()}</p>
+                                            <p className="flex items-center"><CalendarIcon className="h-5 w-5 ml-2 text-gray-500 dark:text-gray-400" /> {`${appDate.getFullYear()}/${appDate.getMonth() + 1}/${appDate.getDate()}`}</p>
                                             <p className="flex items-center"><ClockIcon className="h-5 w-5 ml-2 text-gray-500 dark:text-gray-400" /> {formatTo12Hour(app.time)}</p>
                                         </div>
                                         {app.notes && <p className="mt-4 text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 p-3 rounded-md border dark:border-gray-600">ملاحظات: {app.notes}</p>}
                                     </div>
                                 </div>
-                            ))}
+                            )})}
                         </div>
                     ) : (
                         <div className="text-center text-gray-500 dark:text-gray-400 py-16 bg-white dark:bg-slate-800 rounded-xl shadow-md">

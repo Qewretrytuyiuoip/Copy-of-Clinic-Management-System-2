@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { User, Appointment, ActivityLog, ActivityLogActionType } from '../../types';
 import { api } from '../../services/api';
-import { UserGroupIcon, CalendarIcon, UsersIcon, PlusIcon, PencilIcon, TrashIcon, SearchIcon, DocumentTextIcon, XIcon } from '../Icons';
+import { UserGroupIcon, CalendarIcon, UsersIcon, PlusIcon, PencilIcon, TrashIcon, SearchIcon, DocumentTextIcon, XIcon, CurrencyDollarIcon } from '../Icons';
 import { CenteredLoadingSpinner } from '../LoadingSpinner';
 
 interface DashboardAdminProps {
@@ -128,10 +128,10 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger, s
                 setSearchTerm('');
 
             } catch (error) {
-                if (error instanceof Error && error.message.includes('Failed to fetch')) {
-                    setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');
+                if (error instanceof Error && (error.message.includes('Failed to fetch') || error.message.includes('Offline'))) {
+                    setFetchError('فشل جلب البيانات. يرجى التأكد من اتصالك بالإنترنت والمحاولة مرة أخرى.');
                 } else {
-                    setFetchError('حدث خطأ غير متوقع.');
+                    setFetchError('حدث خطأ غير متوقع أثناء تحميل بيانات لوحة التحكم.');
                     console.error("Failed to fetch admin dashboard data:", error);
                 }
             } finally {
@@ -179,16 +179,17 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger, s
         }
     };
 
-    if (loading && logs.length === 0) return <CenteredLoadingSpinner />;
+    if (loading && logs.length === 0 && isInitialMount.current) return <CenteredLoadingSpinner />;
     
     return (
         <div>
             {isModalOpen && <OnDutyDoctorsModal doctors={onDutyDoctors} onClose={() => setIsModalOpen(false)} />}
+             {fetchError && logs.length === 0 && <p className="text-center text-lg text-red-500 mb-4">{fetchError}</p>}
             <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
                 <StatCard title="الأطباء المداومون اليوم" value={stats.doctors} icon={UsersIcon} onClick={() => setIsModalOpen(true)} />
                 <StatCard title="المرضى الغير مكتملين" value={stats.patients} icon={UserGroupIcon} />
                 <StatCard title="مواعيد اليوم" value={stats.appointments} icon={CalendarIcon} />
-                <StatCard title="ارشيف الاحداث" value="عرض" icon={DocumentTextIcon} onClick={() => setCurrentPage('activity-archives')} />
+                <StatCard title="أرشيف الأحداث" value="عرض السجل" icon={DocumentTextIcon} onClick={() => setCurrentPage('activity-archives')} />
             </div>
             <div className="mt-8 bg-white dark:bg-slate-800 rounded-xl shadow-md">
                  <div className="p-6 border-b border-gray-200 dark:border-gray-700">
@@ -229,7 +230,7 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger, s
                             <p>لا يوجد نشاط يطابق بحثك.</p>
                         </div>
                     )}
-                    {fetchError && <p className="text-center text-sm text-red-500 mt-4">{fetchError}</p>}
+                    {fetchError && logs.length > 0 && <p className="text-center text-sm text-red-500 mt-4">{fetchError}</p>}
 
                     {hasMore && (
                         <div className="mt-6 text-center">

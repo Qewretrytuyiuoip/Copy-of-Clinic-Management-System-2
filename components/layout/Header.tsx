@@ -1,5 +1,5 @@
 import React from 'react';
-import { User } from '../../types';
+import { User, UserRole } from '../../types';
 import { MenuIcon, ResetIcon, ArrowDownOnSquareIcon } from '../Icons';
 import ThemeToggleButton from '../ThemeToggleButton';
 
@@ -8,9 +8,15 @@ interface HeaderProps {
     setSidebarOpen: (open: boolean) => void;
     onRefresh: () => void;
     pageName: string;
+    currentPage: string;
 }
 
-const Header: React.FC<HeaderProps> = ({ user, setSidebarOpen, onRefresh, pageName }) => {
+const Header: React.FC<HeaderProps> = ({ user, setSidebarOpen, onRefresh, pageName, currentPage }) => {
+    // The "Treatments" settings for admins/submanagers are part of the "Profile" page.
+    // The user requested to hide the refresh button on this page.
+    // We keep it for other roles on the profile page (like Doctors for their schedule).
+    const showRefreshButton = !(currentPage === 'profile' && (user.role === UserRole.Admin || user.role === UserRole.SubManager));
+
     return (
         <>
             <header className="relative flex items-center justify-between p-4 bg-white dark:bg-slate-800 border-b dark:border-gray-700">
@@ -27,13 +33,15 @@ const Header: React.FC<HeaderProps> = ({ user, setSidebarOpen, onRefresh, pageNa
                 </div>
                 <div className="flex items-center">
                     <ThemeToggleButton />
-                    <button
-                        onClick={onRefresh}
-                        className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-800 focus:ring-primary"
-                        aria-label="إعادة تحميل البيانات"
-                    >
-                        <ResetIcon className="h-6 w-6" />
-                    </button>
+                    {showRefreshButton && (
+                        <button
+                            onClick={onRefresh}
+                            className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-800 focus:ring-primary"
+                            aria-label="إعادة تحميل البيانات"
+                        >
+                            <ResetIcon className="h-6 w-6" />
+                        </button>
+                    )}
                 </div>
             </header>
         </>

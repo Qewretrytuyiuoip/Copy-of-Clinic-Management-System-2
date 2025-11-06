@@ -279,28 +279,30 @@ const TreatmentsSettingsSection: React.FC<{ user: User, refreshTrigger: number }
     const [deletingTreatment, setDeletingTreatment] = useState<Treatment | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [localRefresh, setLocalRefresh] = useState(0);
 
-    const fetchTreatments = useCallback(async () => {
-        setLoading(true);
-        setFetchError(null);
-        try {
-            const data = await api.treatmentSettings.getAll(true);
-            setTreatments(data);
-        } catch (error) {
-             if (error instanceof Error && error.message.includes('Failed to fetch')) {
-                setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');
-            } else {
-                setFetchError('حدث خطأ غير متوقع.');
-                console.error("Failed to fetch treatments:", error);
-            }
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+    const forceRefresh = () => setLocalRefresh(v => v + 1);
 
     useEffect(() => {
+        const fetchTreatments = async () => {
+            setLoading(true);
+            setFetchError(null);
+            try {
+                const data = await api.treatmentSettings.getAll(true);
+                setTreatments(data);
+            } catch (error) {
+                 if (error instanceof Error && error.message.includes('Failed to fetch')) {
+                    setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');
+                } else {
+                    setFetchError('حدث خطأ غير متوقع.');
+                    console.error("Failed to fetch treatments:", error);
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
         fetchTreatments();
-    }, [fetchTreatments, refreshTrigger]);
+    }, [refreshTrigger, localRefresh]);
 
     const handleSave = async (data: Omit<Treatment, 'id'> | Treatment) => {
         try {
@@ -311,7 +313,7 @@ const TreatmentsSettingsSection: React.FC<{ user: User, refreshTrigger: number }
             }
             setIsAdding(false);
             setEditingTreatment(null);
-            await fetchTreatments();
+            forceRefresh();
         } catch (error) {
             console.error(`Failed to save treatment:`, error);
             throw error;
@@ -324,7 +326,7 @@ const TreatmentsSettingsSection: React.FC<{ user: User, refreshTrigger: number }
             try {
                 await api.treatmentSettings.delete(deletingTreatment.id);
                 setDeletingTreatment(null);
-                await fetchTreatments();
+                forceRefresh();
             } catch (error) {
                 alert(`فشل حذف العلاج: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
             } finally {

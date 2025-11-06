@@ -777,12 +777,30 @@ export const api = {
             return newAppt;
         },
         update: async (id: string, updates: Partial<Appointment>): Promise<Appointment | null> => {
-            await apiFetch('appointments/edit', { method: 'POST', body: new FormData() /*... add data */ });
+            const formData = new FormData();
+            formData.append('id', id);
+            if (updates.patientId) formData.append('patient_id', updates.patientId);
+            if (updates.doctorId) formData.append('doctor_id', updates.doctorId);
+            if (updates.date) formData.append('date', updates.date);
+            if (updates.time) formData.append('time', `${updates.time}:00`);
+            if (updates.notes) formData.append('notes', updates.notes);
+            if (updates.createdBy) formData.append('created_by', updates.createdBy);
+            
+            const res = await apiFetch('appointments/edit', { method: 'POST', body: formData });
             await db.appointments.update(id, updates);
+
+            if (!res.offline && res.data) {
+                const finalAppt = mapApiAppointmentToAppointment(res.data);
+                await db.appointments.put(finalAppt);
+                return finalAppt;
+            }
+
             return (await db.appointments.get(id)) || null;
         },
         delete: async (id: string): Promise<boolean> => {
-            await apiFetch('appointments/delete', { method: 'POST', body: new FormData() /*... add data */ });
+            const formData = new FormData();
+            formData.append('id', id);
+            await apiFetch('appointments/delete', { method: 'POST', body: formData });
             await db.appointments.delete(id);
             return true;
         }

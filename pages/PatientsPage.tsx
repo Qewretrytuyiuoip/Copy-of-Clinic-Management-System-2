@@ -69,6 +69,7 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
     const canEditDoctors = user.role === UserRole.Admin || user.role === UserRole.Secretary || (user.role === UserRole.Doctor && user.is_diagnosis_doctor);
+    const isSecretary = user.role === UserRole.Secretary;
 
 
     const handleDoctorIdsChange = (doctorId: string) => {
@@ -160,9 +161,13 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
                                 </div>
                             </div>
                         )}
-                        <div className="md:col-span-2"><label htmlFor="drugAllergy" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الحساسية الدوائية</label><textarea id="drugAllergy" name="drugAllergy" value={formData.drugAllergy} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
-                        <div className="md:col-span-2"><label htmlFor="chronicDiseases" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأمراض المزمنة</label><textarea id="chronicDiseases" name="chronicDiseases" value={formData.chronicDiseases} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
-                        <div className="md:col-span-2"><label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات عامة</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                        {!isSecretary && (
+                            <>
+                                <div className="md:col-span-2"><label htmlFor="drugAllergy" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الحساسية الدوائية</label><textarea id="drugAllergy" name="drugAllergy" value={formData.drugAllergy} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                                <div className="md:col-span-2"><label htmlFor="chronicDiseases" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأمراض المزمنة</label><textarea id="chronicDiseases" name="chronicDiseases" value={formData.chronicDiseases} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                                <div className="md:col-span-2"><label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات عامة</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={2} className={inputStyle}></textarea></div>
+                            </>
+                        )}
                         <div className="md:col-span-2 flex items-center space-x-4 pt-2">
                            <label className="flex items-center cursor-pointer">
                                 <input type="checkbox" name="isSmoker" checked={formData.isSmoker} onChange={handleChange} className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary" />
@@ -456,6 +461,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDoctorId, setSelectedDoctorId] = useState('');
     const isDoctor = user.role === UserRole.Doctor;
+    const isSecretary = user.role === UserRole.Secretary;
     const [statusFilter, setStatusFilter] = useState(isDoctor ? 'incomplete' : 'all');
     const [page, setPage] = useState(1);
     const [isPrinting, setIsPrinting] = useState<string | null>(null);
@@ -529,8 +535,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
             }
             return api.patients.getAll(apiParams);
         },
-        refetchInterval: 60000, // 1 minute
-        placeholderData: (previousData) => previousData,
+        refetchInterval: 60000,
     });
 
     useEffect(() => {
@@ -878,18 +883,26 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                                                     {(user.role === UserRole.Admin || user.role === UserRole.SubManager) && (
                                                         <button onClick={() => setDeletingPatient(p)} className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف"><TrashIcon className="h-5 w-5" /></button>
                                                     )}
-                                                    <button onClick={() => onViewDetails(p)} className="p-2 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600" title="تفاصيل"><EyeIcon className="h-5 w-5" /></button>
+                                                     {!isSecretary && (
+                                                        <button onClick={() => onViewDetails(p)} className="p-2 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600" title="تفاصيل"><EyeIcon className="h-5 w-5" /></button>
+                                                    )}
                                                 </div>
                                                 <div className="flex items-center flex-wrap justify-start gap-2">
-                                                    <button onClick={() => onViewSessions(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-teal-100 dark:bg-teal-900/40 text-teal-800 dark:text-teal-300 rounded-md hover:bg-teal-200 dark:hover:bg-teal-900/60"><BeakerIcon className="h-4 w-4" /><span>الجلسات</span></button>
-                                                    {!isDoctor && (
+                                                    {!isSecretary && (
+                                                        <button onClick={() => onViewSessions(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-teal-100 dark:bg-teal-900/40 text-teal-800 dark:text-teal-300 rounded-md hover:bg-teal-200 dark:hover:bg-teal-900/60"><BeakerIcon className="h-4 w-4" /><span>الجلسات</span></button>
+                                                    )}
+                                                    {!isDoctor && !isSecretary && (
                                                         <button onClick={() => onViewFinancial(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 rounded-md hover:bg-green-200 dark:hover:bg-green-900/60"><CurrencyDollarIcon className="h-4 w-4" /><span>المالية</span></button>
                                                     )}
                                                     <button onClick={() => onViewPhotos(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 rounded-md hover:bg-purple-200 dark:hover:bg-purple-900/60"><PhotographIcon className="h-4 w-4" /><span>الصور</span></button>
-                                                    <button onClick={() => onViewPlan(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-blue-900/60"><ListBulletIcon className="h-4 w-4" /><span>الخطة</span></button>
-                                                    <button onClick={() => setPatientToPrint(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-gray-100 dark:bg-gray-900/40 text-gray-800 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-900/60">
-                                                        {isPrinting === p.id ? <LoadingSpinner className="h-4 w-4" /> : <DocumentTextIcon className="h-4 w-4" />}<span>طباعة</span>
-                                                    </button>
+                                                    {!isSecretary && (
+                                                        <>
+                                                            <button onClick={() => onViewPlan(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-blue-900/60"><ListBulletIcon className="h-4 w-4" /><span>الخطة</span></button>
+                                                            <button onClick={() => setPatientToPrint(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-gray-100 dark:bg-gray-900/40 text-gray-800 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-900/60">
+                                                                {isPrinting === p.id ? <LoadingSpinner className="h-4 w-4" /> : <DocumentTextIcon className="h-4 w-4" />}<span>طباعة</span>
+                                                            </button>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>

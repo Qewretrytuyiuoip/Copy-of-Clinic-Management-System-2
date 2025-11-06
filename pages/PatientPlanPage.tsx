@@ -306,7 +306,7 @@ const PatientPlanPage: React.FC<PatientPlanPageProps> = ({ patient, user, onBack
                     }
                 }
             }
-            await Zi(patient.id, user.id);
+            await api.patients.updateCompletionStatus(patient.id, user.id);
             alert("تم حفظ الخطة بنجاح!");
             onBack();
         } catch (err) {

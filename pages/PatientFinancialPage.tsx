@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { Patient, Payment, Session } from '../types';
 import { api } from '../services/api';
@@ -177,6 +178,15 @@ const PatientFinancialPage: React.FC<PatientFinancialPageProps> = ({ patient, on
     const [isAddingPayment, setIsAddingPayment] = useState(false);
     const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
 
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        // Adjust for timezone for YYYY-MM-DD strings
+        if (dateString && dateString.length === 10 && !dateString.includes('T')) {
+            date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+        }
+        return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+    };
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
@@ -298,7 +308,7 @@ const PatientFinancialPage: React.FC<PatientFinancialPageProps> = ({ patient, on
                             <tbody>
                                 {payments.map(pay => (
                                     <tr key={pay.id} className="bg-white dark:bg-slate-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                                        <td className="px-6 py-4 font-medium">{new Date(pay.date).toLocaleDateString()}</td>
+                                        <td className="px-6 py-4 font-medium">{formatDate(pay.date)}</td>
                                         <td className="px-6 py-4 font-bold text-green-600 dark:text-green-400">SYP {pay.amount.toFixed(2)}</td>
                                         <td className="px-6 py-4 flex justify-end items-center gap-2">
                                             <button onClick={() => setEditingPayment(pay)} className="p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
