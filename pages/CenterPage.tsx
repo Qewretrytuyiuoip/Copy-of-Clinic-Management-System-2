@@ -146,7 +146,7 @@ const CenterPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
 
     return (
         <div className="max-w-5xl mx-auto">
-            <div className="flex justify-between items-start mb-8">
+            <div className="flex flex-col items-center md:flex-row md:justify-between md:items-start mb-8">
                  <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-right">
                     <div className="flex-shrink-0 relative group">
                         <img src={newLogoPreview || center.logo_url} alt="شعار المركز" className="h-24 w-24 rounded-full object-cover border-4 border-primary-200 dark:border-primary-700 shadow-lg" />
@@ -166,7 +166,7 @@ const CenterPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
                         <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100">{isEditing ? 'تعديل بيانات المركز' : center.name}</h1>
                     </div>
                 </div>
-                 <div className="flex gap-2">
+                 <div className="flex gap-2 mt-4 md:mt-0">
                     {isEditing ? (
                         <>
                             <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2 px-4 py-2 font-semibold text-white bg-green-600 rounded-lg shadow-sm hover:bg-green-700 transition-colors disabled:bg-green-300">
