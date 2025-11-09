@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { User, UserRole } from '../../types';
+import { User, UserRole, Permission } from '../../types';
 import { api, ApiError } from '../../services/api';
 import { PlusIcon, PencilIcon, TrashIcon, XIcon } from '../../components/Icons';
 import { CenteredLoadingSpinner } from '../../components/LoadingSpinner';
+import { useQuery } from '@tanstack/react-query';
 
 
 // ===================================================================
@@ -44,16 +45,29 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCa
 // AddSecretaryModal Component
 // ===================================================================
 interface AddSecretaryModalProps {
-    onSave: (newUser: Omit<User, 'id' | 'role'>) => Promise<void>;
+    onSave: (newUser: Omit<User, 'id' | 'role' | 'permissions'> & { permissions?: number[] }) => Promise<void>;
     onClose: () => void;
 }
 
 const AddSecretaryModal: React.FC<AddSecretaryModalProps> = ({ onSave, onClose }) => {
-    const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+    const { data: allPermissions, isLoading: isLoadingPermissions } = useQuery({
+        queryKey: ['permissions'],
+        queryFn: api.permissions.getAll
+    });
+
+    const [formData, setFormData] = useState({ name: '', email: '', password: '', permissions: [] as number[] });
     const [isSaving, setIsSaving] = useState(false);
     const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
     const [formErrors, setFormErrors] = useState({ email: '', password: '' });
 
+    const handlePermissionChange = (permissionId: number) => {
+        setFormData(prev => ({
+            ...prev,
+            permissions: prev.permissions.includes(permissionId)
+                ? prev.permissions.filter(id => id !== permissionId)
+                : [...prev.permissions, permissionId]
+        }));
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -117,7 +131,7 @@ const AddSecretaryModal: React.FC<AddSecretaryModalProps> = ({ onSave, onClose }
                     <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
                 </div>
                 <form onSubmit={handleSubmit}>
-                    <div className="p-6 space-y-4">
+                    <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                         <div>
                             <label htmlFor="nameAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الاسم</label>
                             <input type="text" id="nameAdd" name="name" value={formData.name} onChange={handleChange} required className={inputStyle} />
@@ -132,6 +146,22 @@ const AddSecretaryModal: React.FC<AddSecretaryModalProps> = ({ onSave, onClose }
                             <label htmlFor="passwordAdd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">كلمة المرور</label>
                             <input type="password" id="passwordAdd" name="password" value={formData.password} onChange={handleChange} required className={inputStyle} />
                             {formErrors.password && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.password}</p>}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الصلاحيات</label>
+                            <div className="mt-2 p-3 border border-gray-800 dark:border-gray-600 rounded-md max-h-40 overflow-y-auto space-y-2">
+                                {isLoadingPermissions ? <CenteredLoadingSpinner /> : allPermissions?.map(permission => (
+                                    <label key={permission.id} className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.permissions.includes(permission.id)}
+                                            onChange={() => handlePermissionChange(permission.id)}
+                                            className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary"
+                                        />
+                                        <span className="text-sm text-gray-900 dark:text-gray-100">{permission.display_name}</span>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
                     </div>
                     <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
@@ -149,16 +179,30 @@ const AddSecretaryModal: React.FC<AddSecretaryModalProps> = ({ onSave, onClose }
 // ===================================================================
 interface EditSecretaryModalProps {
     secretary: User;
-    onSave: (updatedSecretary: User) => Promise<void>;
+    // FIX: Changed onSave signature to pass ID and updates separately, resolving type errors.
+    onSave: (id: string, updates: Partial<User> & { permissions?: number[] }) => Promise<void>;
     onClose: () => void;
 }
 
 const EditSecretaryModal: React.FC<EditSecretaryModalProps> = ({ secretary, onSave, onClose }) => {
-    const [formData, setFormData] = useState({ name: secretary.name, email: secretary.email, password: '' });
+    const { data: allPermissions, isLoading: isLoadingPermissions } = useQuery({
+        queryKey: ['permissions'],
+        queryFn: api.permissions.getAll
+    });
+    
+    const [formData, setFormData] = useState({ name: secretary.name, email: secretary.email, password: '', permissions: secretary.permissions?.map(p => p.id) || [] as number[] });
     const [isSaving, setIsSaving] = useState(false);
     const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
     const [formErrors, setFormErrors] = useState({ email: '', password: '' });
 
+    const handlePermissionChange = (permissionId: number) => {
+        setFormData(prev => ({
+            ...prev,
+            permissions: prev.permissions.includes(permissionId)
+                ? prev.permissions.filter(id => id !== permissionId)
+                : [...prev.permissions, permissionId]
+        }));
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -199,11 +243,16 @@ const EditSecretaryModal: React.FC<EditSecretaryModalProps> = ({ secretary, onSa
         setIsSaving(true);
         setValidationErrors({});
         try {
-            const updates: Partial<User> = { name: formData.name, email: formData.email };
+            // FIX: Constructed a clean 'updates' object to pass to onSave, resolving type conflicts.
+            const updates: Partial<User> & { permissions?: number[] } = { 
+                name: formData.name, 
+                email: formData.email,
+                permissions: formData.permissions
+            };
             if (formData.password) {
                 updates.password = formData.password;
             }
-            await onSave({ ...secretary, ...updates });
+            await onSave(secretary.id, updates);
         } catch (error) {
             setIsSaving(false);
              if (error instanceof ApiError && error.errors) {
@@ -224,7 +273,7 @@ const EditSecretaryModal: React.FC<EditSecretaryModalProps> = ({ secretary, onSa
                     <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
                 </div>
                 <form onSubmit={handleSubmit}>
-                    <div className="p-6 space-y-4">
+                    <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                         <div><label htmlFor="nameEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الاسم</label><input type="text" id="nameEdit" name="name" value={formData.name} onChange={handleChange} required className={inputStyle} /></div>
                         <div>
                             <label htmlFor="emailEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">البريد الإلكتروني</label>
@@ -236,6 +285,22 @@ const EditSecretaryModal: React.FC<EditSecretaryModalProps> = ({ secretary, onSa
                             <label htmlFor="passwordEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">كلمة المرور (اتركها فارغة لعدم التغيير)</label>
                             <input type="password" id="passwordEdit" name="password" value={formData.password} onChange={handleChange} className={inputStyle} />
                             {formErrors.password && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.password}</p>}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الصلاحيات</label>
+                            <div className="mt-2 p-3 border border-gray-800 dark:border-gray-600 rounded-md max-h-40 overflow-y-auto space-y-2">
+                                {isLoadingPermissions ? <CenteredLoadingSpinner /> : allPermissions?.map(permission => (
+                                    <label key={permission.id} className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.permissions.includes(permission.id)}
+                                            onChange={() => handlePermissionChange(permission.id)}
+                                            className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary"
+                                        />
+                                        <span className="text-sm text-gray-900 dark:text-gray-100">{permission.display_name}</span>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
                     </div>
                     <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
@@ -292,7 +357,7 @@ const SecretariesTab: React.FC<SecretariesTabProps> = ({ refreshTrigger, canAddU
         }
     };
 
-    const handleCreateSecretary = async (newSecretaryData: Omit<User, 'id' | 'role'>) => {
+    const handleCreateSecretary = async (newSecretaryData: Omit<User, 'id' | 'role' | 'permissions'> & { permissions?: number[] }) => {
         try {
             await api.secretaries.create({ ...newSecretaryData, role: UserRole.Secretary });
             setIsAddingSecretary(false);
@@ -303,9 +368,10 @@ const SecretariesTab: React.FC<SecretariesTabProps> = ({ refreshTrigger, canAddU
         }
     };
     
-    const handleUpdateSecretary = async (updatedSecretary: User) => {
+    // FIX: Updated handler signature to match the corrected `onSave` prop, resolving type errors.
+    const handleUpdateSecretary = async (id: string, updates: Partial<User> & { permissions?: number[] }) => {
         try {
-            await api.secretaries.update(updatedSecretary.id, updatedSecretary);
+            await api.secretaries.update(id, updates);
             setEditingSecretary(null);
             await fetchSecretaries();
         } catch(error) {

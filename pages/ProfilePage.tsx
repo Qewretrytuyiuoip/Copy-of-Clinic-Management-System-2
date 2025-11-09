@@ -550,7 +550,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ refreshTrigger }) => {
         setError('');
         setSuccess('');
         try {
-            const updates: Partial<User> = { name: formData.name, email: formData.email };
+            // FIX: Explicitly type `updates` to satisfy the new API signature, which distinguishes between object-based and ID-based permissions.
+            const updates: Partial<Omit<User, 'permissions' | 'role'>> & { password?: string } = { name: formData.name, email: formData.email };
             if (formData.password) {
                 updates.password = formData.password;
             }

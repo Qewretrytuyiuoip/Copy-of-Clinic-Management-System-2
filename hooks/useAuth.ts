@@ -44,6 +44,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 role: userFromApi.role as UserRole,
                 specialty: userFromApi.specialty,
                 is_diagnosis_doctor: userFromApi.is_diagnosis_doctor == 1,
+                permissions: userFromApi.permissions || [],
             };
             
             localStorage.setItem('authToken', token);
@@ -74,6 +75,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 role: userFromApi.role as UserRole,
                 specialty: userFromApi.specialty,
                 is_diagnosis_doctor: userFromApi.is_diagnosis_doctor == 1,
+                permissions: userFromApi.permissions || [],
             };
             
             localStorage.setItem('authToken', token);

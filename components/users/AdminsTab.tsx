@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { User, UserRole } from '../../types';
+import { User, UserRole, Permission } from '../../types';
 import { api, ApiError } from '../../services/api';
 import { PlusIcon, PencilIcon, TrashIcon, XIcon } from '../../components/Icons';
 import { CenteredLoadingSpinner } from '../../components/LoadingSpinner';
 import { useAuth } from '../../hooks/useAuth';
+import { useQuery } from '@tanstack/react-query';
+
 
 // ===================================================================
 // ConfirmDeleteModal Component
@@ -45,20 +47,36 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCa
 // ===================================================================
 interface SubManagerFormModalProps {
     subManager?: User;
-    onSave: (data: Omit<User, 'id' | 'role'> | User) => Promise<void>;
+    // FIX: Changed onSave prop type to a flexible partial User type to handle both create and update scenarios and fix type errors.
+    onSave: (data: Partial<User> & { permissions?: number[] }) => Promise<void>;
     onClose: () => void;
 }
 
 const SubManagerFormModal: React.FC<SubManagerFormModalProps> = ({ subManager, onSave, onClose }) => {
     const isEditMode = !!subManager;
+    const { data: allPermissions, isLoading: isLoadingPermissions } = useQuery({
+        queryKey: ['permissions'],
+        queryFn: api.permissions.getAll
+    });
+
     const [formData, setFormData] = useState({ 
         name: subManager?.name || '', 
         email: subManager?.email || '', 
-        password: '' 
+        password: '',
+        permissions: subManager?.permissions?.map(p => p.id) || [] as number[]
     });
     const [isSaving, setIsSaving] = useState(false);
     const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
     const [formErrors, setFormErrors] = useState({ email: '', password: '' });
+
+    const handlePermissionChange = (permissionId: number) => {
+        setFormData(prev => ({
+            ...prev,
+            permissions: prev.permissions.includes(permissionId)
+                ? prev.permissions.filter(id => id !== permissionId)
+                : [...prev.permissions, permissionId]
+        }));
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -107,11 +125,16 @@ const SubManagerFormModal: React.FC<SubManagerFormModalProps> = ({ subManager, o
         setIsSaving(true);
         setValidationErrors({});
         try {
-            const updates: Partial<User> = { name: formData.name, email: formData.email };
+            const updates: Partial<User> & { permissions?: number[] } = {
+                name: formData.name,
+                email: formData.email,
+                permissions: formData.permissions
+            };
             if (formData.password) {
                 updates.password = formData.password;
             }
             const dataToSave = isEditMode ? { ...subManager, ...updates } : formData;
+            // FIX: Removed 'as any' cast as the onSave prop type is now compatible.
             await onSave(dataToSave);
         } catch(error) {
             setIsSaving(false);
@@ -133,7 +156,7 @@ const SubManagerFormModal: React.FC<SubManagerFormModalProps> = ({ subManager, o
                     <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
                 </div>
                 <form onSubmit={handleSubmit}>
-                    <div className="p-6 space-y-4">
+                    <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                         <div><label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الاسم</label><input type="text" id="name" name="name" value={formData.name} onChange={handleChange} required className={inputStyle} /></div>
                         <div>
                             <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">البريد الإلكتروني</label>
@@ -147,6 +170,22 @@ const SubManagerFormModal: React.FC<SubManagerFormModalProps> = ({ subManager, o
                             <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">كلمة المرور {isEditMode && '(اتركها فارغة لعدم التغيير)'}</label>
                             <input type="password" id="password" name="password" value={formData.password} onChange={handleChange} required={!isEditMode} className={inputStyle} />
                             {formErrors.password && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.password}</p>}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الصلاحيات</label>
+                            <div className="mt-2 p-3 border border-gray-800 dark:border-gray-600 rounded-md max-h-40 overflow-y-auto space-y-2">
+                                {isLoadingPermissions ? <CenteredLoadingSpinner /> : allPermissions?.map(permission => (
+                                    <label key={permission.id} className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.permissions.includes(permission.id)}
+                                            onChange={() => handlePermissionChange(permission.id)}
+                                            className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary"
+                                        />
+                                        <span className="text-sm text-gray-900 dark:text-gray-100">{permission.display_name}</span>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
                     </div>
                     <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
@@ -209,12 +248,14 @@ const AdminsTab: React.FC<AdminsTabProps> = ({ refreshTrigger, canAddUser }) => 
         }
     };
 
-    const handleSave = async (data: Omit<User, 'id' | 'role'> | User) => {
+    // FIX: Updated handleSave to correctly destructure the update payload for the API call and match the new modal onSave prop type.
+    const handleSave = async (data: Partial<User> & { id?: string; permissions?: number[] }) => {
         try {
-            if ('id' in data) { // Editing
-                await api.subManagers.update(data.id, data);
+            if (data.id) { // Editing
+                const { id, ...updates } = data;
+                await api.subManagers.update(id, updates);
             } else { // Adding
-                await api.subManagers.create({ ...data, role: UserRole.SubManager });
+                await api.subManagers.create({ ...(data as any), role: UserRole.SubManager });
             }
             setIsAdding(false);
             setEditing(null);

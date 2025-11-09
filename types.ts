@@ -14,6 +14,12 @@ export enum Gender {
     Female = 'female',
 }
 
+export interface Permission {
+    id: number;
+    name: string;
+    display_name: string;
+}
+
 export interface User {
     id: string;
     center_id?: number;
@@ -23,6 +29,7 @@ export interface User {
     role: UserRole;
     specialty?: string;
     is_diagnosis_doctor?: boolean;
+    permissions?: Permission[];
 }
 
 export interface Center {

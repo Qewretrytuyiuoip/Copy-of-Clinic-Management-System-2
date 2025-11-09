@@ -1,5 +1,5 @@
 // FIX: Removed 'SubManager' from import as it is not an exported member of '../types'.
-import { User, UserRole, Patient, Treatment, Session, Appointment, Payment, DoctorAvailability, SessionTreatment, Gender, DaySchedule, PatientPhoto, ActivityLog, ActivityLogActionType, CreatePatientPhotosPayload, Center } from '../types';
+import { User, UserRole, Patient, Treatment, Session, Appointment, Payment, DoctorAvailability, SessionTreatment, Gender, DaySchedule, PatientPhoto, ActivityLog, ActivityLogActionType, CreatePatientPhotosPayload, Center, Permission } from '../types';
 import { API_BASE_URL } from '../appSettings';
 import { db } from './db';
 
@@ -275,6 +275,7 @@ const getAllUsers = async (forceRefresh: boolean = false): Promise<User[]> => {
             role: apiUser.role as UserRole,
             specialty: apiUser.specialty,
             is_diagnosis_doctor: apiUser.is_diagnosis_doctor == 1,
+            permissions: apiUser.permissions || [],
         }));
         await db.users.bulkPut(mappedUsers);
         return mappedUsers;
@@ -287,6 +288,9 @@ const getAllUsers = async (forceRefresh: boolean = false): Promise<User[]> => {
     }
 };
 
+// FIX: Changed the types for `create` and `update` to resolve conflicts with the `permissions` property.
+// The API expects an array of permission IDs (number[]), but the `User` type has an array of `Permission` objects.
+// Omitting `permissions` from the base type and adding it with the correct type (`number[]`) solves the incompatibility.
 const createUserCRUD = (role: UserRole) => ({
     getAll: async (): Promise<User[]> => {
         await getAllUsers(); // Ensure cache is warm with users from current center
@@ -297,7 +301,7 @@ const createUserCRUD = (role: UserRole) => ({
         }
         return db.users.where('role').equals(role).toArray();
     },
-    create: async (item: Omit<User, 'id'>): Promise<User> => {
+    create: async (item: Omit<User, 'id' | 'permissions'> & { permissions?: number[] }): Promise<User> => {
         const formData = new FormData();
         
         const storedUser = localStorage.getItem('currentUser');
@@ -323,12 +327,16 @@ const createUserCRUD = (role: UserRole) => ({
             if (item.specialty) formData.append('specialty', item.specialty);
             if (item.is_diagnosis_doctor !== undefined) formData.append('is_diagnosis_doctor', item.is_diagnosis_doctor ? '1' : '0');
         }
+        if (item.permissions && Array.isArray(item.permissions)) {
+            item.permissions.forEach((permissionId: number) => formData.append('permission_ids[]', String(permissionId)));
+        }
+
 
         const responseData = await apiFetch('users/add', { method: 'POST', body: formData });
 
         if (responseData.offline) {
              const tempId = `offline_${Date.now()}`;
-             const newUser: User = { ...item, id: tempId, password: '', center_id: centerId };
+             const newUser: User = { ...item, id: tempId, password: '', center_id: centerId, permissions: [] };
              await db.users.add(newUser);
              return newUser;
         }
@@ -348,12 +356,13 @@ const createUserCRUD = (role: UserRole) => ({
             role: createdApiUser.role as UserRole,
             specialty: createdApiUser.specialty,
             is_diagnosis_doctor: createdApiUser.is_diagnosis_doctor == 1,
+            permissions: createdApiUser.permissions || [],
         };
         
         await db.users.add(newUser);
         return newUser;
     },
-    update: async (id: string, updates: Partial<User>): Promise<User | null> => {
+    update: async (id: string, updates: Partial<Omit<User, 'permissions'>> & { permissions?: number[] }): Promise<User | null> => {
         const formData = new FormData();
         formData.append('id', id);
 
@@ -362,10 +371,17 @@ const createUserCRUD = (role: UserRole) => ({
         if (updates.password && updates.password.length > 0) formData.append('password', updates.password);
         if (updates.specialty !== undefined) formData.append('specialty', updates.specialty);
         if (updates.is_diagnosis_doctor !== undefined) formData.append('is_diagnosis_doctor', updates.is_diagnosis_doctor ? '1' : '0');
+        if (updates.permissions && Array.isArray(updates.permissions)) {
+            updates.permissions.forEach((permissionId: number) => formData.append('permission_ids[]', String(permissionId)));
+        }
 
         const responseData = await apiFetch('users/edit', { method: 'POST', body: formData });
-
-        await db.users.update(id, updates);
+        
+        // FIX: The `updates` object has `permissions` as `number[]`, which is incompatible with the `User` type's `Permission[]`.
+        // We separate it before updating the local DB to avoid a type error.
+        // The full user object with the correct `Permission[]` will be stored after the API call returns.
+        const { permissions, ...dbUpdates } = updates;
+        await db.users.update(id, dbUpdates);
 
         if (responseData.offline) {
             return { ...(await db.users.get(id))! };
@@ -384,6 +400,7 @@ const createUserCRUD = (role: UserRole) => ({
             role: updatedApiUser.role,
             specialty: updatedApiUser.specialty, 
             is_diagnosis_doctor: updatedApiUser.is_diagnosis_doctor == 1,
+            permissions: updatedApiUser.permissions || [],
         };
         await db.users.put(updatedUser);
         return updatedUser;
@@ -512,6 +529,25 @@ const sessions_getAll = async (): Promise<Session[]> => {
 
 // API Object with Offline Support
 export const api = {
+    permissions: {
+        getAll: async (): Promise<Permission[]> => {
+            try {
+                const data = await performApiFetch('permissions/all', { method: 'POST' });
+                if (!Array.isArray(data)) {
+                    console.error('Expected an array of permissions from API, but got:', data);
+                    return [];
+                }
+                return data.map((p: any) => ({
+                    id: p.id,
+                    name: p.name,
+                    display_name: p.display_name,
+                }));
+            } catch (e) {
+                console.error("Failed to fetch permissions:", e);
+                return [];
+            }
+        },
+    },
     cache: {
         invalidateAll: () => {
             allUsersCache = null;

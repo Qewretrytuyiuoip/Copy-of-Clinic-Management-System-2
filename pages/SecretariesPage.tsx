@@ -43,8 +43,9 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCa
 // ===================================================================
 // AddSecretaryModal Component
 // ===================================================================
+// FIX: Changed newUser type to prevent conflicts with the `permissions` property, which is handled differently by the API on create vs. fetch.
 interface AddSecretaryModalProps {
-    onSave: (newUser: Omit<User, 'id' | 'role'>) => Promise<void>;
+    onSave: (newUser: Omit<User, 'id' | 'role' | 'permissions'>) => Promise<void>;
     onClose: () => void;
 }
 
@@ -269,14 +270,21 @@ const SecretariesPage: React.FC = () => {
         fetchSecretaries();
     }, [fetchSecretaries]);
 
-    const handleCreateSecretary = async (newSecretaryData: Omit<User, 'id' | 'role'>) => {
+    // FIX: Changed newUser type to prevent conflicts with the `permissions` property, which is handled differently by the API on create vs. fetch.
+    const handleCreateSecretary = async (newSecretaryData: Omit<User, 'id' | 'role' | 'permissions'>) => {
         await api.secretaries.create({ ...newSecretaryData, role: UserRole.Secretary });
         setIsAddingSecretary(false);
         await fetchSecretaries();
     };
     
+    // FIX: The API expects permission IDs (number[]), but the User object has Permission objects.
+    // Destructure and map permissions to their IDs before sending the update.
     const handleUpdateSecretary = async (updatedSecretary: User) => {
-        await api.secretaries.update(updatedSecretary.id, updatedSecretary);
+        const { permissions, ...restOfUser } = updatedSecretary;
+        await api.secretaries.update(updatedSecretary.id, { 
+            ...restOfUser, 
+            permissions: permissions?.map(p => p.id) 
+        });
         setEditingSecretary(null);
         await fetchSecretaries();
     };
