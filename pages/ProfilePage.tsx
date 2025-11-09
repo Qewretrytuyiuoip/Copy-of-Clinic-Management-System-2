@@ -449,6 +449,42 @@ const ConfirmLogoutModal: React.FC<ConfirmLogoutModalProps> = ({ onConfirm, onCa
     </div>
 );
 
+// ===================================================================
+// ConfirmDeleteAccountModal Component
+// ===================================================================
+interface ConfirmDeleteAccountModalProps {
+    onConfirm: () => void;
+    onCancel: () => void;
+    isDeleting: boolean;
+}
+
+const ConfirmDeleteAccountModal: React.FC<ConfirmDeleteAccountModalProps> = ({ onConfirm, onCancel, isDeleting }) => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 transition-opacity" onClick={onCancel}>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+                <div className="text-center">
+                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30">
+                        <TrashIcon className="h-6 w-6 text-red-600 dark:text-red-400" aria-hidden="true" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-4">تأكيد حذف الحساب</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 px-4">
+                        هل أنت متأكد؟ سيتم حذف حسابك وجميع بيانات المركز المرتبطة به بشكل نهائي. لا يمكن التراجع عن هذا الإجراء.
+                    </p>
+                </div>
+            </div>
+            <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex justify-center gap-4">
+                <button type="button" onClick={onConfirm} disabled={isDeleting} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-red-400 disabled:cursor-not-allowed">
+                    {isDeleting ? 'جاري الحذف...' : 'نعم، حذف الحساب'}
+                </button>
+                <button type="button" onClick={onCancel} disabled={isDeleting} className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                    إلغاء
+                </button>
+            </div>
+        </div>
+    </div>
+);
+
+
 interface ProfilePageProps {
     refreshTrigger: number;
 }
@@ -469,6 +505,9 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ refreshTrigger }) => {
     const [success, setSuccess] = useState('');
     const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
 
     useEffect(() => {
         setFormData({ name: currentUser.name, email: currentUser.email, password: '' });
@@ -477,6 +516,18 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ refreshTrigger }) => {
     const handleLogout = async () => {
         setIsLoggingOut(true);
         await logout();
+    };
+
+    const handleDeleteAccountConfirm = async () => {
+        setIsDeletingAccount(true);
+        setError('');
+        try {
+            await api.admins.delete(currentUser.id);
+            await logout();
+        } catch (err) {
+            setError(err instanceof Error ? `فشل حذف الحساب: ${err.message}` : 'فشل حذف الحساب');
+            setIsDeletingAccount(false);
+        }
     };
 
     const handleEditToggle = () => {
@@ -532,23 +583,33 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ refreshTrigger }) => {
             <div className="max-w-4xl mx-auto">
                 <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl overflow-hidden">
                     <div className="p-8">
-                        <div className="flex flex-col md:flex-row items-center gap-6">
-                            <div className="flex-shrink-0">
-                                <UserCircleIcon className="h-24 w-24 text-gray-300 dark:text-gray-600"/>
+                        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                            <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-right">
+                                <div className="flex-shrink-0">
+                                    <UserCircleIcon className="h-24 w-24 text-gray-300 dark:text-gray-600"/>
+                                </div>
+                                <div className="flex-grow">
+                                    <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{currentUser.name}</h2>
+                                    <p className="text-md text-gray-500 dark:text-gray-400">{currentUser.email}</p>
+                                    <span className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-300">
+                                        {ROLE_NAMES[currentUser.role]}
+                                    </span>
+                                </div>
                             </div>
-                            <div className="flex-grow text-center md:text-right">
-                                <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{currentUser.name}</h2>
-                                <p className="text-md text-gray-500 dark:text-gray-400">{currentUser.email}</p>
-                                <span className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-300">
-                                    {ROLE_NAMES[currentUser.role]}
-                                </span>
+                            <div className="flex gap-2 mt-4 md:mt-0">
+                                {isAdmin && !isEditing && (
+                                    <>
+                                        <button onClick={handleEditToggle} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-700 rounded-lg shadow-sm hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">
+                                            <PencilIcon className="h-5 w-5" />
+                                            <span>تعديل</span>
+                                        </button>
+                                        <button onClick={() => setShowDeleteConfirm(true)} className="flex items-center gap-2 px-4 py-2 font-semibold text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/40 rounded-lg shadow-sm hover:bg-red-200 dark:hover:bg-red-800 transition-colors">
+                                            <TrashIcon className="h-5 w-5" />
+                                            <span>حذف الحساب</span>
+                                        </button>
+                                    </>
+                                )}
                             </div>
-                            {isAdmin && !isEditing && (
-                                <button onClick={handleEditToggle} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-700 rounded-lg shadow-sm hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">
-                                    <PencilIcon className="h-5 w-5" />
-                                    <span>تعديل</span>
-                                </button>
-                            )}
                         </div>
 
                         {error && <div className="mt-6 p-3 text-sm text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-300 rounded-lg text-center" role="alert">{error}</div>}
@@ -604,6 +665,14 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ refreshTrigger }) => {
                     onConfirm={handleLogout}
                     onCancel={() => !isLoggingOut && setIsLogoutModalOpen(false)}
                     isLoggingOut={isLoggingOut}
+                />
+            )}
+
+            {showDeleteConfirm && (
+                <ConfirmDeleteAccountModal
+                    onConfirm={handleDeleteAccountConfirm}
+                    onCancel={() => !isDeletingAccount && setShowDeleteConfirm(false)}
+                    isDeleting={isDeletingAccount}
                 />
             )}
         </>
