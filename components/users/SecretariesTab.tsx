@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { User, UserRole } from '../../types';
 import { api, ApiError } from '../../services/api';
@@ -249,8 +248,12 @@ const EditSecretaryModal: React.FC<EditSecretaryModalProps> = ({ secretary, onSa
     );
 };
 
+interface SecretariesTabProps {
+    refreshTrigger: number;
+    canAddUser: boolean;
+}
 
-const SecretariesTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => {
+const SecretariesTab: React.FC<SecretariesTabProps> = ({ refreshTrigger, canAddUser }) => {
     const [secretaries, setSecretaries] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [fetchError, setFetchError] = useState<string | null>(null);
@@ -258,7 +261,6 @@ const SecretariesTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
     const [editingSecretary, setEditingSecretary] = useState<User | null>(null);
     const [deletingSecretary, setDeletingSecretary] = useState<User | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
-
 
     const fetchSecretaries = useCallback(async () => {
         setLoading(true);
@@ -281,6 +283,14 @@ const SecretariesTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
     useEffect(() => {
         fetchSecretaries();
     }, [fetchSecretaries, refreshTrigger]);
+    
+    const handleAddClick = () => {
+        if (canAddUser) {
+            setIsAddingSecretary(true);
+        } else {
+            alert('لا يمكنك اضافة المزيد من المستخدمين. الرجاء ترقية الخطة.');
+        }
+    };
 
     const handleCreateSecretary = async (newSecretaryData: Omit<User, 'id' | 'role'>) => {
         try {
@@ -323,7 +333,7 @@ const SecretariesTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
         <div className="p-6">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">قائمة السكرتارية</h2>
-                <button onClick={() => setIsAddingSecretary(true)} className="hidden lg:flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
+                <button onClick={handleAddClick} className="hidden lg:flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
                     <PlusIcon className="h-5 w-5 ml-2" />
                     إضافة سكرتير
                 </button>
@@ -361,7 +371,7 @@ const SecretariesTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
             </div>
 
             <button 
-                onClick={() => setIsAddingSecretary(true)} 
+                onClick={handleAddClick} 
                 className="lg:hidden fixed bottom-20 right-4 bg-primary text-white p-4 rounded-full shadow-lg hover:bg-primary-700 transition-colors z-20"
                 aria-label="إضافة سكرتير"
             >
@@ -382,5 +392,4 @@ const SecretariesTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
         </div>
     );
 };
-// FIX: Added default export to resolve the module import error in UsersPage.tsx
 export default SecretariesTab;

@@ -305,7 +305,12 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ doctor, onSave, onClo
     );
 };
 
-const DoctorsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => {
+interface DoctorsTabProps {
+    refreshTrigger: number;
+    canAddUser: boolean;
+}
+
+const DoctorsTab: React.FC<DoctorsTabProps> = ({ refreshTrigger, canAddUser }) => {
     const [doctors, setDoctors] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [fetchError, setFetchError] = useState<string | null>(null);
@@ -336,6 +341,14 @@ const DoctorsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
     useEffect(() => {
         fetchDoctors();
     }, [fetchDoctors, refreshTrigger]);
+
+    const handleAddClick = () => {
+        if (canAddUser) {
+            setIsAddingDoctor(true);
+        } else {
+            alert('لا يمكنك اضافة المزيد من المستخدمين. الرجاء ترقية الخطة.');
+        }
+    };
 
     const handleCreateDoctor = async (newDoctorData: Omit<User, 'id' | 'role'>) => {
         try {
@@ -394,7 +407,7 @@ const DoctorsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
         <div className="p-6">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">قائمة الأطباء</h2>
-                <button onClick={() => setIsAddingDoctor(true)} className="hidden lg:flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
+                <button onClick={handleAddClick} className="hidden lg:flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
                     <PlusIcon className="h-5 w-5 ml-2" />
                     إضافة طبيب
                 </button>
@@ -440,7 +453,7 @@ const DoctorsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
             </div>
             
             <button 
-                onClick={() => setIsAddingDoctor(true)} 
+                onClick={handleAddClick} 
                 className="lg:hidden fixed bottom-20 right-4 bg-primary text-white p-4 rounded-full shadow-lg hover:bg-primary-700 transition-colors z-20"
                 aria-label="إضافة طبيب"
             >

@@ -159,7 +159,12 @@ const SubManagerFormModal: React.FC<SubManagerFormModalProps> = ({ subManager, o
     );
 };
 
-const AdminsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => {
+interface AdminsTabProps {
+    refreshTrigger: number;
+    canAddUser: boolean;
+}
+
+const AdminsTab: React.FC<AdminsTabProps> = ({ refreshTrigger, canAddUser }) => {
     const { user: currentUser } = useAuth();
     const [admins, setAdmins] = useState<User[]>([]);
     const [subManagers, setSubManagers] = useState<User[]>([]);
@@ -195,6 +200,14 @@ const AdminsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => 
     useEffect(() => {
         fetchData();
     }, [fetchData, refreshTrigger]);
+    
+    const handleAddClick = () => {
+        if (canAddUser) {
+            setIsAdding(true);
+        } else {
+            alert('لا يمكنك اضافة المزيد من المستخدمين. الرجاء ترقية الخطة.');
+        }
+    };
 
     const handleSave = async (data: Omit<User, 'id' | 'role'> | User) => {
         try {
@@ -251,7 +264,7 @@ const AdminsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => 
 
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">المدراء الفرعيون</h2>
-                <button onClick={() => setIsAdding(true)} className="hidden lg:flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
+                <button onClick={handleAddClick} className="hidden lg:flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
                     <PlusIcon className="h-5 w-5 ml-2" />
                     إضافة مدير فرعي
                 </button>
@@ -289,7 +302,7 @@ const AdminsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => 
             </div>
 
             <button 
-                onClick={() => setIsAdding(true)} 
+                onClick={handleAddClick} 
                 className="lg:hidden fixed bottom-20 right-4 bg-primary text-white p-4 rounded-full shadow-lg hover:bg-primary-700 transition-colors z-20"
                 aria-label="إضافة مدير فرعي"
             >
@@ -317,5 +330,4 @@ const AdminsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => 
     );
 };
 
-// FIX: Add default export to make the component importable.
 export default AdminsTab;

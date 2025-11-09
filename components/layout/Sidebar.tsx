@@ -5,6 +5,8 @@ import { XIcon, BellIcon, BellSlashIcon, CheckIcon } from '../Icons';
 import { appSettings } from '../../appSettings';
 import LoadingSpinner from '../LoadingSpinner';
 import { API_BASE_URL } from '../../appSettings';
+import { useAppSettings } from '../../hooks/useAppSettings';
+
 interface SidebarProps {
     user: User;
     currentPage: string;
@@ -24,7 +26,7 @@ function urlBase64ToUint8Array(base64String: string) {
 
 const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, sidebarOpen, setSidebarOpen }) => {
     const navItems = NAV_ITEMS[user.role];
-    const settings = appSettings;
+    const { settings } = useAppSettings();
 
     const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
     const [isSubscribed, setIsSubscribed] = useState(false);
@@ -245,7 +247,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
                         {navLinks}
                     </div>
                     <div className="p-4 text-center text-xs text-gray-500 dark:text-gray-400">
-                        الإصدار {settings.appVersion}
+                        الإصدار {appSettings.appVersion}
                     </div>
                 </div>
                 <div className="w-14 flex-shrink-0" aria-hidden="true"></div>
@@ -259,7 +261,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
                    {navLinks}
                 </div>
                 <div className="p-4 text-center text-xs text-gray-500 dark:text-gray-400">
-                    الإصدار {settings.appVersion}
+                    الإصدار {appSettings.appVersion}
                 </div>
             </aside>
         </>

@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import DoctorsTab from '../components/users/DoctorsTab';
 import SecretariesTab from '../components/users/SecretariesTab';
 import AdminsTab from '../components/users/AdminsTab';
 import { UserGroupIcon, UsersIcon } from '../components/Icons';
 import { useAuth } from '../hooks/useAuth';
 import { UserRole } from '../types';
+import { api } from '../services/api';
+import { CenteredLoadingSpinner } from '../components/LoadingSpinner';
 
 interface UsersPageProps {
     refreshTrigger: number;
@@ -14,16 +17,40 @@ const UsersPage: React.FC<UsersPageProps> = ({ refreshTrigger }) => {
     const [activeTab, setActiveTab] = useState('doctors');
     const { user } = useAuth();
 
+    const { data: centerData, isLoading: isLoadingCenter } = useQuery({
+        queryKey: ['center', user?.center_id],
+        queryFn: () => api.centers.getOne(),
+        enabled: !!user?.center_id,
+    });
+
+    const { data: allUsersCount, isLoading: isLoadingUsers } = useQuery({
+        queryKey: ['allUsersCount', refreshTrigger],
+        queryFn: async () => {
+            const [doctors, secretaries, admins, subManagers] = await Promise.all([
+                api.doctors.getAll(),
+                api.secretaries.getAll(),
+                api.admins.getAll(),
+                api.subManagers.getAll(),
+            ]);
+            return doctors.length + secretaries.length + admins.length + subManagers.length;
+        },
+    });
+
+    const maxUsers = centerData?.max_users ?? 0;
+    const canAddUser = maxUsers === 0 || (allUsersCount ?? 0) < maxUsers;
+
+    const isLoading = isLoadingCenter || isLoadingUsers;
+
     const renderTabContent = () => {
         switch (activeTab) {
             case 'doctors':
-                return <DoctorsTab refreshTrigger={refreshTrigger} />;
+                return <DoctorsTab refreshTrigger={refreshTrigger} canAddUser={canAddUser} />;
             case 'secretaries':
-                return <SecretariesTab refreshTrigger={refreshTrigger} />;
+                return <SecretariesTab refreshTrigger={refreshTrigger} canAddUser={canAddUser} />;
             case 'admins':
-                return <AdminsTab refreshTrigger={refreshTrigger} />;
+                return <AdminsTab refreshTrigger={refreshTrigger} canAddUser={canAddUser} />;
             default:
-                return <DoctorsTab refreshTrigger={refreshTrigger} />;
+                return <DoctorsTab refreshTrigger={refreshTrigger} canAddUser={canAddUser} />;
         }
     };
 
@@ -52,7 +79,7 @@ const UsersPage: React.FC<UsersPageProps> = ({ refreshTrigger }) => {
                     )}
                 </div>
                 <div>
-                    {renderTabContent()}
+                    {isLoading ? <div className="p-6"><CenteredLoadingSpinner /></div> : renderTabContent()}
                 </div>
             </div>
         </div>

@@ -29,7 +29,7 @@ export class ClinicDB extends Dexie {
     super('ClinicDatabase');
     // FIX: Add explicit type assertion '(this as Dexie)' to resolve a misleading TypeScript error where the 'version' method was not found on 'this' within the constructor.
     (this as Dexie).version(1).stores({
-      users: 'id, &email, role',
+      users: 'id, &email, role, center_id, [role+center_id]',
       patients: 'id, &code, *doctorIds, name, phone',
       treatments_setting: 'id, &name',
       sessions: 'id, patientId, doctorId, date',

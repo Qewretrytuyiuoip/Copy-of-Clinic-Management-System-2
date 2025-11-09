@@ -16,12 +16,26 @@ export enum Gender {
 
 export interface User {
     id: string;
+    center_id?: number;
     name: string;
     email: string;
     password?: string;
     role: UserRole;
     specialty?: string;
     is_diagnosis_doctor?: boolean;
+}
+
+export interface Center {
+    id: number;
+    name: string;
+    type: string;
+    address: string;
+    logo_url: string;
+    description: string;
+    max_users: number;
+    subscription_start: string;
+    subscription_end: string;
+    created_at: string;
 }
 
 export interface Treatment {
@@ -68,6 +82,7 @@ export interface Patient {
     createdAt: string;
     completed?: boolean;
     payment_completed?: boolean;
+    discount?: number;
 }
 
 export interface Appointment {

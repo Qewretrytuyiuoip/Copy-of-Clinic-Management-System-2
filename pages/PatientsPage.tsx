@@ -64,10 +64,12 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
         drugAllergy: '',
         chronicDiseases: '',
         doctorIds: user.role === UserRole.Doctor ? [user.id] : [],
+        discount: 0,
     });
     const [isSaving, setIsSaving] = useState(false);
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
+    const isAdmin = user.role === UserRole.Admin;
     const canEditDoctors = user.role === UserRole.Admin || user.role === UserRole.Secretary || (user.role === UserRole.Doctor && user.is_diagnosis_doctor);
     const isSecretary = user.role === UserRole.Secretary;
 
@@ -108,6 +110,7 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
             age: parseInt(formData.age, 10) || 0,
             isPregnant: formData.gender === Gender.Female ? formData.isPregnant : false,
             createdAt: new Date().toISOString(),
+            discount: isAdmin ? Number(formData.discount) : undefined,
         };
         try {
             await onSave(newPatientData);
@@ -133,6 +136,12 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
                          <div><label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الاسم</label><input type="text" id="name" name="name" value={formData.name} onChange={handleChange} required className={inputStyle} /></div>
                          <div><label htmlFor="age" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">العمر</label><input type="number" id="age" name="age" value={formData.age} onChange={handleChange} required className={inputStyle} /></div>
                          <div><label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الهاتف</label><input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleChange} required className={inputStyle} /></div>
+                         {isAdmin && (
+                            <div>
+                                <label htmlFor="discount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">مبلغ الخصم</label>
+                                <input type="number" id="discount" name="discount" value={formData.discount} onChange={handleChange} min="0" className={inputStyle} />
+                            </div>
+                         )}
                          <div>
                             <label htmlFor="gender" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الجنس</label>
                             <select id="gender" name="gender" value={formData.gender} onChange={handleChange} className={inputStyle}>
@@ -214,10 +223,12 @@ const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, on
         drugAllergy: patient.drugAllergy || '',
         chronicDiseases: patient.chronicDiseases || '',
         doctorIds: patient.doctorIds || [],
+        discount: patient.discount || 0,
     });
     const [isSaving, setIsSaving] = useState(false);
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
     
+    const isAdmin = user.role === UserRole.Admin;
     const isSecretary = user.role === UserRole.Secretary;
     const canEditDoctors = user.role === UserRole.Admin || user.role === UserRole.Secretary || (user.role === UserRole.Doctor && user.is_diagnosis_doctor);
 
@@ -261,6 +272,7 @@ const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, on
             drugAllergy: formData.drugAllergy,
             chronicDiseases: formData.chronicDiseases,
             doctorIds: formData.doctorIds,
+            discount: isAdmin ? Number(formData.discount) : patient.discount,
         };
         try {
             await onSave(updatedPatientData);
@@ -291,6 +303,12 @@ const EditPatientModal: React.FC<EditPatientModalProps> = ({ patient, onSave, on
                          <div><label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الاسم</label><input type="text" id="name" name="name" value={formData.name} onChange={handleChange} required className={inputStyle} /></div>
                          <div><label htmlFor="age" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">العمر</label><input type="number" id="age" name="age" value={formData.age} onChange={handleChange} required className={inputStyle} /></div>
                          <div><label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الهاتف</label><input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleChange} required className={inputStyle} /></div>
+                         {isAdmin && (
+                            <div>
+                                <label htmlFor="discountEdit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">مبلغ الخصم</label>
+                                <input type="number" id="discountEdit" name="discount" value={formData.discount} onChange={handleChange} min="0" className={inputStyle} />
+                            </div>
+                         )}
                          <div>
                             <label htmlFor="gender" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الجنس</label>
                             <select id="gender" name="gender" value={formData.gender} onChange={handleChange} className={inputStyle}>
@@ -874,6 +892,11 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                                             <div className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-300">
                                                 <p><span className="font-semibold">العمر:</span> {p.age}</p>
                                                 <p><span className="font-semibold">الهاتف:</span> {p.phone}</p>
+                                                {p.discount && p.discount > 0 && (
+                                                    <p className="font-semibold text-yellow-600 dark:text-yellow-400">
+                                                        <span className="font-semibold">خصم:</span> {p.discount.toLocaleString()} SYP
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">

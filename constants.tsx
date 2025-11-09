@@ -1,10 +1,11 @@
 import React from 'react';
-import { HomeIcon, UsersIcon, ClipboardListIcon, CurrencyDollarIcon, CalendarIcon, CogIcon, UserGroupIcon, BeakerIcon, UserCircleIcon, ChatBubbleIcon } from './components/Icons';
+import { HomeIcon, UsersIcon, ClipboardListIcon, CurrencyDollarIcon, CalendarIcon, CogIcon, UserGroupIcon, BeakerIcon, UserCircleIcon, ChatBubbleIcon, OfficeBuildingIcon } from './components/Icons';
 import { UserRole } from './types';
 
 export const NAV_ITEMS = {
   [UserRole.Admin]: [
     { name: 'الملف الشخصي', icon: UserCircleIcon, page: 'profile' },
+    { name: 'المركز', icon: OfficeBuildingIcon, page: 'center' },
     { name: 'لوحة التحكم', icon: HomeIcon, page: 'dashboard' },
     { name: 'المستخدمين', icon: UsersIcon, page: 'users' },
     { name: 'المرضى', icon: UserGroupIcon, page: 'patients' },
@@ -15,6 +16,7 @@ export const NAV_ITEMS = {
   ],
   [UserRole.SubManager]: [
     { name: 'الملف الشخصي', icon: UserCircleIcon, page: 'profile' },
+    { name: 'المركز', icon: OfficeBuildingIcon, page: 'center' },
     { name: 'لوحة التحكم', icon: HomeIcon, page: 'dashboard' },
     { name: 'المستخدمين', icon: UsersIcon, page: 'users' },
     { name: 'المرضى', icon: UserGroupIcon, page: 'patients' },
@@ -25,12 +27,14 @@ export const NAV_ITEMS = {
   ],
   [UserRole.Doctor]: [
     { name: 'الملف الشخصي', icon: UserCircleIcon, page: 'profile' },
+    { name: 'المركز', icon: OfficeBuildingIcon, page: 'center' },
     { name: 'لوحة التحكم', icon: HomeIcon, page: 'dashboard' },
     { name: 'مرضاي', icon: UserGroupIcon, page: 'patients' },
     { name: 'الدعم', icon: ChatBubbleIcon, page: 'contact' },
   ],
   [UserRole.Secretary]: [
     { name: 'الملف الشخصي', icon: UserCircleIcon, page: 'profile' },
+    { name: 'المركز', icon: OfficeBuildingIcon, page: 'center' },
     { name: 'لوحة التحكم', icon: HomeIcon, page: 'dashboard' },
     { name: 'المرضى', icon: UserGroupIcon, page: 'patients' },
     { name: 'المدفوعات', icon: CurrencyDollarIcon, page: 'payments' },

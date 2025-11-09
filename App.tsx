@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Patient, User, UserRole } from './types';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { ThemeProvider } from './hooks/useTheme';
+import { AppSettingsProvider } from './hooks/useAppSettings';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import Layout from './components/layout/Layout';
@@ -20,6 +21,7 @@ import PatientFinancialPage from './pages/PatientFinancialPage';
 import PatientPhotosPage from './pages/PatientPhotosPage';
 import ContactPage from './pages/ContactPage';
 import ActivityArchivesPage from './pages/ActivityArchivesPage';
+import CenterPage from './pages/CenterPage';
 import { api } from './services/api';
 import { CenteredLoadingSpinner } from './components/LoadingSpinner';
 import { setupSyncListeners } from './services/sync';
@@ -120,7 +122,7 @@ const AppContent: React.FC = () => {
                     : fallback;
             case 'financial':
                 return activePatient 
-                    ? <PatientFinancialPage patient={activePatient} onBack={() => handleNavigation('patients')} refreshTrigger={refreshTrigger} />
+                    ? <PatientFinancialPage patient={activePatient} user={user} onBack={() => handleNavigation('patients')} refreshTrigger={refreshTrigger} />
                     : fallback;
             case 'photos':
                 return activePatient
@@ -138,6 +140,8 @@ const AppContent: React.FC = () => {
                 return user.role === UserRole.Doctor ? <DoctorSchedulePage user={user} refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;
             case 'profile':
                 return <ProfilePage refreshTrigger={refreshTrigger} />;
+            case 'center':
+                return <CenterPage refreshTrigger={refreshTrigger} />;
             case 'contact':
                 return <ContactPage />;
             case 'activity-archives':
@@ -198,13 +202,15 @@ const App: React.FC = () => {
 
     return (
         <QueryClientProvider client={queryClient}>
-            <ThemeProvider>
-                <AuthProvider>
-                    <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
-                        <AppContent />
-                    </div>
-                </AuthProvider>
-            </ThemeProvider>
+            <AppSettingsProvider>
+                <ThemeProvider>
+                    <AuthProvider>
+                        <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
+                            <AppContent />
+                        </div>
+                    </AuthProvider>
+                </ThemeProvider>
+            </AppSettingsProvider>
         </QueryClientProvider>
     );
 };

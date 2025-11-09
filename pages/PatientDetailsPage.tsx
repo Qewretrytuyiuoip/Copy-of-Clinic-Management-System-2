@@ -1,9 +1,10 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
-import { Patient, User, Gender } from '../types';
+// FIX: Imported UserRole to resolve 'Cannot find name' error.
+import { Patient, User, Gender, UserRole } from '../types';
 import { ArrowBackIcon } from '../components/Icons';
 import { api } from '../services/api';
 import { CenteredLoadingSpinner } from '../components/LoadingSpinner';
+import { useAuth } from '../hooks/useAuth';
 
 interface PatientDetailsPageProps {
     patient: Patient;
@@ -22,6 +23,8 @@ const DetailItem: React.FC<{ label: string; value?: string | number | null; chil
 const PatientDetailsPage: React.FC<PatientDetailsPageProps> = ({ patient: initialPatient, doctors, onBack, refreshTrigger }) => {
     const [patient, setPatient] = useState<Patient>(initialPatient);
     const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
+    const isAdmin = user && user.role === UserRole.Admin;
 
     useEffect(() => {
         const fetchPatientData = async () => {
@@ -96,6 +99,11 @@ const PatientDetailsPage: React.FC<PatientDetailsPageProps> = ({ patient: initia
                         </div>
                         <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6"> <DetailItem label="الحساسية الدوائية" value={patient.drugAllergy} /> </div>
                         <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6"> <DetailItem label="الأمراض المزمنة" value={patient.chronicDiseases} /> </div>
+                        {isAdmin && (
+                            <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                <DetailItem label="مبلغ الخصم" value={`${(patient.discount || 0).toLocaleString()} SYP`} />
+                            </div>
+                        )}
                         <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6"> <DetailItem label="ملاحظات عامة" value={patient.notes} /> </div>
                     </dl>
                 </div>

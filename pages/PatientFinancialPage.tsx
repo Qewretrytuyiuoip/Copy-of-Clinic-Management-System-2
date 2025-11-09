@@ -1,10 +1,8 @@
-
-
 import React, { useState, useCallback, useEffect } from 'react';
-import { Patient, Payment, Session } from '../types';
+import { Patient, Payment, Session, User, UserRole } from '../types';
 import { api } from '../services/api';
 import { CenteredLoadingSpinner } from '../components/LoadingSpinner';
-import { PlusIcon, PencilIcon, TrashIcon, XIcon, ArrowBackIcon, BeakerIcon, CurrencyDollarIcon, ListBulletIcon } from '../components/Icons';
+import { PlusIcon, PencilIcon, TrashIcon, XIcon, ArrowBackIcon, BeakerIcon, CurrencyDollarIcon, ListBulletIcon, CheckIcon } from '../components/Icons';
 
 
 // ===================================================================
@@ -159,6 +157,65 @@ const EditPaymentModalForPatient: React.FC<EditPaymentModalForPatientProps> = ({
     );
 };
 
+// ===================================================================
+// EditDiscountModal Component
+// ===================================================================
+interface EditDiscountModalProps {
+    currentDiscount: number;
+    patientName: string;
+    onSave: (newDiscount: number) => Promise<void>;
+    onClose: () => void;
+}
+
+const EditDiscountModal: React.FC<EditDiscountModalProps> = ({ currentDiscount, patientName, onSave, onClose }) => {
+    const [discount, setDiscount] = useState(currentDiscount.toString());
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+            await onSave(parseFloat(discount) || 0);
+        } catch (error) {
+            alert(`فشل الحفظ: ${error instanceof Error ? error.message : "خطأ غير معروف"}`);
+            setIsSaving(false);
+        }
+    };
+
+    const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">تعديل الخصم لـ {patientName}</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="p-6">
+                        <label htmlFor="discount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">مبلغ الخصم</label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            id="discount"
+                            name="discount"
+                            value={discount}
+                            onChange={(e) => setDiscount(e.target.value)}
+                            required
+                            className={inputStyle}
+                            placeholder="0.00"
+                        />
+                    </div>
+                    <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
+                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
 
 // ===================================================================
 // PatientFinancialPage Component
@@ -166,17 +223,20 @@ const EditPaymentModalForPatient: React.FC<EditPaymentModalForPatientProps> = ({
 interface PatientFinancialPageProps {
     patient: Patient;
     onBack: () => void;
+    user: User;
     refreshTrigger: number;
 }
 
-const PatientFinancialPage: React.FC<PatientFinancialPageProps> = ({ patient, onBack, refreshTrigger }) => {
+const PatientFinancialPage: React.FC<PatientFinancialPageProps> = ({ patient: initialPatient, onBack, user, refreshTrigger }) => {
     const [payments, setPayments] = useState<Payment[]>([]);
-    const [stats, setStats] = useState({ totalPayments: 0, totalCost: 0, balance: 0 });
+    const [patient, setPatient] = useState<Patient>(initialPatient);
+    const [stats, setStats] = useState({ totalPayments: 0, totalCost: 0, balance: 0, discount: 0 });
     const [loading, setLoading] = useState(true);
     const [paymentToDelete, setPaymentToDelete] = useState<Payment | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isAddingPayment, setIsAddingPayment] = useState(false);
     const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
+    const [isEditingDiscount, setIsEditingDiscount] = useState(false);
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
@@ -190,14 +250,20 @@ const PatientFinancialPage: React.FC<PatientFinancialPageProps> = ({ patient, on
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const [allPaymentsResponse, allSessions] = await Promise.all([
+            const [allPaymentsResponse, allSessions, latestPatientData] = await Promise.all([
                 api.payments.getAll({ page: 1, per_page: 9999 }),
-                api.sessions.getAll()
+                api.sessions.getAll(),
+                api.patients.getById(initialPatient.id)
             ]);
 
+            if (latestPatientData) {
+                setPatient(latestPatientData);
+            }
+            const currentPatient = latestPatientData || patient;
+
             const allPayments = allPaymentsResponse.payments;
-            const patientPayments = allPayments.filter(p => p.patientId === patient.id);
-            const patientSessions = allSessions.filter(s => s.patientId === patient.id);
+            const patientPayments = allPayments.filter(p => p.patientId === currentPatient.id);
+            const patientSessions = allSessions.filter(s => s.patientId === currentPatient.id);
             setPayments(patientPayments.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
 
             const totalPayments = patientPayments.reduce((sum, p) => sum + p.amount, 0);
@@ -208,11 +274,14 @@ const PatientFinancialPage: React.FC<PatientFinancialPageProps> = ({ patient, on
                 }, 0);
                 return sessionSum + treatmentsCost;
             }, 0);
+            
+            const totalDiscount = currentPatient.discount || 0;
 
             setStats({
                 totalPayments,
                 totalCost,
-                balance: totalCost - totalPayments
+                balance: totalCost - totalPayments - totalDiscount,
+                discount: totalDiscount
             });
 
         } catch (error) {
@@ -221,7 +290,7 @@ const PatientFinancialPage: React.FC<PatientFinancialPageProps> = ({ patient, on
         } finally {
             setLoading(false);
         }
-    }, [patient.id]);
+    }, [initialPatient.id, patient]);
 
     useEffect(() => {
         fetchData();
@@ -236,6 +305,12 @@ const PatientFinancialPage: React.FC<PatientFinancialPageProps> = ({ patient, on
     const handleUpdatePayment = async (updatedPayment: Payment) => {
         await api.payments.update(updatedPayment.id, updatedPayment);
         setEditingPayment(null);
+        await fetchData();
+    };
+
+    const handleSaveDiscount = async (newDiscount: number) => {
+        await api.patients.update(patient.id, { discount: newDiscount }, user.id);
+        setIsEditingDiscount(false);
         await fetchData();
     };
 
@@ -280,9 +355,21 @@ const PatientFinancialPage: React.FC<PatientFinancialPageProps> = ({ patient, on
                 </div>
             </div>
             
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-8">
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
                 <StatCard title="إجمالي تكاليف العلاج" value={`SYP ${stats.totalCost.toFixed(2)}`} icon={BeakerIcon} color="red" />
                 <StatCard title="إجمالي الإيرادات" value={`SYP ${stats.totalPayments.toFixed(2)}`} icon={CurrencyDollarIcon} color="green" />
+                <div className="relative group">
+                    <StatCard title="إجمالي الخصم" value={`SYP ${stats.discount.toFixed(2)}`} icon={CurrencyDollarIcon} color="purple" />
+                    {(user.role === UserRole.Admin || user.role === UserRole.SubManager) && (
+                        <button
+                            onClick={() => setIsEditingDiscount(true)}
+                            className="absolute top-2 right-2 p-1.5 bg-white/50 dark:bg-slate-900/50 rounded-full text-gray-600 dark:text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="تعديل الخصم"
+                        >
+                            <PencilIcon className="h-4 w-4" />
+                        </button>
+                    )}
+                </div>
                 <StatCard title="المتبقي" value={`SYP ${stats.balance.toFixed(2)}`} icon={ListBulletIcon} color={stats.balance > 0 ? 'yellow' : 'blue'} />
             </div>
 
@@ -333,6 +420,14 @@ const PatientFinancialPage: React.FC<PatientFinancialPageProps> = ({ patient, on
                     onConfirm={confirmDeletePayment}
                     onCancel={() => !isDeleting && setPaymentToDelete(null)}
                     isDeleting={isDeleting}
+                />
+            )}
+             {isEditingDiscount && (
+                <EditDiscountModal
+                    currentDiscount={stats.discount}
+                    patientName={patient.name}
+                    onSave={handleSaveDiscount}
+                    onClose={() => setIsEditingDiscount(false)}
                 />
             )}
         </div>

@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { appSettings } from '../appSettings';
+import { useAppSettings } from '../hooks/useAppSettings';
 import { EyeIcon, EyeSlashIcon, ArrowDownOnSquareIcon } from '../components/Icons';
+import { ApiError } from '../services/api';
 
 const LoginPage: React.FC = () => {
+    const [isRegisterMode, setIsRegisterMode] = useState(false);
+    const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [rememberMe, setRememberMe] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const { login } = useAuth();
-    const settings = appSettings;
+    const { login, register } = useAuth();
+    const { settings } = useAppSettings();
     const [installPrompt, setInstallPrompt] = useState<any>(null);
     const [isInstallable, setIsInstallable] = useState(false);
 
@@ -58,11 +61,10 @@ const LoginPage: React.FC = () => {
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleLoginSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-
-        // Basic security validation to prevent XSS and simple SQL injection patterns
+        
         const maliciousPattern = /[<>;]|--/;
         if (maliciousPattern.test(email) || maliciousPattern.test(password)) {
             setError('تم اكتشاف أحرف غير صالحة. يرجى إزالتها والمحاولة مرة أخرى.');
@@ -89,6 +91,50 @@ const LoginPage: React.FC = () => {
             setLoading(false);
         }
     };
+    
+    const handleRegisterSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+
+        const maliciousPattern = /[<>;]|--/;
+        if (maliciousPattern.test(name) || maliciousPattern.test(email) || maliciousPattern.test(password)) {
+            setError('تم اكتشاف أحرف غير صالحة. يرجى إزالتها والمحاولة مرة أخرى.');
+            return;
+        }
+
+        if (password.length < 6) {
+            setError('يجب أن تكون كلمة المرور 6 أحرف على الأقل.');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const user = await register(name, email, password);
+            if (!user) {
+                 setError('فشل إنشاء الحساب. قد يكون البريد الإلكتروني مستخدماً بالفعل.');
+            }
+        } catch (err) {
+             if (err instanceof ApiError && err.errors) {
+                 const errorMessages = Object.values(err.errors).flat().join(' ');
+                 setError(errorMessages || 'فشل التحقق من البيانات.');
+            } else if (err instanceof Error){
+                setError(err.message || 'فشل إنشاء الحساب. يرجى المحاولة مرة أخرى.');
+            } else {
+                setError('فشل إنشاء الحساب. يرجى المحاولة مرة أخرى.');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    const toggleMode = () => {
+        setIsRegisterMode(!isRegisterMode);
+        setError('');
+        setName('');
+        setEmail('');
+        setPassword('');
+    };
+
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
@@ -106,15 +152,33 @@ const LoginPage: React.FC = () => {
                 <div className="text-center">
                     <img src={settings.appLogo} alt="شعار التطبيق" className="mx-auto h-16 w-16" />
                     <h1 className="mt-2 text-3xl font-bold text-primary">{settings.appName}</h1>
-                    <p className="mt-2 text-gray-600 dark:text-gray-300">مرحباً بعودتك! الرجاء تسجيل الدخول إلى حسابك.</p>
+                    <p className="mt-2 text-gray-600 dark:text-gray-300">
+                        {isRegisterMode ? 'إنشاء حساب جديد للبدء.' : 'مرحباً بعودتك! الرجاء تسجيل الدخول إلى حسابك.'}
+                    </p>
                 </div>
-                <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                <form className="mt-8 space-y-6" onSubmit={isRegisterMode ? handleRegisterSubmit : handleLoginSubmit}>
                     {error && (
                         <div className="p-3 text-sm text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-300 rounded-lg" role="alert">
                             {error}
                         </div>
                     )}
                     <div className="space-y-4 rounded-md">
+                        {isRegisterMode && (
+                            <div>
+                                <label htmlFor="name" className="sr-only">الاسم</label>
+                                <input
+                                    id="name"
+                                    name="name"
+                                    type="text"
+                                    autoComplete="name"
+                                    required
+                                    className="relative block w-full px-3 py-2 text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-400 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm appearance-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
+                                    placeholder="الاسم الكامل"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                />
+                            </div>
+                        )}
                         <div>
                             <label htmlFor="email-address" className="sr-only">البريد الإلكتروني</label>
                             <input
@@ -157,21 +221,23 @@ const LoginPage: React.FC = () => {
                         </div>
                     </div>
                     
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                            <input
-                                id="remember-me"
-                                name="remember-me"
-                                type="checkbox"
-                                checked={rememberMe}
-                                onChange={(e) => setRememberMe(e.target.checked)}
-                                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 dark:border-gray-500 rounded"
-                            />
-                            <label htmlFor="remember-me" className="mr-2 block text-sm text-gray-900 dark:text-gray-300">
-                                تذكرني
-                            </label>
+                    {!isRegisterMode && (
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                                <input
+                                    id="remember-me"
+                                    name="remember-me"
+                                    type="checkbox"
+                                    checked={rememberMe}
+                                    onChange={(e) => setRememberMe(e.target.checked)}
+                                    className="h-4 w-4 text-primary focus:ring-primary border-gray-300 dark:border-gray-500 rounded"
+                                />
+                                <label htmlFor="remember-me" className="mr-2 block text-sm text-gray-900 dark:text-gray-300">
+                                    تذكرني
+                                </label>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
 
                     <div>
@@ -180,7 +246,19 @@ const LoginPage: React.FC = () => {
                             disabled={loading}
                             className="relative flex justify-center w-full px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md group bg-primary hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:bg-primary-300"
                         >
-                            {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
+                            {loading ? (isRegisterMode ? 'جاري الإنشاء...' : 'جاري تسجيل الدخول...') : (isRegisterMode ? 'إنشاء حساب' : 'تسجيل الدخول')}
+                        </button>
+                    </div>
+
+                    <div className="text-sm text-center">
+                        <button
+                            type="button"
+                            onClick={toggleMode}
+                            className="font-medium text-primary hover:text-primary-700 dark:hover:text-primary-300 focus:outline-none"
+                        >
+                            {isRegisterMode 
+                                ? 'لديك حساب بالفعل؟ تسجيل الدخول' 
+                                : 'ليس لديك حساب؟ إنشاء حساب جديد'}
                         </button>
                     </div>
                 </form>
