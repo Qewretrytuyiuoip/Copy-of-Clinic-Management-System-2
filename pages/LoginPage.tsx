@@ -1,8 +1,70 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useAppSettings } from '../hooks/useAppSettings';
-import { EyeIcon, EyeSlashIcon, ArrowDownOnSquareIcon } from '../components/Icons';
+import { EyeIcon, EyeSlashIcon, ArrowDownOnSquareIcon, WhatsappIcon, FacebookIcon, TelegramIcon, XIcon } from '../components/Icons';
 import { ApiError } from '../services/api';
+import { UserRole } from '../types';
+import { appSettings } from '../appSettings';
+
+const SubscriptionExpiredModal: React.FC<{
+    role: UserRole;
+    onClose: () => void;
+}> = ({ role, onClose }) => {
+    // FIX: Replaced useAppSettings with static appSettings import for contact info.
+    // The `settings` from useAppSettings is for dynamic settings (appName, appLogo)
+    // and does not contain the static contact details.
+
+    const isManager = role === UserRole.Admin || role === UserRole.SubManager;
+    const title = "انتهاء الاشتراك";
+    const message = isManager
+        ? "يرجى تجديد الاشتراك للاستمرار في استخدام النظام."
+        : "انتهت مدة الاشتراك. الرجاء التواصل مع مدير المركز لتفعيل الحساب.";
+
+    const socialLinks = [
+        { name: 'واتساب', href: appSettings.contact.whatsapp, icon: WhatsappIcon, color: 'bg-green-500 hover:bg-green-600' },
+        { name: 'فيسبوك', href: appSettings.contact.facebook, icon: FacebookIcon, color: 'bg-blue-600 hover:bg-blue-700' },
+        { name: 'تلغرام', href: appSettings.contact.telegram, icon: TelegramIcon, color: 'bg-sky-500 hover:bg-sky-600' }
+    ];
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4 transition-opacity" onClick={onClose}>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+                    <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{title}</h3>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
+                </div>
+                <div className="p-6">
+                    <p className="text-md text-gray-600 dark:text-gray-300 text-center">{message}</p>
+                    {isManager && (
+                        <div className="mt-6">
+                            <h4 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-3 text-center">قنوات التواصل مع فريق الدعم</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                {socialLinks.map(link => (
+                                    <a
+                                        key={link.name}
+                                        href={link.href}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={`flex items-center justify-center gap-2 px-4 py-2.5 text-white font-semibold rounded-lg shadow-md transition-transform hover:scale-105 ${link.color}`}
+                                    >
+                                        <link.icon className="h-5 w-5" />
+                                        <span>{link.name}</span>
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+                <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex justify-end">
+                    <button type="button" onClick={onClose} className="w-full sm:w-auto rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-6 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                        إغلاق
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 const LoginPage: React.FC = () => {
     const [isRegisterMode, setIsRegisterMode] = useState(false);
@@ -17,6 +79,7 @@ const LoginPage: React.FC = () => {
     const { settings } = useAppSettings();
     const [installPrompt, setInstallPrompt] = useState<any>(null);
     const [isInstallable, setIsInstallable] = useState(false);
+    const [subscriptionError, setSubscriptionError] = useState<{ role: UserRole } | null>(null);
 
     useEffect(() => {
         const savedEmail = localStorage.getItem('rememberedEmail');
@@ -64,6 +127,7 @@ const LoginPage: React.FC = () => {
     const handleLoginSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setSubscriptionError(null);
         
         const maliciousPattern = /[<>;]|--/;
         if (maliciousPattern.test(email) || maliciousPattern.test(password)) {
@@ -86,7 +150,11 @@ const LoginPage: React.FC = () => {
                 }
             }
         } catch (err) {
-            setError('حدث خطأ. يرجى المحاولة مرة أخرى.');
+            if (err instanceof Error && err.name === 'SubscriptionExpiredError') {
+                setSubscriptionError({ role: (err as any).role });
+            } else {
+                setError('حدث خطأ. يرجى المحاولة مرة أخرى.');
+            }
         } finally {
             setLoading(false);
         }
@@ -138,6 +206,12 @@ const LoginPage: React.FC = () => {
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+            {subscriptionError && (
+                <SubscriptionExpiredModal
+                    role={subscriptionError.role}
+                    onClose={() => setSubscriptionError(null)}
+                />
+            )}
             <div className="relative w-full max-w-md p-8 space-y-8 bg-white dark:bg-slate-800 rounded-lg shadow-md">
                  {isInstallable && (
                     <button

@@ -3,6 +3,15 @@ import { User, UserRole, Permission } from '../types';
 import { login as apiLogin, logout as apiLogout, getMe as apiGetMe, register as apiRegister, ApiError } from '../services/api';
 import { useAppSettings } from './useAppSettings';
 
+class SubscriptionExpiredError extends Error {
+    role: UserRole;
+    constructor(role: UserRole) {
+        super("Subscription has expired.");
+        this.name = 'SubscriptionExpiredError';
+        this.role = role;
+    }
+}
+
 interface AuthContextType {
     user: User | null;
     isLoading: boolean;
@@ -35,6 +44,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const loginData = await apiLogin(email, password);
         if (loginData) {
             const { user: userFromApi, center: centerFromApi, token, permissions } = loginData;
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Compare dates only, not time
+            const subscriptionEndDate = new Date(centerFromApi.subscription_end);
+
+            if (subscriptionEndDate < today) {
+                throw new SubscriptionExpiredError(userFromApi.role as UserRole);
+            }
 
             const mappedPermissions: Permission[] = (permissions || []).map((pName: string, index: number) => ({
                 id: index, // Placeholder ID
