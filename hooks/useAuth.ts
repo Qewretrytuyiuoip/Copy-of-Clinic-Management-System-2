@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect } from 'react';
-import { User, UserRole } from '../types';
+import { User, UserRole, Permission } from '../types';
 import { login as apiLogin, logout as apiLogout, getMe as apiGetMe, register as apiRegister, ApiError } from '../services/api';
 import { useAppSettings } from './useAppSettings';
 
@@ -34,7 +34,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const login = async (email: string, password: string): Promise<User | null> => {
         const loginData = await apiLogin(email, password);
         if (loginData) {
-            const { user: userFromApi, center: centerFromApi, token } = loginData;
+            const { user: userFromApi, center: centerFromApi, token, permissions } = loginData;
+
+            const mappedPermissions: Permission[] = (permissions || []).map((pName: string, index: number) => ({
+                id: index, // Placeholder ID
+                name: pName,
+                display_name: pName === 'financial_management' ? 'الأدارة المالية' : pName.replace(/_/g, ' '),
+            }));
 
             const user: User = {
                 id: String(userFromApi.id),
@@ -44,7 +50,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 role: userFromApi.role as UserRole,
                 specialty: userFromApi.specialty,
                 is_diagnosis_doctor: userFromApi.is_diagnosis_doctor == 1,
-                permissions: userFromApi.permissions || [],
+                permissions: mappedPermissions,
             };
             
             localStorage.setItem('authToken', token);
@@ -65,7 +71,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const register = async (name: string, email: string, password: string): Promise<User | null> => {
         const registerData = await apiRegister(name, email, password);
         if (registerData) {
-            const { user: userFromApi, center: centerFromApi, token } = registerData;
+            const { user: userFromApi, center: centerFromApi, token, permissions } = registerData;
+
+            const mappedPermissions: Permission[] = (permissions || []).map((pName: string, index: number) => ({
+                id: index, // Placeholder ID
+                name: pName,
+                display_name: pName === 'financial_management' ? 'الأدارة المالية' : pName.replace(/_/g, ' '),
+            }));
 
             const user: User = {
                 id: String(userFromApi.id),
@@ -75,7 +87,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 role: userFromApi.role as UserRole,
                 specialty: userFromApi.specialty,
                 is_diagnosis_doctor: userFromApi.is_diagnosis_doctor == 1,
-                permissions: userFromApi.permissions || [],
+                permissions: mappedPermissions,
             };
             
             localStorage.setItem('authToken', token);

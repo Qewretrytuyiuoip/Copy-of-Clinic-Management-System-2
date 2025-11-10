@@ -1,5 +1,5 @@
-import React, { Fragment, useState, useEffect } from 'react';
-import { User } from '../../types';
+import React, { Fragment, useState, useEffect, useMemo } from 'react';
+import { User, UserRole } from '../../types';
 import { NAV_ITEMS } from '../../constants';
 import { XIcon, BellIcon, BellSlashIcon, CheckIcon } from '../Icons';
 import { appSettings } from '../../appSettings';
@@ -25,7 +25,7 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, sidebarOpen, setSidebarOpen }) => {
-    const navItems = NAV_ITEMS[user.role];
+    const baseNavItems = NAV_ITEMS[user.role];
     const { settings } = useAppSettings();
 
     const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
@@ -33,6 +33,17 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
     const [subscriptionLoading, setSubscriptionLoading] = useState(true);
     const [isSupported, setIsSupported] = useState(false);
     
+    const navItems = useMemo(() => {
+        if (user.role === UserRole.Secretary || user.role === UserRole.SubManager) {
+            const hasFinancialPermission = user.permissions?.some(p => p.display_name === 'الأدارة المالية');
+            if (!hasFinancialPermission) {
+                return baseNavItems.filter(item => item.page !== 'payments');
+            }
+        }
+        return baseNavItems;
+    }, [user, baseNavItems]);
+
+
     useEffect(() => {
         if ('serviceWorker' in navigator && 'PushManager' in window) {
             setIsSupported(true);

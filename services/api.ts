@@ -122,7 +122,7 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
 
 
 // Auth
-export const register = async (name: string, email: string, password: string): Promise<{ user: any; center: any; token: string; } | null> => {
+export const register = async (name: string, email: string, password: string): Promise<any | null> => {
     try {
         const formData = new FormData();
         formData.append('name', name);
@@ -150,11 +150,7 @@ export const register = async (name: string, email: string, password: string): P
         const data = await response.json();
         
         if (data.user && data.token && data.center) {
-            return {
-                user: data.user,
-                center: data.center,
-                token: data.token
-            };
+            return data;
         }
 
         console.error('Invalid registration response from API:', data);
@@ -169,7 +165,7 @@ export const register = async (name: string, email: string, password: string): P
     }
 };
 
-export const login = async (email: string, password: string): Promise<{ user: any; center: any; token: string; } | null> => {
+export const login = async (email: string, password: string): Promise<any | null> => {
     try {
         const formData = new FormData();
         formData.append('email', email);
@@ -187,11 +183,7 @@ export const login = async (email: string, password: string): Promise<{ user: an
         const data = await response.json();
         
         if (data.user && data.token && data.center) {
-            return {
-                user: data.user,
-                center: data.center,
-                token: data.token
-            };
+            return data;
         }
 
         console.error('Invalid login response from API:', data);

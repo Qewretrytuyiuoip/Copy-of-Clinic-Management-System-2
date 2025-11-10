@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { User, UserRole } from '../../types';
 import { NAV_ITEMS } from '../../constants';
 
@@ -9,11 +9,28 @@ interface BottomNavProps {
 }
 
 const BottomNav: React.FC<BottomNavProps> = ({ user, currentPage, setCurrentPage }) => {
-    let navItems = NAV_ITEMS[user.role].filter(item => item.page !== 'profile');
+    const navItems = useMemo(() => {
+        let items = NAV_ITEMS[user.role];
 
-    if (user.role === UserRole.Doctor || user.role === UserRole.Secretary || user.role === UserRole.Admin) {
-        navItems = navItems.filter(item => item.page !== 'contact');
-    }
+        // Default filter: remove profile page
+        items = items.filter(item => item.page !== 'profile');
+
+        // Filter contact page for specific roles
+        if (user.role === UserRole.Doctor || user.role === UserRole.Secretary || user.role === UserRole.Admin) {
+            items = items.filter(item => item.page !== 'contact');
+        }
+
+        // Conditionally filter payments for Secretary and SubManager
+        if (user.role === UserRole.Secretary || user.role === UserRole.SubManager) {
+            const hasFinancialPermission = user.permissions?.some(p => p.display_name === 'الأدارة المالية');
+            if (!hasFinancialPermission) {
+                items = items.filter(item => item.page !== 'payments');
+            }
+        }
+        
+        return items;
+    }, [user]);
+
 
     return (
         <div className="lg:hidden fixed bottom-0 left-0 z-10 w-full h-16 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-gray-700">
