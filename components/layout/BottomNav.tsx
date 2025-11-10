@@ -25,9 +25,9 @@ const BottomNav: React.FC<BottomNavProps> = ({ user, currentPage, setCurrentPage
             items = items.filter(item => item.page !== 'contact');
         }
 
-        // Conditionally filter payments for Secretary and SubManager
-        if (user.role === UserRole.Secretary || user.role === UserRole.SubManager) {
-            const hasFinancialPermission = user.permissions?.some(p => p.display_name === 'الأدارة المالية');
+        // Conditionally filter payments for Secretary, SubManager, and Doctor
+        if (user.role === UserRole.Doctor || user.role === UserRole.Secretary || user.role === UserRole.SubManager) {
+            const hasFinancialPermission = user.permissions?.some(p => p.name === 'financial_management');
             if (!hasFinancialPermission) {
                 items = items.filter(item => item.page !== 'payments');
             }

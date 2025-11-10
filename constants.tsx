@@ -28,6 +28,7 @@ export const NAV_ITEMS = {
     { name: 'الملف الشخصي', icon: UserCircleIcon, page: 'profile' },
     { name: 'لوحة التحكم', icon: HomeIcon, page: 'dashboard' },
     { name: 'مرضاي', icon: UserGroupIcon, page: 'patients' },
+    { name: 'المدفوعات', icon: CurrencyDollarIcon, page: 'payments' },
     { name: 'الدعم', icon: ChatBubbleIcon, page: 'contact' },
   ],
   [UserRole.Secretary]: [

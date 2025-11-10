@@ -133,10 +133,10 @@ const AppContent: React.FC = () => {
             case 'appointments':
                 return <AppointmentsPage user={user} refreshTrigger={refreshTrigger} />;
             case 'payments':
-                const hasFinancialPermission = user.permissions?.some(p => p.display_name === 'الأدارة المالية');
+                const hasFinancialPermission = user.permissions?.some(p => p.name === 'financial_management');
                 const hasPaymentsAccess = 
                     user.role === UserRole.Admin || 
-                    ((user.role === UserRole.SubManager || user.role === UserRole.Secretary) && hasFinancialPermission);
+                    ((user.role === UserRole.SubManager || user.role === UserRole.Secretary || user.role === UserRole.Doctor) && hasFinancialPermission);
                 return hasPaymentsAccess ? <PaymentsPage user={user} refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;
             case 'statistics':
                 return (user.role === UserRole.Admin || user.role === UserRole.SubManager) ? <StatisticsPage refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;

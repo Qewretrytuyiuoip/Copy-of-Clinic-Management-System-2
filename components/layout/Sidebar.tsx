@@ -34,8 +34,8 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
     const [isSupported, setIsSupported] = useState(false);
     
     const navItems = useMemo(() => {
-        if (user.role === UserRole.Secretary || user.role === UserRole.SubManager) {
-            const hasFinancialPermission = user.permissions?.some(p => p.display_name === 'الأدارة المالية');
+        if (user.role === UserRole.Doctor || user.role === UserRole.Secretary || user.role === UserRole.SubManager) {
+            const hasFinancialPermission = user.permissions?.some(p => p.name === 'financial_management');
             if (!hasFinancialPermission) {
                 return baseNavItems.filter(item => item.page !== 'payments');
             }

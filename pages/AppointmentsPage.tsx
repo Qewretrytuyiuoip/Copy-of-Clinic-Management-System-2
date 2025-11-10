@@ -7,12 +7,12 @@ import { DAY_NAMES } from '../constants';
 
 const formatTo12Hour = (time24: string): string => {
     if (!time24 || !time24.includes(':')) {
-        return time24; // Return original if format is unexpected
+        return time24;
     }
     try {
         const [hours, minutes] = time24.split(':').map(Number);
         const ampm = hours >= 12 ? 'مساءً' : 'صباحًا';
-        const hours12 = hours % 12 || 12; // Convert hour to 12-hour format
+        const hours12 = hours % 12 || 12;
         const paddedHours = hours12.toString().padStart(2, '0');
         const paddedMinutes = minutes.toString().padStart(2, '0');
         return `${paddedHours}:${paddedMinutes} ${ampm}`;
@@ -638,7 +638,6 @@ interface AppointmentsPageProps {
     refreshTrigger: number;
 }
 
-type ActiveTab = 'all' | 'today' | 'week' | 'month' | 'finished';
 
 const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigger }) => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -652,10 +651,11 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
     const [deletingAppointment, setDeletingAppointment] = useState<Appointment | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeTab, setActiveTab] = useState<ActiveTab>('today');
     const [isViewingAvailableSlots, setIsViewingAvailableSlots] = useState(false);
     const [initialAppointmentData, setInitialAppointmentData] = useState<Partial<Appointment> | null>(null);
 
+    const [currentDate, setCurrentDate] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState(new Date());
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -704,9 +704,8 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
             setEditingAppointment(null);
             await fetchData();
         } catch (error) {
-            // Error is now handled inside the modal's handleSubmit
             console.error(`Failed to save appointment:`, error);
-            throw error; // Re-throw to be caught by the modal
+            throw error;
         }
     };
 
@@ -729,66 +728,78 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
     const getPatientName = (id: string) => patients.find(p => p.id === id)?.name || 'مريض غير معروف';
     const getDoctorName = (id: string) => doctors.find(d => d.id === id)?.name || 'طبيب غير معروف';
 
-    const filteredAppointments = useMemo(() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+     const appointmentsByDate = useMemo(() => {
+        return appointments.reduce((acc, app) => {
+            const date = app.date;
+            if (!acc[date]) {
+                acc[date] = [];
+            }
+            acc[date].push(app);
+            return acc;
+        }, {} as Record<string, Appointment[]>);
+    }, [appointments]);
 
-        const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - today.getDay());
+    const { calendarRows, monthName, year } = useMemo(() => {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const monthName = new Intl.DateTimeFormat('ar-EG', { calendar: 'gregory', month: 'long', year: 'numeric' }).format(currentDate);
 
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
-        endOfWeek.setHours(23, 59, 59, 999);
+        const firstDayOfMonth = new Date(year, month, 1);
+        const lastDayOfMonth = new Date(year, month + 1, 0);
+
+        const startDate = new Date(firstDayOfMonth);
+        startDate.setDate(startDate.getDate() - startDate.getDay());
+
+        const endDate = new Date(lastDayOfMonth);
+        if (endDate.getDay() !== 6) { // 6 is Saturday
+          endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
+        }
+
+        const rows = [];
+        let days = [];
+        let day = new Date(startDate);
+
+        while (day <= endDate) {
+            for (let i = 0; i < 7; i++) {
+                days.push(new Date(day));
+                day.setDate(day.getDate() + 1);
+            }
+            rows.push(days);
+            days = [];
+        }
         
-        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-        endOfMonth.setHours(23, 59, 59, 999);
+        return { calendarRows: rows, monthName, year };
+    }, [currentDate]);
 
-        return appointments
-            .filter(app => {
-                const appDate = new Date(app.date);
-                appDate.setMinutes(appDate.getMinutes() + appDate.getTimezoneOffset());
-                appDate.setHours(0, 0, 0, 0);
-                
-                switch (activeTab) {
-                    case 'today':
-                        return appDate.getTime() === today.getTime();
-                    case 'week':
-                        return appDate > today && appDate <= endOfWeek;
-                    case 'month':
-                        return appDate > today && appDate <= endOfMonth;
-                    case 'finished':
-                        return appDate.getTime() < today.getTime();
-                    case 'all':
-                    default:
-                        return appDate.getTime() >= today.getTime();
-                }
-            })
-            .filter(app =>
-                getPatientName(app.patientId).toLowerCase().includes(searchTerm.toLowerCase()) ||
-                getDoctorName(app.doctorId).toLowerCase().includes(searchTerm.toLowerCase())
-            )
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.time.localeCompare(b.time));
-    }, [appointments, patients, doctors, searchTerm, activeTab]);
+    const selectedDateAppointments = useMemo(() => {
+        if (!selectedDate) return [];
+        const dateString = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+        const dayAppointments = appointmentsByDate[dateString] || [];
 
-    const TabButton: React.FC<{ tab: ActiveTab; text: string; }> = ({ tab, text }) => {
-        const isActive = activeTab === tab;
-        return (
-            <button
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 text-sm font-semibold rounded-full transition-colors ${
-                    isActive
-                        ? 'bg-primary text-white shadow'
-                        : 'bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-600 border border-gray-200 dark:border-gray-600'
-                }`}
-            >
-                {text}
-            </button>
-        );
+        if (!searchTerm) return dayAppointments.sort((a,b) => a.time.localeCompare(b.time));
+
+        return dayAppointments.filter(app =>
+            getPatientName(app.patientId).toLowerCase().includes(searchTerm.toLowerCase()) ||
+            getDoctorName(app.doctorId).toLowerCase().includes(searchTerm.toLowerCase())
+        ).sort((a,b) => a.time.localeCompare(b.time));
+    }, [selectedDate, appointmentsByDate, searchTerm, getPatientName, getDoctorName]);
+
+    const changeMonth = (amount: number) => {
+        setCurrentDate(prev => {
+            const newDate = new Date(prev.getFullYear(), prev.getMonth() + amount, 1);
+            return newDate;
+        });
+    };
+
+    const goToToday = () => {
+        const today = new Date();
+        setCurrentDate(today);
+        setSelectedDate(today);
     };
 
     return (
-        <div>
-            <div className="flex justify-center items-center mb-6 flex-wrap gap-4">
+        <div className="space-y-6">
+            <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
                 <div className="relative w-full max-w-sm">
                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                        <SearchIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
@@ -797,7 +808,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                        type="text"
                        value={searchTerm}
                        onChange={(e) => setSearchTerm(e.target.value)}
-                       placeholder="ابحث عن مريض أو طبيب..."
+                       placeholder="ابحث في مواعيد اليوم المحدد..."
                        className="w-full pl-3 pr-10 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                    />
                 </div>
@@ -815,62 +826,83 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                 </div>
             </div>
 
-            <div className="mb-6 flex flex-wrap justify-center items-center gap-2">
-                <TabButton tab="all" text="كل المواعيد" />
-                <TabButton tab="today" text="مواعيد اليوم" />
-                <TabButton tab="week" text="هذا الأسبوع" />
-                <TabButton tab="month" text="هذا الشهر" />
-                <TabButton tab="finished" text="المنتهية" />
+            <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl shadow-md">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{monthName}</h2>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700">&lt;</button>
+                        <button onClick={goToToday} className="px-4 py-1.5 text-sm font-semibold rounded-full bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600">اليوم</button>
+                        <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700">&gt;</button>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-7 gap-1 text-center border-b dark:border-gray-700 pb-2 mb-2">
+                    {DAY_NAMES.map(day => <div key={day} className="font-semibold text-xs sm:text-sm text-gray-600 dark:text-gray-300 py-2">{day}</div>)}
+                </div>
+
+                <div className="grid grid-cols-7 gap-1">
+                    {calendarRows.flat().map((day, index) => {
+                        const dateString = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+                        const dailyAppointments = appointmentsByDate[dateString] || [];
+                        const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+                        const isToday = new Date().toDateString() === day.toDateString();
+                        const isSelected = selectedDate?.toDateString() === day.toDateString();
+                        
+                        let cellClasses = "p-1 sm:p-2 h-20 sm:h-24 rounded-lg cursor-pointer transition-colors relative flex flex-col items-center justify-start";
+                        if (!isCurrentMonth) cellClasses += " text-gray-300 dark:text-gray-600 bg-gray-50 dark:bg-slate-800/50";
+                        else if (isSelected) cellClasses += " bg-primary text-white shadow-lg";
+                        else if (isToday) cellClasses += " bg-primary-100 dark:bg-primary-900/40 text-primary-800 dark:text-primary-200";
+                        else cellClasses += " bg-white dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700";
+                        
+                        return (
+                            <div key={index} className={cellClasses} onClick={() => setSelectedDate(day)}>
+                                <span className={`text-sm font-semibold ${isToday && !isSelected ? 'text-primary' : ''}`}>{day.getDate()}</span>
+                                {dailyAppointments.length > 0 && isCurrentMonth && (
+                                    <div className={`absolute bottom-2 w-5 h-5 flex items-center justify-center text-xs rounded-full ${isSelected ? 'bg-white text-primary' : 'bg-primary text-white'}`}>
+                                        {dailyAppointments.length}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[200px]">
-                {loading ? <CenteredLoadingSpinner /> : fetchError ? (
-                    <div className="text-center py-16 text-red-500 dark:text-red-400"><p>{fetchError}</p></div>
-                ) : (
-                    filteredAppointments.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {filteredAppointments.map(app => {
-                                const today = new Date();
-                                today.setHours(0, 0, 0, 0);
-                                const appDate = new Date(app.date);
-                                appDate.setMinutes(appDate.getMinutes() + appDate.getTimezoneOffset());
-                                appDate.setHours(0, 0, 0, 0);
-                                const isFinished = appDate.getTime() < today.getTime();
-                                const dayName = DAY_NAMES[appDate.getDay()];
-
-                                return (
-                                <div key={app.id} className={`border rounded-xl p-4 flex flex-col transition-shadow hover:shadow-lg ${
-                                    isFinished 
-                                    ? 'bg-gray-200 dark:bg-slate-900 opacity-75 border-gray-300 dark:border-gray-700' 
-                                    : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
-                                }`}>
-                                    <div className="flex-grow">
-                                        <div className="flex justify-between items-baseline">
-                                            <h3 className={`text-lg font-bold ${isFinished ? 'text-gray-600 dark:text-gray-400' : 'text-primary'}`}>{getPatientName(app.patientId)}</h3>
-                                            <span className={`text-xs font-semibold px-2 py-1 rounded-full ${isFinished ? 'bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-300' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>{`${dayName}, ${appDate.getFullYear()}/${appDate.getMonth() + 1}/${appDate.getDate()}`}</span>
-                                        </div>
-                                        <p className={`font-bold text-3xl my-2 ${isFinished ? 'text-gray-700 dark:text-gray-300' : 'text-gray-800 dark:text-gray-100'}`}>{formatTo12Hour(app.time)}</p>
-                                        <p className={`text-sm ${isFinished ? 'text-gray-500 dark:text-gray-400' : 'text-gray-500 dark:text-gray-400'}`}>مع الطبيب: {getDoctorName(app.doctorId)}</p>
-                                        {app.notes && <p className={`mt-2 text-sm p-2 rounded-md ${isFinished ? 'bg-gray-300 dark:bg-gray-800 text-gray-700 dark:text-gray-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>{app.notes}</p>}
-                                    </div>
-                                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex items-center justify-end space-x-2">
-                                        <button onClick={() => setViewingAppointment(app)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="عرض التفاصيل"><EyeIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" /></button>
-                                        {(user.role === UserRole.Admin || user.role === UserRole.Secretary) && !isFinished && (
-                                            <>
-                                                <button onClick={() => setEditingAppointment(app)} className="p-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
-                                                <button onClick={() => setDeletingAppointment(app)} className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف"><TrashIcon className="h-5 w-5" /></button>
-                                            </>
-                                        )}
-                                    </div>
+            <div className="mt-8">
+                 {selectedDate && (
+                    <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">
+                        مواعيد يوم: {new Intl.DateTimeFormat('ar-EG', { calendar: 'gregory', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).format(selectedDate)}
+                    </h3>
+                )}
+                {loading ? <CenteredLoadingSpinner /> : selectedDateAppointments.length > 0 ? (
+                    <div className="space-y-4">
+                        {selectedDateAppointments.map(app => (
+                             <div key={app.id} className="bg-white dark:bg-slate-800 border-r-4 border-primary dark:border-primary-500 p-4 rounded-lg shadow-md flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                                <div>
+                                    <p className="font-bold text-lg text-gray-800 dark:text-gray-100">{getPatientName(app.patientId)}</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">مع الطبيب: {getDoctorName(app.doctorId)}</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 font-semibold mt-1">{formatTo12Hour(app.time)}</p>
+                                    {app.notes && <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 bg-gray-100 dark:bg-gray-700 p-2 rounded-md">{app.notes}</p>}
                                 </div>
-                                )
-                            })}
-                        </div>
-                    ) : (
-                        <p className="text-center text-gray-500 dark:text-gray-400 py-16">لا توجد مواعيد تطابق الفلترة الحالية.</p>
-                    )
+                                <div className="flex items-center justify-end gap-2 self-end sm:self-center">
+                                    <button onClick={() => setViewingAppointment(app)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="عرض التفاصيل"><EyeIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" /></button>
+                                    {(user.role === UserRole.Admin || user.role === UserRole.Secretary) && (
+                                        <>
+                                            <button onClick={() => setEditingAppointment(app)} className="p-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
+                                            <button onClick={() => setDeletingAppointment(app)} className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف"><TrashIcon className="h-5 w-5" /></button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-10 text-gray-500 dark:text-gray-400 bg-white dark:bg-slate-800 rounded-xl shadow-md">
+                        <p>{searchTerm ? 'لا توجد مواعيد تطابق بحثك في هذا اليوم.' : 'لا توجد مواعيد لهذا اليوم.'}</p>
+                    </div>
                 )}
             </div>
+
              <div className="lg:hidden fixed bottom-20 right-4 flex flex-col gap-3 z-20">
                 <button 
                     onClick={() => setIsViewingAvailableSlots(true)} 

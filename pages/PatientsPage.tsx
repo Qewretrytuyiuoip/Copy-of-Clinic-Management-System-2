@@ -4,7 +4,7 @@ import { User, Patient, UserRole, Session, Gender } from '../types';
 import { api } from '../services/api';
 import { PlusIcon, PencilIcon, TrashIcon, XIcon, BeakerIcon, EyeIcon, CurrencyDollarIcon, SearchIcon, PhotographIcon, ListBulletIcon, DocumentTextIcon, CheckIcon } from '../components/Icons';
 import LoadingSpinner, { CenteredLoadingSpinner } from '../components/LoadingSpinner';
-import { appSettings } from '../appSettings';
+import { useAppSettings } from '../hooks/useAppSettings';
 
 
 // ===================================================================
@@ -496,7 +496,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
         }
     }, [refreshTrigger]);
 
-    const settings = appSettings;
+    const { settings } = useAppSettings();
     const PATIENTS_PER_PAGE = 10;
     
     useEffect(() => {
@@ -716,6 +716,8 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                 </div>
             </section>
         ` : '';
+        
+        const absoluteLogoUrl = new URL(settings.appLogo, window.location.origin).href;
     
         const reportHTML = `
           <!DOCTYPE html>
@@ -738,7 +740,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                         <h1 class="text-3xl font-bold text-gray-800">${settings.appName}</h1>
                         <p class="text-gray-500">تقرير المريض</p>
                     </div>
-                     <img src="${settings.appLogo}" alt="شعار التطبيق" class="h-16 w-16" />
+                     <img src="${absoluteLogoUrl}" alt="شعار التطبيق" class="h-16 w-16" />
                 </header>
                 <section>
                     <h2 class="text-xl font-bold text-gray-800 mb-2">معلومات المريض</h2>
