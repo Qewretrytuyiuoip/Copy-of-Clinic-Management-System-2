@@ -15,6 +15,11 @@ const BottomNav: React.FC<BottomNavProps> = ({ user, currentPage, setCurrentPage
         // Default filter: remove profile page
         items = items.filter(item => item.page !== 'profile');
 
+        // Filter center page for Admin role from bottom bar
+        if (user.role === UserRole.Admin) {
+            items = items.filter(item => item.page !== 'center');
+        }
+
         // Filter contact page for specific roles
         if (user.role === UserRole.Doctor || user.role === UserRole.Secretary || user.role === UserRole.Admin) {
             items = items.filter(item => item.page !== 'contact');

@@ -226,7 +226,7 @@ const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ onSave, onClose }) => {
 interface EditDoctorModalProps {
     doctor: User;
     // FIX: Changed onSave signature to pass ID and updates separately, aligning with the API and preventing type errors.
-    onSave: (id: string, updates: Partial<User> & { permissions?: number[] }) => Promise<void>;
+    onSave: (id: string, updates: Partial<Omit<User, 'permissions'>> & { permissions?: number[] }) => Promise<void>;
     onClose: () => void;
 }
 
@@ -291,7 +291,7 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ doctor, onSave, onClo
         setValidationErrors({});
         try {
             // FIX: Constructed a clean 'updates' object to pass to onSave, resolving type conflicts.
-            const updates: Partial<User> & { permissions?: number[] } = { 
+            const updates: Partial<Omit<User, 'permissions'>> & { permissions?: number[] } = { 
                 name: formData.name, 
                 email: formData.email, 
                 specialty: formData.specialty, 
@@ -432,7 +432,7 @@ const DoctorsTab: React.FC<DoctorsTabProps> = ({ refreshTrigger, canAddUser }) =
     };
     
     // FIX: Updated handler signature to match the corrected `onSave` prop, resolving type errors.
-    const handleUpdateDoctor = async (id: string, updates: Partial<User> & { permissions?: number[] }) => {
+    const handleUpdateDoctor = async (id: string, updates: Partial<Omit<User, 'permissions'>> & { permissions?: number[] }) => {
         try {
             await api.doctors.update(id, updates);
             setEditingDoctor(null);

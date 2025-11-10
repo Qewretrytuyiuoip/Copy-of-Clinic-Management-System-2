@@ -48,7 +48,7 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCa
 interface SubManagerFormModalProps {
     subManager?: User;
     // FIX: Changed onSave prop type to a flexible partial User type to handle both create and update scenarios and fix type errors.
-    onSave: (data: Partial<User> & { permissions?: number[] }) => Promise<void>;
+    onSave: (data: Partial<Omit<User, 'permissions'>> & { id?: string; password?: string; permissions?: number[] }) => Promise<void>;
     onClose: () => void;
 }
 
@@ -125,16 +125,17 @@ const SubManagerFormModal: React.FC<SubManagerFormModalProps> = ({ subManager, o
         setIsSaving(true);
         setValidationErrors({});
         try {
-            const updates: Partial<User> & { permissions?: number[] } = {
+            const dataToSave: Partial<Omit<User, 'permissions'>> & { id?: string; password?: string; permissions?: number[] } = {
                 name: formData.name,
                 email: formData.email,
                 permissions: formData.permissions
             };
-            if (formData.password) {
-                updates.password = formData.password;
+            if (isEditMode) {
+                dataToSave.id = subManager.id;
             }
-            const dataToSave = isEditMode ? { ...subManager, ...updates } : formData;
-            // FIX: Removed 'as any' cast as the onSave prop type is now compatible.
+            if (formData.password || !isEditMode) {
+                dataToSave.password = formData.password;
+            }
             await onSave(dataToSave);
         } catch(error) {
             setIsSaving(false);
@@ -249,7 +250,7 @@ const AdminsTab: React.FC<AdminsTabProps> = ({ refreshTrigger, canAddUser }) => 
     };
 
     // FIX: Updated handleSave to correctly destructure the update payload for the API call and match the new modal onSave prop type.
-    const handleSave = async (data: Partial<User> & { id?: string; permissions?: number[] }) => {
+    const handleSave = async (data: Partial<Omit<User, 'permissions'>> & { id?: string; password?: string; permissions?: number[] }) => {
         try {
             if (data.id) { // Editing
                 const { id, ...updates } = data;

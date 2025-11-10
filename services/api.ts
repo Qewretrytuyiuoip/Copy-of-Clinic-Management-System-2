@@ -1249,7 +1249,15 @@ export const api = {
     doctorSchedules: {
         getAll: async (): Promise<DaySchedule[]> => {
             try {
-                const apiSchedules = await performApiFetch('doctor_schedules/all', { method: 'POST' });
+                const storedUser = localStorage.getItem('currentUser');
+                const user = storedUser ? JSON.parse(storedUser) as User : null;
+                const centerId = user?.center_id;
+
+                const formData = new FormData();
+                if (centerId) {
+                    formData.append('center_id', String(centerId));
+                }
+                const apiSchedules = await performApiFetch('doctor_schedules/all', { method: 'POST', body: formData });
                if (!Array.isArray(apiSchedules)) { return []; }
                const allSchedules = apiSchedules.map(mapApiScheduleToDaySchedule);
                await db.doctor_schedules.bulkPut(allSchedules);
@@ -1260,7 +1268,15 @@ export const api = {
        },
         getForDoctor: async (doctorId: string): Promise<DaySchedule[]> => {
              try {
-                 const apiSchedules = await performApiFetch('doctor_schedules/all', { method: 'POST' });
+                const storedUser = localStorage.getItem('currentUser');
+                const user = storedUser ? JSON.parse(storedUser) as User : null;
+                const centerId = user?.center_id;
+
+                const formData = new FormData();
+                if (centerId) {
+                    formData.append('center_id', String(centerId));
+                }
+                 const apiSchedules = await performApiFetch('doctor_schedules/all', { method: 'POST', body: formData });
                 if (!Array.isArray(apiSchedules)) { return []; }
                 const doctorSchedules = apiSchedules.filter(s => String(s.doctor_id) === doctorId).map(mapApiScheduleToDaySchedule);
                 await db.doctor_schedules.bulkPut(doctorSchedules);

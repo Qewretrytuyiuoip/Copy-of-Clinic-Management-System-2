@@ -180,7 +180,7 @@ const AddSecretaryModal: React.FC<AddSecretaryModalProps> = ({ onSave, onClose }
 interface EditSecretaryModalProps {
     secretary: User;
     // FIX: Changed onSave signature to pass ID and updates separately, resolving type errors.
-    onSave: (id: string, updates: Partial<User> & { permissions?: number[] }) => Promise<void>;
+    onSave: (id: string, updates: Partial<Omit<User, 'permissions'>> & { permissions?: number[] }) => Promise<void>;
     onClose: () => void;
 }
 
@@ -244,8 +244,8 @@ const EditSecretaryModal: React.FC<EditSecretaryModalProps> = ({ secretary, onSa
         setValidationErrors({});
         try {
             // FIX: Constructed a clean 'updates' object to pass to onSave, resolving type conflicts.
-            const updates: Partial<User> & { permissions?: number[] } = { 
-                name: formData.name, 
+            const updates: Partial<Omit<User, 'permissions'>> & { permissions?: number[] } = {
+                name: formData.name,
                 email: formData.email,
                 permissions: formData.permissions
             };
@@ -369,7 +369,7 @@ const SecretariesTab: React.FC<SecretariesTabProps> = ({ refreshTrigger, canAddU
     };
     
     // FIX: Updated handler signature to match the corrected `onSave` prop, resolving type errors.
-    const handleUpdateSecretary = async (id: string, updates: Partial<User> & { permissions?: number[] }) => {
+    const handleUpdateSecretary = async (id: string, updates: Partial<Omit<User, 'permissions'>> & { permissions?: number[] }) => {
         try {
             await api.secretaries.update(id, updates);
             setEditingSecretary(null);
