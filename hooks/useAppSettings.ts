@@ -18,7 +18,7 @@ export const AppSettingsContext = createContext<AppSettingsContextType | undefin
 const getInitialSettings = (): AppSettings => {
     // FIX: Added appLogo to the default settings and load it from localStorage.
     const defaultSettings: AppSettings = {
-        appName: 'Sara dental clinic',
+        appName: 'Clinic Key',
         appLogo: '/assets/logo.svg',
     };
     try {

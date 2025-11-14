@@ -197,27 +197,41 @@ export const login = async (email: string, password: string): Promise<any | null
 
 export const logout = async (): Promise<void> => {
     const token = localStorage.getItem('authToken');
-    // Clear local storage immediately for responsive UI
+
+    // نظف البيانات محليًا فورًا
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
 
-    if (!token) { return; }
+    if (!token) return;
 
     try {
-        await performApiFetch('logout', { method: 'POST' });
+        await performApiFetch('logout', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({}) // إذا الباك اند يحتاج body فاضي
+        });
     } catch (error) {
         console.error('Logout API call failed, but logging out locally anyway.', error);
-        if(!navigator.onLine) {
-            // Queue logout if offline, though it might not be critical
-             await db.syncQueue.add({
+
+        // دعم الـ offline
+        if (!navigator.onLine) {
+            await db.syncQueue.add({
                 endpoint: 'logout',
                 method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
                 payload: {},
                 timestamp: Date.now(),
             });
         }
     }
 };
+
 
 export const getMe = async (): Promise<User | null> => {
     const token = localStorage.getItem('authToken');
@@ -247,9 +261,6 @@ const getAllUsers = async (forceRefresh: boolean = false): Promise<User[]> => {
     const centerId = user?.center_id;
 
     const formData = new FormData();
-    if (centerId) {
-        formData.append('center_id', String(centerId));
-    }
 
     try {
         const usersFromApi = await apiFetch('users/all', { method: 'POST', body: formData });
@@ -302,11 +313,6 @@ const createUserCRUD = (role: UserRole) => ({
             const user = JSON.parse(storedUser) as User;
             centerId = user.center_id;
         }
-
-        if (!centerId) {
-            throw new Error('Cannot create user without a center_id for the logged-in user.');
-        }
-        formData.append('center_id', String(centerId));
 
         formData.append('name', item.name);
         formData.append('email', item.email);
@@ -433,13 +439,7 @@ const mapApiCenterToCenter = (c: any): Center => ({ id: c.id, name: c.name, type
 // FIX: Extracted treatment settings fetch logic to a standalone function to break a circular dependency.
 const treatmentSettings_getAll = async (forceRefresh: boolean = false): Promise<Treatment[]> => {
     try {
-        const storedUser = localStorage.getItem('currentUser');
-        const user = storedUser ? JSON.parse(storedUser) as User : null;
         const formData = new FormData();
-        if (user?.center_id) {
-            formData.append('center_id', String(user.center_id));
-        }
-
         const apiTreatments = await performApiFetch('treatments_setting/all', { method: 'POST', body: formData });
         if (!Array.isArray(apiTreatments)) {
             throw new Error('Invalid API response for treatments');
@@ -521,6 +521,44 @@ const sessions_getAll = async (): Promise<Session[]> => {
 
 // API Object with Offline Support
 export const api = {
+    refreshToken: async (): Promise<void> => {
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/refresh-token`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                },
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.api_token) {
+                    console.log('Token refreshed successfully.');
+                    localStorage.setItem('authToken', data.api_token);
+                }
+            } else {
+                if (response.status === 401) {
+                    const data = await response.json().catch(() => ({}));
+                    if (data.message === "Invalid token" || data.message === "Token missing") {
+                        console.log('Token is invalid or expired. Logging out.');
+                        localStorage.removeItem('authToken');
+                        localStorage.removeItem('currentUser');
+                        window.location.reload();
+                    }
+                } else {
+                    console.error(`Token refresh request failed with status ${response.status}`);
+                }
+            }
+        } catch (error) {
+            console.error('An error occurred during token refresh:', error);
+        }
+    },
     permissions: {
         getAll: async (): Promise<Permission[]> => {
             try {
@@ -548,35 +586,19 @@ export const api = {
     },
     centers: {
         getOne: async (): Promise<Center | null> => {
-            const storedUser = localStorage.getItem('currentUser');
-            const user = storedUser ? JSON.parse(storedUser) as User : null;
-            const centerId = user?.center_id;
-
-            if (!centerId) {
-                console.error("No center_id found for the current user.");
-                return null;
-            }
-
             try {
                 const formData = new FormData();
-                formData.append('center_id', String(centerId));
                 const responseData = await performApiFetch('centers/one', { method: 'POST', body: formData });
                 const c = responseData.data;
                 if (!c) return null;
                 return mapApiCenterToCenter(c);
             } catch (error) {
-                console.error(`Fetching center ${centerId} online failed.`, error);
+                console.error(`Fetching center online failed.`, error);
                 return null;
             }
         },
         update: async (updates: Partial<Omit<Center, 'id' | 'logo_url' | 'created_at'>>): Promise<Center> => {
-            const storedUser = localStorage.getItem('currentUser');
-            const user = storedUser ? JSON.parse(storedUser) as User : null;
-            const centerId = user?.center_id;
-            if (!centerId) throw new Error("No center_id found for the current user.");
-            
             const formData = new FormData();
-            formData.append('center_id', String(centerId));
 
             for (const key in updates) {
                 if (Object.prototype.hasOwnProperty.call(updates, key)) {
@@ -592,13 +614,7 @@ export const api = {
             return mapApiCenterToCenter(responseData.data);
         },
         uploadPhoto: async (photo: File): Promise<Center> => {
-            const storedUser = localStorage.getItem('currentUser');
-            const user = storedUser ? JSON.parse(storedUser) as User : null;
-            const centerId = user?.center_id;
-            if (!centerId) throw new Error("No center_id found for the current user.");
-
             const formData = new FormData();
-            formData.append('center_id', String(centerId));
             formData.append('photo', photo);
 
             const responseData = await performApiFetch('centers/upload-photo', { method: 'POST', body: formData });
@@ -606,13 +622,7 @@ export const api = {
             return mapApiCenterToCenter(responseData.data);
         },
         deletePhoto: async (): Promise<Center> => {
-            const storedUser = localStorage.getItem('currentUser');
-            const user = storedUser ? JSON.parse(storedUser) as User : null;
-            const centerId = user?.center_id;
-            if (!centerId) throw new Error("No center_id found for the current user.");
-
             const formData = new FormData();
-            formData.append('center_id', String(centerId));
             
             const responseData = await performApiFetch('centers/delete-photo', { method: 'POST', body: formData });
             if (!responseData.data) throw new Error(responseData.message || "Failed to delete photo.");
@@ -626,10 +636,6 @@ export const api = {
     patients: {
         getAll: async (params: { page: number; per_page: number; search?: string; doctorId?: string; completed?: '0' | '1'; payment_completed?: '0' | '1'; }): Promise<{ patients: Patient[], total: number, last_page: number }> => {
             try {
-                const storedUser = localStorage.getItem('currentUser');
-                const user = storedUser ? JSON.parse(storedUser) as User : null;
-                const centerId = user?.center_id;
-
                 const formData = new FormData();
                 formData.append('page', String(params.page));
                 formData.append('per_page', String(params.per_page));
@@ -637,9 +643,6 @@ export const api = {
                 if (params.doctorId) formData.append('doctor_id', params.doctorId);
                 if (params.completed !== undefined) formData.append('completed', params.completed);
                 if (params.payment_completed !== undefined) formData.append('payment_completed', params.payment_completed);
-                if (centerId) {
-                    formData.append('center_id', String(centerId));
-                }
 
                 const response = await performApiFetch('patients/all', { method: 'POST', body: formData });
                 
@@ -694,11 +697,6 @@ export const api = {
                 const user = JSON.parse(storedUser) as User;
                 centerId = user.center_id;
             }
-
-            if (!centerId) {
-                throw new Error('لا يمكن إنشاء مريض بدون مركز محدد للمستخدم الحالي.');
-            }
-            formData.append('center_id', String(centerId));
             
             formData.append('user_id', userId);
             formData.append('name', item.name);
@@ -806,11 +804,6 @@ export const api = {
         getAll: treatmentSettings_getAll,
         create: async (item: Omit<Treatment, 'id'>): Promise<Treatment> => {
             const formData = new FormData();
-            const storedUser = localStorage.getItem('currentUser');
-            const user = storedUser ? JSON.parse(storedUser) as User : null;
-            if (user?.center_id) {
-                formData.append('center_id', String(user.center_id));
-            }
 
             formData.append('name', item.name);
             formData.append('price', String(item.price));
@@ -832,11 +825,6 @@ export const api = {
         },
         update: async (id: string, updates: Partial<Treatment>): Promise<Treatment | null> => {
              const formData = new FormData();
-             const storedUser = localStorage.getItem('currentUser');
-             const user = storedUser ? JSON.parse(storedUser) as User : null;
-             if (user?.center_id) {
-                formData.append('center_id', String(user.center_id));
-             }
              formData.append('id', id);
              if (updates.name) formData.append('name', updates.name);
              if (updates.price !== undefined) formData.append('price', String(updates.price));
@@ -848,11 +836,6 @@ export const api = {
         },
         delete: async (id: string): Promise<boolean> => {
             const formData = new FormData();
-            const storedUser = localStorage.getItem('currentUser');
-            const user = storedUser ? JSON.parse(storedUser) as User : null;
-            if (user?.center_id) {
-                formData.append('center_id', String(user.center_id));
-            }
             formData.append('id', id);
             await apiFetch('treatments_setting/delete', { method: 'POST', body: formData });
             await db.treatments_setting.delete(id);
@@ -963,15 +946,7 @@ export const api = {
     appointments: {
         getAll: async (): Promise<Appointment[]> => {
             try {
-                const storedUser = localStorage.getItem('currentUser');
-                const user = storedUser ? JSON.parse(storedUser) as User : null;
-                const centerId = user?.center_id;
-
                 const formData = new FormData();
-                if (centerId) {
-                    formData.append('center_id', String(centerId));
-                }
-
                 const data = await performApiFetch('appointments/all', { method: 'POST', body: formData });
                 const mapped = data.map(mapApiAppointmentToAppointment);
                 await db.appointments.bulkPut(mapped);
@@ -990,13 +965,7 @@ export const api = {
         },
         create: async (item: Omit<Appointment, 'id'>): Promise<Appointment> => {
             const formData = new FormData();
-
-            const storedUser = localStorage.getItem('currentUser');
-            const user = storedUser ? JSON.parse(storedUser) as User : null;
-            if (user?.center_id) {
-                formData.append('center_id', String(user.center_id));
-            }
-
+            
             formData.append('patient_id', item.patientId);
             formData.append('doctor_id', item.doctorId);
             formData.append('date', item.date);
@@ -1057,9 +1026,6 @@ export const api = {
                 formData.append('page', String(params.page));
                 formData.append('per_page', String(params.per_page));
                 if (params.search) formData.append('search', params.search);
-                if (user?.center_id) {
-                    formData.append('center_id', String(user.center_id));
-                }
                 if (user?.id) {
                     formData.append('user_id', user.id);
                 }
@@ -1090,9 +1056,6 @@ export const api = {
             formData.append('patient_id', item.patientId);
             formData.append('amount', String(item.amount));
             formData.append('date', item.date);
-            if (user.center_id) {
-                formData.append('center_id', String(user.center_id));
-            }
             
             const res = await apiFetch('payments/add', { method: 'POST', body: formData });
             
@@ -1200,17 +1163,11 @@ export const api = {
     activityLogs: {
         getAll: async(params: any): Promise<{logs: ActivityLog[], hasMore: boolean}> => {
             try {
-                 const storedUser = localStorage.getItem('currentUser');
-                 const user = storedUser ? JSON.parse(storedUser) as User : null;
-
                  const formData = new FormData();
                  formData.append('page', String(params.page || 1));
                  formData.append('per_page', String(params.per_page || 10));
                  if(params.search) formData.append('search', params.search);
                  if(params.date) formData.append('date', params.date);
-                 if (user?.center_id) {
-                    formData.append('center_id', String(user.center_id));
-                 }
 
                  const data = await performApiFetch('activity_logs/all', { method: 'POST', body: formData });
                  await db.activity_logs.bulkPut(data.data.map(mapApiActivityLog));
@@ -1224,16 +1181,10 @@ export const api = {
     activityArchives: {
         getAll: async(params: { page: number; per_page: number; date?: string; }): Promise<{logs: ActivityLog[], total: number, last_page: number}> => {
             try {
-                 const storedUser = localStorage.getItem('currentUser');
-                 const user = storedUser ? JSON.parse(storedUser) as User : null;
-
                  const formData = new FormData();
                  formData.append('page', String(params.page || 1));
                  formData.append('per_page', String(params.per_page || 10));
                  if (params.date) formData.append('date', params.date);
-                 if (user?.center_id) {
-                    formData.append('center_id', String(user.center_id));
-                 }
 
                  const data = await performApiFetch('activity-archives/all', { method: 'POST', body: formData });
                  if (!data || !Array.isArray(data.data)) {
@@ -1249,14 +1200,7 @@ export const api = {
     doctorSchedules: {
         getAll: async (): Promise<DaySchedule[]> => {
             try {
-                const storedUser = localStorage.getItem('currentUser');
-                const user = storedUser ? JSON.parse(storedUser) as User : null;
-                const centerId = user?.center_id;
-
                 const formData = new FormData();
-                if (centerId) {
-                    formData.append('center_id', String(centerId));
-                }
                 const apiSchedules = await performApiFetch('doctor_schedules/all', { method: 'POST', body: formData });
                if (!Array.isArray(apiSchedules)) { return []; }
                const allSchedules = apiSchedules.map(mapApiScheduleToDaySchedule);
@@ -1268,14 +1212,7 @@ export const api = {
        },
         getForDoctor: async (doctorId: string): Promise<DaySchedule[]> => {
              try {
-                const storedUser = localStorage.getItem('currentUser');
-                const user = storedUser ? JSON.parse(storedUser) as User : null;
-                const centerId = user?.center_id;
-
-                const formData = new FormData();
-                if (centerId) {
-                    formData.append('center_id', String(centerId));
-                }
+                 const formData = new FormData();
                  const apiSchedules = await performApiFetch('doctor_schedules/all', { method: 'POST', body: formData });
                 if (!Array.isArray(apiSchedules)) { return []; }
                 const doctorSchedules = apiSchedules.filter(s => String(s.doctor_id) === doctorId).map(mapApiScheduleToDaySchedule);

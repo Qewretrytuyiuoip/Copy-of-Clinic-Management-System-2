@@ -26,6 +26,7 @@ import { api } from './services/api';
 import { CenteredLoadingSpinner } from './components/LoadingSpinner';
 import { setupSyncListeners } from './services/sync';
 import { playTouchSound } from './services/touchSound';
+import PatientActivityLogPage from './pages/PatientActivityLogPage';
 
 const queryClient = new QueryClient();
 
@@ -82,6 +83,11 @@ const AppContent: React.FC = () => {
         setActivePatient(patient);
         setCurrentPage('photos');
     };
+    
+    const handleViewPatientActivity = (patient: Patient) => {
+        setActivePatient(patient);
+        setCurrentPage('activity');
+    };
 
     if (isLoading) {
         return <CenteredLoadingSpinner containerClassName="min-h-screen" />;
@@ -99,6 +105,7 @@ const AppContent: React.FC = () => {
             onViewDetails: handleViewPatientDetails,
             onViewFinancial: handleViewPatientFinancial,
             onViewPhotos: handleViewPatientPhotos,
+            onViewActivity: handleViewPatientActivity,
             refreshTrigger: refreshTrigger,
         };
         const fallback = <PatientsPage {...patientsPageProps} />;
@@ -128,16 +135,16 @@ const AppContent: React.FC = () => {
                 return activePatient
                     ? <PatientPhotosPage patient={activePatient} user={user} onBack={() => handleNavigation('patients')} refreshTrigger={refreshTrigger} />
                     : fallback;
+            case 'activity':
+                return activePatient
+                    ? <PatientActivityLogPage patient={activePatient} onBack={() => handleNavigation('patients')} refreshTrigger={refreshTrigger} />
+                    : fallback;
             case 'users':
                 return (user.role === UserRole.Admin || user.role === UserRole.SubManager) ? <UsersPage refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;
             case 'appointments':
                 return <AppointmentsPage user={user} refreshTrigger={refreshTrigger} />;
             case 'payments':
-                const hasFinancialPermission = user.permissions?.some(p => p.name === 'financial_management');
-                const hasPaymentsAccess = 
-                    user.role === UserRole.Admin || 
-                    ((user.role === UserRole.SubManager || user.role === UserRole.Secretary || user.role === UserRole.Doctor) && hasFinancialPermission);
-                return hasPaymentsAccess ? <PaymentsPage user={user} refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;
+                return <PaymentsPage user={user} refreshTrigger={refreshTrigger} />;
             case 'statistics':
                 return (user.role === UserRole.Admin || user.role === UserRole.SubManager) ? <StatisticsPage refreshTrigger={refreshTrigger} /> : <div>الوصول مرفوض</div>;
             case 'schedule':
@@ -166,12 +173,17 @@ const App: React.FC = () => {
     useEffect(() => {
         setupSyncListeners();
 
+        // Token refresh logic
+        const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+        api.refreshToken(); // Immediately check token on app load
+        const intervalId = setInterval(() => {
+            api.refreshToken();
+        }, REFRESH_INTERVAL);
+
+
         // Check for mobile/touch device to enable touch sounds
         const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-
-        if (!isMobile) {
-            return;
-        }
+        let interactionHandlerAttached = false;
 
         const handleInteraction = (event: Event) => {
             let target = event.target as HTMLElement;
@@ -194,13 +206,17 @@ const App: React.FC = () => {
                 target = target.parentElement as HTMLElement;
             }
         };
-        
-        // Use 'click' event in the capture phase. Mobile browsers emulate clicks
-        // from touches, and this is more specific to intentional taps than 'touchstart'.
-        document.addEventListener('click', handleInteraction, { capture: true });
 
+        if (isMobile) {
+            document.addEventListener('click', handleInteraction, { capture: true });
+            interactionHandlerAttached = true;
+        }
+        
         return () => {
-            document.removeEventListener('click', handleInteraction, { capture: true });
+            if (interactionHandlerAttached) {
+                document.removeEventListener('click', handleInteraction, { capture: true });
+            }
+            clearInterval(intervalId);
         };
     }, []);
 
