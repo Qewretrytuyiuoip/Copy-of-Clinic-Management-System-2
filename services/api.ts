@@ -518,9 +518,158 @@ const sessions_getAll = async (): Promise<Session[]> => {
     }
 };
 
+const escapeXml = (unsafe: any): string => {
+    if (unsafe === null || unsafe === undefined) return '';
+    return String(unsafe).replace(/[<>&'"]/g, (c) => {
+        switch (c) {
+            case '<': return '&lt;';
+            case '>': return '&gt;';
+            case '&': return '&amp;';
+            case '\'': return '&apos;';
+            case '"': return '&quot;';
+            default: return c;
+        }
+    });
+};
+
+
+const generateExcelXml = (data: any): string => {
+    const { center, users, patients } = data;
+
+    const createCell = (value: any, type: 'String' | 'Number' = 'String') =>
+        `<Cell><Data ss:Type="${type}">${escapeXml(value)}</Data></Cell>`;
+
+    const createRow = (cells: string[]) => `<Row>${cells.join('')}</Row>`;
+
+    // Sheet 1: Center
+    const centerHeaders = ['ID', 'Name', 'Type', 'Address', 'Description', 'Max Users', 'Subscription Start', 'Subscription End'];
+    const centerRow = [
+        createCell(center.id, 'Number'),
+        createCell(center.name),
+        createCell(center.type),
+        createCell(center.address),
+        createCell(center.description),
+        createCell(center.max_users, 'Number'),
+        createCell(center.subscription_start),
+        createCell(center.subscription_end),
+    ];
+    const centerSheet = `
+        <Worksheet ss:Name="Center">
+            <Table>
+                ${createRow(centerHeaders.map(h => createCell(h)))}
+                ${createRow(centerRow)}
+            </Table>
+        </Worksheet>`;
+
+    // Sheet 2: Users
+    const usersHeaders = ['ID', 'Name', 'Email', 'Role', 'Specialty', 'Is Diagnosis Doctor', 'Permissions'];
+    const userRows = users.map((user: any) => createRow([
+        createCell(user.id, 'Number'),
+        createCell(user.name),
+        createCell(user.email),
+        createCell(user.role),
+        createCell(user.specialty),
+        createCell(user.is_diagnosis_doctor ? 'Yes' : 'No'),
+        createCell(user.permissions.map((p: any) => p.display_name).join(', ')),
+    ])).join('');
+    const usersSheet = `
+        <Worksheet ss:Name="Users">
+            <Table>
+                ${createRow(usersHeaders.map(h => createCell(h)))}
+                ${userRows}
+            </Table>
+        </Worksheet>`;
+
+    // Sheet 3: Patients & Activities
+    const patientsHeaders = ['Patient ID', 'Patient Code', 'Patient Name', 'Patient Age', 'Patient Phone', 'Activity Type', 'Activity Date', 'Description/Item', 'Doctor Name', 'Cost', 'Payment', 'Notes'];
+    let activityRows: string[] = [];
+    const doctorsMap = new Map(users.map((u: any) => [u.id, u.name]));
+
+    patients.forEach((patient: any) => {
+        const patientInfo = [
+            createCell(patient.id, 'Number'),
+            createCell(patient.code),
+            createCell(patient.name),
+            createCell(patient.age, 'Number'),
+            createCell(patient.phone),
+        ];
+
+        let hasActivities = false;
+
+        patient.sessions?.forEach((session: any) => {
+            session.treatments?.forEach((treatment: any) => {
+                hasActivities = true;
+                const row = createRow([
+                    ...patientInfo,
+                    createCell('Treatment'),
+                    createCell(treatment.treatment_date?.split('T')[0] || ''),
+                    createCell(treatment.treatment_name),
+                    createCell(doctorsMap.get(session.doctor_id) || ''),
+                    createCell(parseFloat(treatment.treatment_price) + parseFloat(treatment.additional_costs || 0), 'Number'),
+                    createCell(0, 'Number'),
+                    createCell(treatment.treatment_notes),
+                ]);
+                activityRows.push(row);
+            });
+        });
+
+        patient.payments?.forEach((payment: any) => {
+            hasActivities = true;
+            const row = createRow([
+                ...patientInfo,
+                createCell('Payment'),
+                createCell(payment.date?.split('T')[0] || ''),
+                createCell('Payment Received'),
+                createCell(''), // No doctor for payment
+                createCell(0, 'Number'),
+                createCell(payment.amount, 'Number'),
+                createCell(''), // No notes for payment
+            ]);
+            activityRows.push(row);
+        });
+
+        if (!hasActivities) {
+             activityRows.push(createRow(patientInfo));
+        }
+    });
+
+    const patientsSheet = `
+        <Worksheet ss:Name="Patients">
+            <Table>
+                ${createRow(patientsHeaders.map(h => createCell(h)))}
+                ${activityRows.join('')}
+            </Table>
+        </Worksheet>`;
+
+    return `<?xml version="1.0"?>
+        <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+            xmlns:o="urn:schemas-microsoft-com:office:office"
+            xmlns:x="urn:schemas-microsoft-com:office:excel"
+            xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+            xmlns:html="http://www.w3.org/TR/REC-html40">
+            ${centerSheet}
+            ${usersSheet}
+            ${patientsSheet}
+        </Workbook>`;
+};
 
 // API Object with Offline Support
 export const api = {
+    exportCenterData: async (): Promise<void> => {
+        const data = await performApiFetch('center-data', { method: 'POST' });
+
+        const xmlString = generateExcelXml(data);
+
+        const blob = new Blob([xmlString], { type: 'application/vnd.ms-excel' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `center_data_${new Date().toISOString().split('T')[0]}.xls`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    },
     refreshToken: async (): Promise<void> => {
         const token = localStorage.getItem('authToken');
         if (!token) {

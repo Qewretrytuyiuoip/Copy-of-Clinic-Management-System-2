@@ -2,9 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { User, UserRole, DaySchedule, Treatment } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { ROLE_NAMES, DAY_NAMES } from '../constants';
-import { LogoutIcon, PencilIcon, UserCircleIcon, XIcon, PlusIcon, TrashIcon, SearchIcon } from '../components/Icons';
+import { LogoutIcon, PencilIcon, UserCircleIcon, XIcon, PlusIcon, TrashIcon, SearchIcon, ArrowDownOnSquareIcon } from '../components/Icons';
 import { api, ApiError } from '../services/api';
 import { CenteredLoadingSpinner } from '../components/LoadingSpinner';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 
 // ===================================================================
@@ -472,11 +473,22 @@ const ConfirmDeleteAccountModal: React.FC<ConfirmDeleteAccountModalProps> = ({ o
                     </p>
                 </div>
             </div>
-            <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex justify-center gap-4">
-                <button type="button" onClick={onConfirm} disabled={isDeleting} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-red-400 disabled:cursor-not-allowed">
-                    {isDeleting ? 'جاري الحذف...' : 'نعم، حذف الحساب'}
+            <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex flex-col items-center gap-3">
+                <button
+                    type="button"
+                    onClick={onConfirm}
+                    disabled={isDeleting}
+                    className="w-full flex items-center justify-center gap-2 rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-red-400 disabled:cursor-not-allowed"
+                >
+                    {isDeleting ? <LoadingSpinner className="h-5 w-5"/> : <ArrowDownOnSquareIcon className="h-5 w-5" />}
+                    <span>{isDeleting ? 'جاري التنفيذ...' : 'تحميل البيانات وحذف الحساب'}</span>
                 </button>
-                <button type="button" onClick={onCancel} disabled={isDeleting} className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                <button
+                    type="button"
+                    onClick={onCancel}
+                    disabled={isDeleting}
+                    className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                     إلغاء
                 </button>
             </div>
@@ -507,6 +519,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ refreshTrigger }) => {
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
 
     useEffect(() => {
@@ -517,15 +530,27 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ refreshTrigger }) => {
         setIsLoggingOut(true);
         await logout();
     };
+    
+    const handleExport = async () => {
+        setIsExporting(true);
+        try {
+            await api.exportCenterData();
+        } catch (err) {
+            alert(`فشل تصدير البيانات: ${err instanceof Error ? err.message : 'خطأ غير معروف'}`);
+        } finally {
+            setIsExporting(false);
+        }
+    };
 
     const handleDeleteAccountConfirm = async () => {
         setIsDeletingAccount(true);
         setError('');
         try {
+            await api.exportCenterData();
             await api.admins.delete(currentUser.id);
             await logout();
         } catch (err) {
-            setError(err instanceof Error ? `فشل حذف الحساب: ${err.message}` : 'فشل حذف الحساب');
+            setError(err instanceof Error ? `فشل العملية: ${err.message}` : 'فشل العملية');
             setIsDeletingAccount(false);
         }
     };
@@ -600,6 +625,10 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ refreshTrigger }) => {
                             <div className="flex gap-2 mt-4 md:mt-0">
                                 {isAdmin && !isEditing && (
                                     <>
+                                        <button onClick={handleExport} disabled={isExporting} className="flex items-center gap-2 px-4 py-2 font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/40 rounded-lg shadow-sm hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors disabled:opacity-50">
+                                            {isExporting ? <LoadingSpinner className="h-5 w-5" /> : <ArrowDownOnSquareIcon className="h-5 w-5" />}
+                                            <span>{isExporting ? 'جاري التصدير...' : 'تصدير البيانات'}</span>
+                                        </button>
                                         <button onClick={handleEditToggle} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-700 rounded-lg shadow-sm hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">
                                             <PencilIcon className="h-5 w-5" />
                                             <span>تعديل</span>

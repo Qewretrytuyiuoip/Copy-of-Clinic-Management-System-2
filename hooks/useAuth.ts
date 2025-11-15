@@ -45,6 +45,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (loginData) {
             const { user: userFromApi, center: centerFromApi, token, permissions } = loginData;
 
+            // Set token early to allow API calls from subscription modal
+            localStorage.setItem('authToken', token);
+
             const today = new Date();
             today.setHours(0, 0, 0, 0); // Compare dates only, not time
             const subscriptionEndDate = new Date(centerFromApi.subscription_end);
@@ -70,7 +73,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 permissions: mappedPermissions,
             };
             
-            localStorage.setItem('authToken', token);
             localStorage.setItem('currentUser', JSON.stringify(user));
             setUser(user);
 

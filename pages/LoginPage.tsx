@@ -2,22 +2,32 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useAppSettings } from '../hooks/useAppSettings';
 import { EyeIcon, EyeSlashIcon, ArrowDownOnSquareIcon, WhatsappIcon, FacebookIcon, TelegramIcon, XIcon } from '../components/Icons';
-import { ApiError } from '../services/api';
+import { api, ApiError } from '../services/api';
 import { UserRole } from '../types';
 import { appSettings } from '../appSettings';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const SubscriptionExpiredModal: React.FC<{
     role: UserRole;
     onClose: () => void;
 }> = ({ role, onClose }) => {
-    // FIX: Replaced useAppSettings with static appSettings import for contact info.
-    // The `settings` from useAppSettings is for dynamic settings (appName, appLogo)
-    // and does not contain the static contact details.
+    const [isExporting, setIsExporting] = useState(false);
+
+    const handleExport = async () => {
+        setIsExporting(true);
+        try {
+            await api.exportCenterData();
+        } catch (err) {
+            alert(`فشل تصدير البيانات: ${err instanceof Error ? err.message : 'خطأ غير معروف'}`);
+        } finally {
+            setIsExporting(false);
+        }
+    };
 
     const isManager = role === UserRole.Admin || role === UserRole.SubManager;
     const title = "انتهاء الاشتراك";
     const message = isManager
-        ? "يرجى تجديد الاشتراك للاستمرار في استخدام النظام."
+        ? "انتهى اشتراكك. يرجى تجديده للاستمرار في استخدام النظام. يمكنك تحميل بياناتك قبل التواصل مع الدعم."
         : "انتهت مدة الاشتراك. الرجاء التواصل مع مدير المركز لتفعيل الحساب.";
 
     const socialLinks = [
@@ -55,7 +65,18 @@ const SubscriptionExpiredModal: React.FC<{
                         </div>
                     )}
                 </div>
-                <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex justify-end">
+                <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex flex-col sm:flex-row justify-end gap-3">
+                     {isManager && (
+                        <button
+                            type="button"
+                            onClick={handleExport}
+                            disabled={isExporting}
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-400 disabled:cursor-not-allowed"
+                        >
+                            {isExporting ? <LoadingSpinner className="h-5 w-5" /> : <ArrowDownOnSquareIcon className="h-5 w-5" />}
+                            <span>{isExporting ? 'جاري التحميل...' : 'تحميل البيانات'}</span>
+                        </button>
+                    )}
                     <button type="button" onClick={onClose} className="w-full sm:w-auto rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-6 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
                         إغلاق
                     </button>
