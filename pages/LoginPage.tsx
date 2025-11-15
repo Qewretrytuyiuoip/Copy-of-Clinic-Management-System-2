@@ -213,6 +213,9 @@ const LoginPage: React.FC = () => {
                 />
             )}
             <div className="relative w-full max-w-md p-8 space-y-8 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+                <div className="absolute top-4 right-4 px-2 py-1 bg-yellow-400 text-yellow-900 text-xs font-bold rounded">
+                    تجريبي
+                </div>
                  {isInstallable && (
                     <button
                         onClick={handleInstallClick}

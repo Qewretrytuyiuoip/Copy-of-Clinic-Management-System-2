@@ -1,5 +1,5 @@
 import React from 'react';
-import { HomeIcon, UsersIcon, ClipboardListIcon, CurrencyDollarIcon, CalendarIcon, CogIcon, UserGroupIcon, BeakerIcon, UserCircleIcon, ChatBubbleIcon, OfficeBuildingIcon } from './components/Icons';
+import { HomeIcon, UsersIcon, ClipboardListIcon, CurrencyDollarIcon, CalendarIcon, UserGroupIcon, BeakerIcon, UserCircleIcon, ChatBubbleIcon, OfficeBuildingIcon } from './components/Icons';
 import { UserRole } from './types';
 
 export const NAV_ITEMS = {

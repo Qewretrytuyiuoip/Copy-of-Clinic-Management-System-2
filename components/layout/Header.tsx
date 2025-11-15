@@ -1,6 +1,6 @@
 import React from 'react';
 import { User, UserRole } from '../../types';
-import { MenuIcon, ResetIcon, ArrowDownOnSquareIcon } from '../Icons';
+import { MenuIcon, ResetIcon } from '../Icons';
 import ThemeToggleButton from '../ThemeToggleButton';
 
 interface HeaderProps {
