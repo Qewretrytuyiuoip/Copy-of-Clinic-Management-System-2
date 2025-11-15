@@ -57,6 +57,7 @@ const EditSessionTreatmentModal: React.FC<EditSessionTreatmentModalProps> = ({ t
         sessionNotes: treatment.sessionNotes || '',
         treatmentDate: treatment.treatmentDate ? new Date(treatment.treatmentDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         additionalCosts: treatment.additionalCosts?.toString() || '',
+        number: treatment.number?.toString() || '',
     });
     const [isSaving, setIsSaving] = useState(false);
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
@@ -85,6 +86,7 @@ const EditSessionTreatmentModal: React.FC<EditSessionTreatmentModalProps> = ({ t
                 sessionNotes: formData.sessionNotes,
                 treatmentDate: formData.treatmentDate,
                 additionalCosts: parseFloat(formData.additionalCosts) || undefined,
+                number: formData.number ? parseInt(formData.number, 10) : undefined,
             });
             await onSave();
         } catch (error) {
@@ -105,9 +107,15 @@ const EditSessionTreatmentModal: React.FC<EditSessionTreatmentModalProps> = ({ t
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4">
-                        <div>
-                            <label htmlFor="treatmentDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاريخ العلاج</label>
-                            <input type="date" id="treatmentDate" name="treatmentDate" value={formData.treatmentDate} onChange={handleChange} required className={inputStyle} />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label htmlFor="treatmentDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاريخ العلاج</label>
+                                <input type="date" id="treatmentDate" name="treatmentDate" value={formData.treatmentDate} onChange={handleChange} required className={inputStyle} />
+                            </div>
+                            <div>
+                                <label htmlFor="number" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">رقم العلاج</label>
+                                <input type="number" id="number" name="number" value={formData.number} onChange={handleChange} className={inputStyle} placeholder="مثال: 25"/>
+                            </div>
                         </div>
                         {user.role !== UserRole.Doctor && (
                             <div className="grid grid-cols-2 gap-4">
@@ -226,6 +234,12 @@ const ViewTreatmentDetailsModal: React.FC<ViewTreatmentDetailsModalProps> = ({ t
                         <p className="text-sm font-medium text-gray-500 dark:text-gray-400">اسم العلاج</p>
                         <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">{treatment.name}</p>
                     </div>
+                    {treatment.number && (
+                        <div className="pt-3">
+                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">رقم العلاج</p>
+                            <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">{treatment.number}</p>
+                        </div>
+                    )}
                     {treatment.treatmentDate && (
                         <div className="pt-3">
                             <p className="text-sm font-medium text-gray-500 dark:text-gray-400">تاريخ العلاج</p>
@@ -347,6 +361,7 @@ const AddTreatmentToSessionModal: React.FC<AddTreatmentToSessionModalProps> = ({
     const [sessionNotes, setSessionNotes] = useState('');
     const [treatmentDate, setTreatmentDate] = useState(new Date().toISOString().split('T')[0]);
     const [additionalCosts, setAdditionalCosts] = useState('');
+    const [treatmentNumber, setTreatmentNumber] = useState('');
     const [isSaving, setIsSaving] = useState(false); // For "save and close"
     const [isSavingAndAdding, setIsSavingAndAdding] = useState(false); // For "save and add"
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
@@ -355,12 +370,11 @@ const AddTreatmentToSessionModal: React.FC<AddTreatmentToSessionModalProps> = ({
         const fetchTreatments = async () => {
             setLoading(true);
             const availableTreatments = await api.treatmentSettings.getAll();
-            const sessionTreatmentNames = new Set(session.treatments.map(t => t.name));
-            setAllTreatments(availableTreatments.filter(t => !sessionTreatmentNames.has(t.name)));
+            setAllTreatments(availableTreatments);
             setLoading(false);
         };
         fetchTreatments();
-    }, [session.treatments]);
+    }, []);
     
     useEffect(() => {
         const numbers = sessionNotes.match(/\d+(\.\d+)?/g);
@@ -385,6 +399,7 @@ const AddTreatmentToSessionModal: React.FC<AddTreatmentToSessionModalProps> = ({
         setSessionNotes('');
         setTreatmentDate(new Date().toISOString().split('T')[0]);
         setAdditionalCosts('');
+        setTreatmentNumber('');
         document.getElementById('treatment')?.focus();
     }, []);
 
@@ -407,6 +422,7 @@ const AddTreatmentToSessionModal: React.FC<AddTreatmentToSessionModalProps> = ({
                 treatment_date: treatmentDate,
                 completed: false,
                 additional_costs: parseFloat(additionalCosts) || undefined,
+                number: treatmentNumber ? parseInt(treatmentNumber, 10) : undefined,
             });
 
             await onSave(!closeAfterSave);
@@ -449,9 +465,15 @@ const AddTreatmentToSessionModal: React.FC<AddTreatmentToSessionModalProps> = ({
                         </div>
                         {selectedTreatmentId && (
                             <>
-                                <div>
-                                    <label htmlFor="treatmentDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاريخ العلاج</label>
-                                    <input type="date" id="treatmentDate" value={treatmentDate} onChange={e => setTreatmentDate(e.target.value)} required className={inputStyle} />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label htmlFor="treatmentDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاريخ العلاج</label>
+                                        <input type="date" id="treatmentDate" value={treatmentDate} onChange={e => setTreatmentDate(e.target.value)} required className={inputStyle} />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="treatmentNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">رقم العلاج</label>
+                                        <input type="number" id="treatmentNumber" value={treatmentNumber} onChange={e => setTreatmentNumber(e.target.value)} className={inputStyle} placeholder="مثال: 25"/>
+                                    </div>
                                 </div>
                                 {user.role !== UserRole.Doctor && (
                                     <div className="grid grid-cols-2 gap-4">
@@ -730,7 +752,10 @@ const PatientSessionsPage: React.FC<PatientSessionsPageProps> = ({ patient, onBa
                                                     <div className="h-6 w-6 rounded-full border-2 border-gray-400 dark:border-gray-500"></div>
                                                 )}
                                             </button>
-                                            <p className={`font-bold text-lg ${t.completed ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-800 dark:text-gray-100'}`}>{t.name}</p>
+                                            <p className={`font-bold text-lg ${t.completed ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-800 dark:text-gray-100'}`}>
+                                                {t.name}
+                                                {t.number && <span className="text-sm font-normal text-primary dark:text-primary-300 ml-2">({t.number})</span>}
+                                            </p>
                                         </div>
                                         {user.role !== UserRole.Doctor && (
                                             <p className="text-md font-semibold text-green-600 dark:text-green-400">

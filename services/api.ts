@@ -426,7 +426,7 @@ const mapApiPatientToPatient = (p: any): Patient => ({ id: String(p.id), code: p
 const mapApiPaymentToPayment = (p: any): Payment => ({ id: String(p.id), patientId: String(p.patient_id), amount: parseFloat(p.amount), date: p.date.split('T')[0], });
 const mapApiTreatmentSettingToTreatment = (t: any): Treatment => ({ id: String(t.id), name: t.name, price: parseFloat(t.price), notes: t.notes ?? void 0, });
 const mapApiAppointmentToAppointment = (apiApp: any): Appointment => { let time = '00:00'; if (apiApp.time && typeof apiApp.time === 'string') { const timeMatch = apiApp.time.match(/(\d{2}):(\d{2})/); if (timeMatch) { time = `${timeMatch[1]}:${timeMatch[2]}`; } } return { id: String(apiApp.id), patientId: String(apiApp.patient_id), doctorId: String(apiApp.doctor_id), date: apiApp.date.split('T')[0], time: time, notes: apiApp.notes ?? void 0, createdBy: apiApp.created_by ? String(apiApp.created_by) : void 0, }; };
-const mapApiSessionTreatmentToSessionTreatment = (st: any, treatmentsByName: Map<string, Treatment>): SessionTreatment | null => { const baseTreatment = treatmentsByName.get(st.treatment_name); if (!baseTreatment) { console.warn(`Base treatment named "${st.treatment_name}" not found for session_treatment ID ${st.id}. Skipping.`); return null; } return { ...baseTreatment, instanceId: String(st.id), sessionId: String(st.session_id), sessionPrice: parseFloat(st.treatment_price), sessionNotes: st.treatment_notes ?? void 0, completed: st.completed == 1, treatmentDate: st.treatment_date ? new Date(st.treatment_date).toISOString().split('T')[0] : void 0, additionalCosts: st.additional_costs ? parseFloat(st.additional_costs) : void 0, }; };
+const mapApiSessionTreatmentToSessionTreatment = (st: any, treatmentsByName: Map<string, Treatment>): SessionTreatment | null => { const baseTreatment = treatmentsByName.get(st.treatment_name); if (!baseTreatment) { console.warn(`Base treatment named "${st.treatment_name}" not found for session_treatment ID ${st.id}. Skipping.`); return null; } return { ...baseTreatment, instanceId: String(st.id), sessionId: String(st.session_id), sessionPrice: parseFloat(st.treatment_price), sessionNotes: st.treatment_notes ?? void 0, completed: st.completed == 1, treatmentDate: st.treatment_date ? new Date(st.treatment_date).toISOString().split('T')[0] : void 0, additionalCosts: st.additional_costs ? parseFloat(st.additional_costs) : void 0, number: st.number ? parseInt(st.number, 10) : undefined, }; };
 const mapApiSessionToSessionBase = (s: any): Session => ({ id: String(s.id), patientId: String(s.patient_id), doctorId: String(s.doctor_id), title: s.title ?? '', date: s.date, notes: s.notes ?? '', treatments: [], completed: s.completed == 1, });
 const formatTimeFromISO = (isoString: string | null): string => { if (!isoString) return '09:00'; try { const date = new Date(isoString); const hours = date.getUTCHours().toString().padStart(2, '0'); const minutes = date.getUTCMinutes().toString().padStart(2, '0'); return `${hours}:${minutes}`; } catch (e) { console.error("Invalid date string for time formatting:", isoString, e); return '00:00'; } };
 // FIX: Update mapApiScheduleToDaySchedule to include doctorId to match the updated DaySchedule type.
@@ -1072,6 +1072,9 @@ export const api = {
             if (item.treatment_notes) {
                 formData.append('treatment_notes', item.treatment_notes);
             }
+            if (item.number !== undefined && item.number !== null && item.number !== '') {
+                formData.append('number', String(item.number));
+            }
             return apiFetch('treatments/add', { method: 'POST', body: formData });
          },
          update: async (id: string, updates: Partial<SessionTreatment>) => {
@@ -1084,6 +1087,9 @@ export const api = {
             if (updates.sessionNotes !== undefined) formData.append('treatment_notes', updates.sessionNotes);
             if (updates.treatmentDate !== undefined) formData.append('treatment_date', updates.treatmentDate);
             if (updates.completed !== undefined) formData.append('completed', updates.completed ? '1' : '0');
+            if (updates.number !== undefined && updates.number !== null) {
+                formData.append('number', String(updates.number));
+            }
             return apiFetch('treatments/edit', { method: 'POST', body: formData });
          },
          delete: async (id: string) => {

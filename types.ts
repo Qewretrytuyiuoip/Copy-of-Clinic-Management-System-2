@@ -60,6 +60,7 @@ export interface SessionTreatment extends Treatment {
     completed: boolean;
     treatmentDate?: string;
     additionalCosts?: number;
+    number?: number;
 }
 
 export interface Session {

@@ -63,9 +63,8 @@ const AddTreatmentToPlanSession: React.FC<AddTreatmentToPlanSessionProps> = ({ s
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
     const availableTreatments = useMemo(() => {
-        const sessionTreatmentNames = new Set(session.treatments.map(t => t.name));
-        return allTreatments.filter(t => !sessionTreatmentNames.has(t.name));
-    }, [allTreatments, session.treatments]);
+        return allTreatments;
+    }, [allTreatments]);
 
     const handleAdd = () => {
         const treatment = allTreatments.find(t => t.id === selectedTreatmentId);
@@ -77,7 +76,7 @@ const AddTreatmentToPlanSession: React.FC<AddTreatmentToPlanSessionProps> = ({ s
     };
 
     if (availableTreatments.length === 0) {
-        return <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">تمت إضافة جميع العلاجات المتاحة لهذه الجلسة.</p>;
+        return <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">لا توجد علاجات معرفة في الإعدادات.</p>;
     }
 
     return (
