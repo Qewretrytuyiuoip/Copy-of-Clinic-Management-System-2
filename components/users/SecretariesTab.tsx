@@ -55,7 +55,7 @@ const AddSecretaryModal: React.FC<AddSecretaryModalProps> = ({ onSave, onClose }
         queryFn: api.permissions.getAll
     });
 
-    const availablePermissions = allPermissions?.filter(p => p.name !== 'view_all_appointments');
+    const availablePermissions = allPermissions?.filter(p => p.name !== 'view_center_appointments');
 
     const [formData, setFormData] = useState({ name: '', email: '', password: '', permissions: [] as number[] });
     const [isSaving, setIsSaving] = useState(false);
@@ -192,7 +192,7 @@ const EditSecretaryModal: React.FC<EditSecretaryModalProps> = ({ secretary, onSa
         queryFn: api.permissions.getAll
     });
     
-    const availablePermissions = allPermissions?.filter(p => p.name !== 'view_all_appointments');
+    const availablePermissions = allPermissions?.filter(p => p.name !== 'view_center_appointments');
 
     const [formData, setFormData] = useState({ name: secretary.name, email: secretary.email, password: '', permissions: secretary.permissions?.map(p => p.id) || [] as number[] });
     const [isSaving, setIsSaving] = useState(false);

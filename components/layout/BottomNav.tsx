@@ -25,8 +25,15 @@ const BottomNav: React.FC<BottomNavProps> = ({ user, currentPage, setCurrentPage
             items = items.filter(item => item.page !== 'contact');
         }
 
-        // Conditionally filter payments for Secretary, SubManager, and Doctor
-        if (user.role === UserRole.Doctor || user.role === UserRole.Secretary || user.role === UserRole.SubManager) {
+        // Conditionally filter payments
+        if (user.role === UserRole.Doctor) {
+            // For doctors, hide if they HAVE financial permission (they get button on patient card instead)
+            const hasFinancialPermission = user.permissions?.some(p => p.name === 'financial_management');
+            if (hasFinancialPermission) {
+                items = items.filter(item => item.page !== 'payments');
+            }
+        } else if (user.role === UserRole.Secretary || user.role === UserRole.SubManager) {
+            // For others, hide if they DON'T have financial permission
             const hasFinancialPermission = user.permissions?.some(p => p.name === 'financial_management');
             if (!hasFinancialPermission) {
                 items = items.filter(item => item.page !== 'payments');

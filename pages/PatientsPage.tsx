@@ -517,6 +517,15 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
     const canDeletePatient = hasPermission('delete_patient');
     const canPrintReport = hasPermission('print_patient_report');
 
+    const doctorHasFinancialPermission = useMemo(() => 
+        isDoctor && (user.permissions?.some(p => p.name === 'financial_management') ?? false),
+    [isDoctor, user.permissions]);
+
+    // Financial button should show for Admin/SubManager OR a doctor with the specific permission
+    const canViewFinancial = useMemo(() =>
+        (!isDoctor && !isSecretary) || doctorHasFinancialPermission,
+    [isDoctor, isSecretary, doctorHasFinancialPermission]);
+
     useEffect(() => {
         if (prevRefreshTrigger.current !== refreshTrigger) {
             setIsManualRefreshing(true);
@@ -944,14 +953,14 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                                                     {!isSecretary && (
                                                         <button onClick={() => onViewSessions(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-teal-100 dark:bg-teal-900/40 text-teal-800 dark:text-teal-300 rounded-md hover:bg-teal-200 dark:hover:bg-teal-900/60"><BeakerIcon className="h-4 w-4" /><span>الجلسات</span></button>
                                                     )}
-                                                    {!isDoctor && !isSecretary && (
+                                                    {canViewFinancial && (
                                                         <button onClick={() => onViewFinancial(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 rounded-md hover:bg-green-200 dark:hover:bg-green-900/60"><CurrencyDollarIcon className="h-4 w-4" /><span>المالية</span></button>
                                                     )}
                                                     <button onClick={() => onViewPhotos(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 rounded-md hover:bg-purple-200 dark:hover:bg-purple-900/60"><PhotographIcon className="h-4 w-4" /><span>الصور</span></button>
                                                     {!isSecretary && (
                                                         <button onClick={() => onViewPlan(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-blue-900/60"><ListBulletIcon className="h-4 w-4" /><span>الخطة</span></button>
                                                     )}
-                                                    {canPrintReport && !isSecretary && (
+                                                    {canPrintReport && (
                                                         <button onClick={() => setPatientToPrint(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-gray-100 dark:bg-gray-900/40 text-gray-800 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-900/60">
                                                             {isPrinting === p.id ? <LoadingSpinner className="h-4 w-4" /> : <DocumentTextIcon className="h-4 w-4" />}<span>طباعة</span>
                                                         </button>

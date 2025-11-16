@@ -34,13 +34,23 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
     const [isSupported, setIsSupported] = useState(false);
     
     const navItems = useMemo(() => {
-        if (user.role === UserRole.Doctor || user.role === UserRole.Secretary || user.role === UserRole.SubManager) {
+        let filteredNavItems = [...baseNavItems];
+
+        if (user.role === UserRole.Doctor) {
+            // For doctors, hide if they HAVE financial permission (they get button on patient card instead)
+            const hasFinancialPermission = user.permissions?.some(p => p.name === 'financial_management');
+            if (hasFinancialPermission) {
+                filteredNavItems = filteredNavItems.filter(item => item.page !== 'payments');
+            }
+        } else if (user.role === UserRole.Secretary || user.role === UserRole.SubManager) {
+            // For others, hide if they DON'T have financial permission
             const hasFinancialPermission = user.permissions?.some(p => p.name === 'financial_management');
             if (!hasFinancialPermission) {
-                return baseNavItems.filter(item => item.page !== 'payments');
+                filteredNavItems = filteredNavItems.filter(item => item.page !== 'payments');
             }
         }
-        return baseNavItems;
+
+        return filteredNavItems;
     }, [user, baseNavItems]);
 
 
