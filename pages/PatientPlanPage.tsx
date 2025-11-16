@@ -53,13 +53,14 @@ interface PlanSession {
 interface AddTreatmentToPlanSessionProps {
     session: PlanSession;
     allTreatments: Treatment[];
-    onAdd: (treatment: Treatment, notes: string) => void;
+    onAdd: (treatment: Treatment, notes: string, number?: number) => void;
     user: User;
 }
 
 const AddTreatmentToPlanSession: React.FC<AddTreatmentToPlanSessionProps> = ({ session, allTreatments, onAdd, user }) => {
     const [selectedTreatmentId, setSelectedTreatmentId] = useState('');
     const [sessionNotes, setSessionNotes] = useState('');
+    const [treatmentNumber, setTreatmentNumber] = useState('');
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
     const availableTreatments = useMemo(() => {
@@ -69,9 +70,10 @@ const AddTreatmentToPlanSession: React.FC<AddTreatmentToPlanSessionProps> = ({ s
     const handleAdd = () => {
         const treatment = allTreatments.find(t => t.id === selectedTreatmentId);
         if (treatment) {
-            onAdd(treatment, sessionNotes);
+            onAdd(treatment, sessionNotes, treatmentNumber ? parseInt(treatmentNumber, 10) : undefined);
             setSelectedTreatmentId('');
             setSessionNotes('');
+            setTreatmentNumber('');
         }
     };
 
@@ -80,27 +82,34 @@ const AddTreatmentToPlanSession: React.FC<AddTreatmentToPlanSessionProps> = ({ s
     }
 
     return (
-        <div className="mt-2 flex items-center gap-2 flex-wrap">
+        <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
             <select
                 value={selectedTreatmentId}
                 onChange={(e) => setSelectedTreatmentId(e.target.value)}
-                className={inputStyle + " flex-grow"}
+                className={inputStyle + " sm:col-span-3"}
             >
                 <option value="">-- إضافة علاج --</option>
                 {availableTreatments.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
+             <input 
+                type="number" 
+                value={treatmentNumber}
+                onChange={(e) => setTreatmentNumber(e.target.value)}
+                placeholder="رقم العلاج"
+                className={inputStyle}
+            />
             <input 
                 type="text" 
                 value={sessionNotes}
                 onChange={(e) => setSessionNotes(e.target.value)}
                 placeholder="ملاحظات..."
-                className={inputStyle + " flex-grow"}
+                className={inputStyle}
             />
             <button
                 type="button"
                 onClick={handleAdd}
                 disabled={!selectedTreatmentId}
-                className="p-2 bg-primary text-white rounded-md disabled:bg-gray-400"
+                className="p-2 bg-primary text-white rounded-md disabled:bg-gray-400 flex justify-center"
                 aria-label="Add Treatment"
             >
                 <PlusIcon className="h-5 w-5" />
@@ -222,7 +231,7 @@ const PatientPlanPage: React.FC<PatientPlanPageProps> = ({ patient, user, onBack
         }
     };
 
-    const handleAddTreatmentToSession = (clientId: string, treatment: Treatment, notes: string) => {
+    const handleAddTreatmentToSession = (clientId: string, treatment: Treatment, notes: string, number?: number) => {
         setPlanSessions(prev => prev.map(s => {
             if (s.clientId === clientId) {
                 const newTreatment: SessionTreatment = {
@@ -232,6 +241,7 @@ const PatientPlanPage: React.FC<PatientPlanPageProps> = ({ patient, user, onBack
                     sessionPrice: treatment.price,
                     sessionNotes: notes,
                     completed: false,
+                    number: number,
                 };
                 return { ...s, treatments: [...s.treatments, newTreatment] };
             }
@@ -280,6 +290,7 @@ const PatientPlanPage: React.FC<PatientPlanPageProps> = ({ patient, user, onBack
                                 treatment_notes: treatment.sessionNotes,
                                 treatment_date: new Date().toISOString().split('T')[0],
                                 completed: false,
+                                number: treatment.number,
                             });
                         }
                     }
@@ -301,6 +312,7 @@ const PatientPlanPage: React.FC<PatientPlanPageProps> = ({ patient, user, onBack
                             treatment_notes: treatment.sessionNotes,
                             treatment_date: new Date().toISOString().split('T')[0],
                             completed: false,
+                            number: treatment.number,
                         });
                     }
                 }
@@ -418,7 +430,10 @@ const PatientPlanPage: React.FC<PatientPlanPageProps> = ({ patient, user, onBack
                                                 {session.treatments.map(t => (
                                                     <li key={t.instanceId} className="flex justify-between items-center p-2 bg-white dark:bg-slate-700 rounded-md shadow-sm">
                                                         <div>
-                                                            <p className="font-medium text-gray-900 dark:text-gray-200">{t.name}</p>
+                                                            <p className="font-medium text-gray-900 dark:text-gray-200 flex items-center gap-2">
+                                                                {t.number && <span className="text-xs font-semibold text-primary-700 dark:text-primary-300 bg-primary-100 dark:bg-primary-900/40 px-2 py-0.5 rounded-full">{t.number}</span>}
+                                                                <span>{t.name}</span>
+                                                            </p>
                                                             {t.sessionNotes && <p className="text-sm text-gray-500 dark:text-gray-400">{t.sessionNotes}</p>}
                                                         </div>
                                                         <button onClick={() => handleRemoveTreatment(session.clientId, t.instanceId)} className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40">
@@ -428,7 +443,7 @@ const PatientPlanPage: React.FC<PatientPlanPageProps> = ({ patient, user, onBack
                                                 ))}
                                             </ul>
                                          ) : <p className="text-sm text-gray-500 dark:text-gray-400">لم يتم إضافة علاجات.</p>}
-                                        <AddTreatmentToPlanSession session={session} allTreatments={allTreatments} onAdd={(t, n) => handleAddTreatmentToSession(session.clientId, t, n)} user={user} />
+                                        <AddTreatmentToPlanSession session={session} allTreatments={allTreatments} onAdd={(t, n, num) => handleAddTreatmentToSession(session.clientId, t, n, num)} user={user} />
                                     </div>
                                 </div>
                             </div>

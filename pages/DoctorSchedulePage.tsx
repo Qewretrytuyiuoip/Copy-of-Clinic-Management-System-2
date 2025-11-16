@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { User, Appointment, Patient } from '../types';
-import { api } from '../services/api';
+import { User, Appointment, Patient, UserRole } from '../../types';
+import { api } from '../../services/api';
 import { CenteredLoadingSpinner } from '../components/LoadingSpinner';
-import { SearchIcon, CalendarIcon, ClockIcon } from '../components/Icons';
+import { SearchIcon, CalendarIcon, ClockIcon, UserCircleIcon } from '../components/Icons';
 
 interface DoctorSchedulePageProps {
     user: User;
@@ -31,6 +31,7 @@ type DateFilter = 'all' | 'today' | 'week' | 'month' | 'finished';
 const DoctorSchedulePage: React.FC<DoctorSchedulePageProps> = ({ user, refreshTrigger }) => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [patients, setPatients] = useState<Patient[]>([]);
+    const [doctors, setDoctors] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [fetchError, setFetchError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -40,16 +41,26 @@ const DoctorSchedulePage: React.FC<DoctorSchedulePageProps> = ({ user, refreshTr
         setLoading(true);
         setFetchError(null);
         try {
-            const [allAppointments, allPatientsResponse] = await Promise.all([
+            const [allAppointments, allPatientsResponse, allDoctors] = await Promise.all([
                 api.appointments.getAll(),
-                // FIX: api.patients.getAll requires arguments.
                 api.patients.getAll({ page: 1, per_page: 9999 }),
+                api.doctors.getAll(),
             ]);
             
-            const myAppointments = allAppointments.filter(app => app.doctorId === user.id);
-            setAppointments(myAppointments);
-            // FIX: The API returns a pagination object. We need the 'patients' array from it.
+            let appsToDisplay = allAppointments;
+            if (user.role === UserRole.Doctor) {
+                const hasPermission = user.permissions?.some(p => p.name === 'view_center_appointments');
+                if (!hasPermission) {
+                    appsToDisplay = allAppointments.filter(app => app.doctorId === user.id);
+                }
+            } else {
+                 // This page is mainly for doctors, but as a fallback, filter to current user.
+                 appsToDisplay = allAppointments.filter(app => app.doctorId === user.id);
+            }
+            
+            setAppointments(appsToDisplay);
             setPatients(allPatientsResponse.patients); // Keep all patients for name lookup
+            setDoctors(allDoctors);
         } catch (error) {
             if (error instanceof Error && error.message.includes('Failed to fetch')) {
                 setFetchError('فشل جلب البيانات الرجاء التأكد من اتصالك بالانترنت واعادة تحميل البيانات');
@@ -60,13 +71,14 @@ const DoctorSchedulePage: React.FC<DoctorSchedulePageProps> = ({ user, refreshTr
         } finally {
             setLoading(false);
         }
-    }, [user.id]);
+    }, [user]);
 
     useEffect(() => {
         fetchData();
     }, [fetchData, refreshTrigger]);
 
     const getPatientName = (id: string) => patients.find(p => p.id === id)?.name || 'غير معروف';
+    const getDoctorName = (id: string) => doctors.find(d => d.id === id)?.name || 'غير معروف';
 
     const indicatorCounts = useMemo(() => {
         const today = new Date();
@@ -161,6 +173,8 @@ const DoctorSchedulePage: React.FC<DoctorSchedulePageProps> = ({ user, refreshTr
         );
     };
 
+    const hasViewAllPermission = user.permissions?.some(p => p.name === 'view_center_appointments');
+
     return (
         <div>
             <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
@@ -199,6 +213,12 @@ const DoctorSchedulePage: React.FC<DoctorSchedulePageProps> = ({ user, refreshTr
                                 <div key={app.id} className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col shadow-md transition-shadow hover:shadow-lg">
                                     <div className="flex-grow">
                                         <h3 className="text-xl font-bold text-primary">{getPatientName(app.patientId)}</h3>
+                                        {hasViewAllPermission && (
+                                            <p className="flex items-center mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                                <UserCircleIcon className="h-4 w-4 ml-1.5" />
+                                                <span>{getDoctorName(app.doctorId)}</span>
+                                            </p>
+                                        )}
                                         <div className="mt-3 space-y-2 text-gray-700 dark:text-gray-300">
                                             <p className="flex items-center"><CalendarIcon className="h-5 w-5 ml-2 text-gray-500 dark:text-gray-400" /> {`${appDate.getFullYear()}/${appDate.getMonth() + 1}/${appDate.getDate()}`}</p>
                                             <p className="flex items-center"><ClockIcon className="h-5 w-5 ml-2 text-gray-500 dark:text-gray-400" /> {formatTo12Hour(app.time)}</p>

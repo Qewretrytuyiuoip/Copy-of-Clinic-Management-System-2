@@ -1,7 +1,3 @@
-
-
-
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { User, Patient, Appointment } from '../../types';
 import { api } from '../../services/api';
@@ -47,10 +43,17 @@ const DashboardDoctor: React.FC<DashboardDoctorProps> = ({ user, refreshTrigger 
                 const today = new Date();
                 const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
                 
-                const myTodaysAppointmentsCount = allAppointments.filter(a => 
-                    a.doctorId === user.id && a.date === todayString
-                ).length;
-                setTodaysAppointments(myTodaysAppointmentsCount);
+                const hasPermission = user.permissions?.some(p => p.name === 'view_center_appointments');
+                
+                let todaysAppointmentsCount = 0;
+                if (hasPermission) {
+                    todaysAppointmentsCount = allAppointments.filter(a => a.date === todayString).length;
+                } else {
+                    todaysAppointmentsCount = allAppointments.filter(a => 
+                        a.doctorId === user.id && a.date === todayString
+                    ).length;
+                }
+                setTodaysAppointments(todaysAppointmentsCount);
             } catch (error) {
                 console.error("Failed to fetch doctor dashboard stats:", error);
             } finally {
@@ -58,7 +61,7 @@ const DashboardDoctor: React.FC<DashboardDoctorProps> = ({ user, refreshTrigger 
             }
         };
         fetchData();
-    }, [user.id, refreshTrigger]);
+    }, [user, refreshTrigger]);
 
 
     return (

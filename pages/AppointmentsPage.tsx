@@ -661,13 +661,23 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
         setLoading(true);
         setFetchError(null);
         try {
-            const [apps, docs, patsResponse] = await Promise.all([
+            const [allApps, docs, patsResponse] = await Promise.all([
                 api.appointments.getAll(),
                 api.doctors.getAll(),
                 api.patients.getAll({ page: 1, per_page: 9999 }),
             ]);
             
-            setAppointments(apps);
+            let appsToDisplay = allApps;
+            // Secretaries, Admins, and Sub-Managers can see all appointments.
+            // For Doctors, visibility depends on the 'view_all_appointments' permission.
+            if (user.role === UserRole.Doctor) {
+                const hasPermission = user.permissions?.some(p => p.name === 'view_all_appointments');
+                if (!hasPermission) {
+                    appsToDisplay = allApps.filter(app => app.doctorId === user.id);
+                }
+            }
+            
+            setAppointments(appsToDisplay);
             setDoctors(docs);
             setPatients(patsResponse.patients);
         } catch (error) {
@@ -680,7 +690,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [user]);
 
     useEffect(() => {
         fetchData();

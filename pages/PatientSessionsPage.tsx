@@ -737,25 +737,31 @@ const PatientSessionsPage: React.FC<PatientSessionsPageProps> = ({ patient, onBa
                             viewingTreatmentsForSession.treatments.map(t => (
                                 <div key={t.instanceId} className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-md flex flex-col justify-between">
                                     <div>
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <button 
-                                                onClick={() => handleToggleTreatmentComplete(t)} 
-                                                title={t.completed ? 'وضع علامة كغير مكتمل' : 'وضع علامة كمكتمل'}
-                                                disabled={updatingTreatmentId === t.instanceId}
-                                                className="w-6 h-6 flex items-center justify-center"
-                                            >
-                                                {updatingTreatmentId === t.instanceId ? (
-                                                    <LoadingSpinner className="h-5 w-5" />
-                                                ) : t.completed ? (
-                                                    <CheckIcon className="h-6 w-6 text-green-500" />
-                                                ) : (
-                                                    <div className="h-6 w-6 rounded-full border-2 border-gray-400 dark:border-gray-500"></div>
-                                                )}
-                                            </button>
-                                            <p className={`font-bold text-lg ${t.completed ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-800 dark:text-gray-100'}`}>
-                                                {t.name}
-                                                {t.number && <span className="text-sm font-normal text-primary dark:text-primary-300 ml-2">({t.number})</span>}
-                                            </p>
+                                        <div className="flex justify-between items-start gap-3 mb-2">
+                                            <div className="flex items-center gap-3">
+                                                <button 
+                                                    onClick={() => handleToggleTreatmentComplete(t)} 
+                                                    title={t.completed ? 'وضع علامة كغير مكتمل' : 'وضع علامة كمكتمل'}
+                                                    disabled={updatingTreatmentId === t.instanceId}
+                                                    className="w-6 h-6 flex items-center justify-center flex-shrink-0"
+                                                >
+                                                    {updatingTreatmentId === t.instanceId ? (
+                                                        <LoadingSpinner className="h-5 w-5" />
+                                                    ) : t.completed ? (
+                                                        <CheckIcon className="h-6 w-6 text-green-500" />
+                                                    ) : (
+                                                        <div className="h-6 w-6 rounded-full border-2 border-gray-400 dark:border-gray-500"></div>
+                                                    )}
+                                                </button>
+                                                <p className={`font-bold text-lg ${t.completed ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-800 dark:text-gray-100'}`}>
+                                                    {t.name}
+                                                </p>
+                                            </div>
+                                            {t.number && (
+                                                <span className="text-sm font-semibold text-primary-700 dark:text-primary-300 bg-primary-100 dark:bg-primary-900/40 px-2 py-0.5 rounded-full flex-shrink-0">
+                                                    {t.number}
+                                                </span>
+                                            )}
                                         </div>
                                         {user.role !== UserRole.Doctor && (
                                             <p className="text-md font-semibold text-green-600 dark:text-green-400">

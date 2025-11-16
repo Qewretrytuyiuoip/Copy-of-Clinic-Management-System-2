@@ -59,6 +59,8 @@ const SubManagerFormModal: React.FC<SubManagerFormModalProps> = ({ subManager, o
         queryFn: api.permissions.getAll
     });
 
+    const availablePermissions = allPermissions?.filter(p => p.name !== 'view_all_appointments');
+
     const [formData, setFormData] = useState({ 
         name: subManager?.name || '', 
         email: subManager?.email || '', 
@@ -175,7 +177,7 @@ const SubManagerFormModal: React.FC<SubManagerFormModalProps> = ({ subManager, o
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الصلاحيات</label>
                             <div className="mt-2 p-3 border border-gray-800 dark:border-gray-600 rounded-md max-h-40 overflow-y-auto space-y-2">
-                                {isLoadingPermissions ? <CenteredLoadingSpinner /> : allPermissions?.map(permission => (
+                                {isLoadingPermissions ? <CenteredLoadingSpinner /> : availablePermissions?.map(permission => (
                                     <label key={permission.id} className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer">
                                         <input
                                             type="checkbox"

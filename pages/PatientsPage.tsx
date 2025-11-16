@@ -73,6 +73,17 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
     const canEditDoctors = user.role === UserRole.Admin || user.role === UserRole.Secretary || (user.role === UserRole.Doctor && user.is_diagnosis_doctor);
     const isSecretary = user.role === UserRole.Secretary;
 
+    const diagnosisDoctors = useMemo(() => {
+        return doctors.filter(doc => doc.is_diagnosis_doctor);
+    }, [doctors]);
+
+    const doctorsForSelection = useMemo(() => {
+        if (isSecretary) {
+            return diagnosisDoctors;
+        }
+        return doctors;
+    }, [doctors, isSecretary, diagnosisDoctors]);
+
 
     const handleDoctorIdsChange = (doctorId: string) => {
         setFormData(prev => {
@@ -100,6 +111,10 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isSecretary && diagnosisDoctors.length === 0) {
+            alert('لا يوجد طبيب تشخيص. يرجى الطلب من المدير اضافة طبيب تشخيص.');
+            return;
+        }
         if (formData.doctorIds.length === 0) {
             alert('يرجى اختيار طبيب واحد على الأقل.');
             return;
@@ -152,22 +167,28 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
                         {canEditDoctors && (
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الأطباء المسؤولون</label>
-                                <div className="mt-2 p-3 border border-gray-800 dark:border-gray-600 rounded-md h-32 overflow-y-auto space-y-2 bg-white dark:bg-gray-700">
-                                    {doctors.map(doctor => (
-                                        <label key={doctor.id} className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
-                                            <input
-                                                type="checkbox"
-                                                checked={formData.doctorIds.includes(doctor.id)}
-                                                onChange={() => handleDoctorIdsChange(doctor.id)}
-                                                className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary"
-                                            />
-                                            <div>
-                                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{doctor.name}</span>
-                                                <span className="text-xs text-gray-500 dark:text-gray-400 block">{doctor.specialty || 'لا يوجد تخصص'}</span>
-                                            </div>
-                                        </label>
-                                    ))}
-                                </div>
+                                {isSecretary && diagnosisDoctors.length === 0 ? (
+                                    <div className="mt-2 p-3 border border-red-400 dark:border-red-600 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-center">
+                                        لا يوجد طبيب تشخيص. يرجى الطلب من المدير اضافة طبيب تشخيص.
+                                    </div>
+                                ) : (
+                                    <div className="mt-2 p-3 border border-gray-800 dark:border-gray-600 rounded-md h-32 overflow-y-auto space-y-2 bg-white dark:bg-gray-700">
+                                        {doctorsForSelection.map(doctor => (
+                                            <label key={doctor.id} className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.doctorIds.includes(doctor.id)}
+                                                    onChange={() => handleDoctorIdsChange(doctor.id)}
+                                                    className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary"
+                                                />
+                                                <div>
+                                                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{doctor.name}</span>
+                                                    <span className="text-xs text-gray-500 dark:text-gray-400 block">{doctor.specialty || 'لا يوجد تخصص'}</span>
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
                         {!isSecretary && (
@@ -192,7 +213,7 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ onSave, onClose, doct
                     </div>
                     <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700 rounded-b-lg gap-4">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
-                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
+                        <button type="submit" disabled={isSaving || (isSecretary && diagnosisDoctors.length === 0)} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
                     </div>
                 </form>
             </div>
@@ -488,6 +509,13 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
     
     const [isManualRefreshing, setIsManualRefreshing] = useState(false);
     const prevRefreshTrigger = useRef(refreshTrigger);
+
+    const hasPermission = (permissionName: string) => 
+        user.role === UserRole.Admin || (user.permissions?.some(p => p.name === permissionName) ?? false);
+    const canAddPatient = hasPermission('add_patient');
+    const canEditPatient = hasPermission('edit_patient');
+    const canDeletePatient = hasPermission('delete_patient');
+    const canPrintReport = hasPermission('print_patient_report');
 
     useEffect(() => {
         if (prevRefreshTrigger.current !== refreshTrigger) {
@@ -858,7 +886,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                             )}
                         </select>
                     </div>
-                     {(user.role === UserRole.Admin || user.role === UserRole.SubManager || user.role === UserRole.Secretary || user.role === UserRole.Doctor) && (
+                     {canAddPatient && (
                         <button onClick={() => setIsAddingPatient(true)} className="hidden lg:flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
                             <PlusIcon className="h-5 w-5 ml-2" />
                             إضافة مريض
@@ -904,8 +932,8 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                                         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
                                             <div className="flex flex-col gap-3">
                                                 <div className="flex items-center justify-start gap-2">
-                                                    <button onClick={() => setEditingPatient(p)} className="p-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
-                                                    {(user.role === UserRole.Admin || user.role === UserRole.SubManager) && (
+                                                    {canEditPatient && <button onClick={() => setEditingPatient(p)} className="p-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل"><PencilIcon className="h-5 w-5" /></button>}
+                                                    {canDeletePatient && (
                                                         <button onClick={() => setDeletingPatient(p)} className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف"><TrashIcon className="h-5 w-5" /></button>
                                                     )}
                                                      {!isSecretary && (
@@ -921,12 +949,12 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                                                     )}
                                                     <button onClick={() => onViewPhotos(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 rounded-md hover:bg-purple-200 dark:hover:bg-purple-900/60"><PhotographIcon className="h-4 w-4" /><span>الصور</span></button>
                                                     {!isSecretary && (
-                                                        <>
-                                                            <button onClick={() => onViewPlan(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-blue-900/60"><ListBulletIcon className="h-4 w-4" /><span>الخطة</span></button>
-                                                            <button onClick={() => setPatientToPrint(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-gray-100 dark:bg-gray-900/40 text-gray-800 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-900/60">
-                                                                {isPrinting === p.id ? <LoadingSpinner className="h-4 w-4" /> : <DocumentTextIcon className="h-4 w-4" />}<span>طباعة</span>
-                                                            </button>
-                                                        </>
+                                                        <button onClick={() => onViewPlan(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-blue-900/60"><ListBulletIcon className="h-4 w-4" /><span>الخطة</span></button>
+                                                    )}
+                                                    {canPrintReport && !isSecretary && (
+                                                        <button onClick={() => setPatientToPrint(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-gray-100 dark:bg-gray-900/40 text-gray-800 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-900/60">
+                                                            {isPrinting === p.id ? <LoadingSpinner className="h-4 w-4" /> : <DocumentTextIcon className="h-4 w-4" />}<span>طباعة</span>
+                                                        </button>
                                                     )}
                                                 </div>
                                             </div>
@@ -947,7 +975,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                 )}
             </div>
             
-            {(user.role === UserRole.Admin || user.role === UserRole.SubManager || user.role === UserRole.Secretary || user.role === UserRole.Doctor) && (
+            {canAddPatient && (
                 <button 
                     onClick={() => setIsAddingPatient(true)} 
                     className="lg:hidden fixed bottom-20 right-4 bg-primary text-white p-4 rounded-full shadow-lg hover:bg-primary-700 transition-colors z-20"

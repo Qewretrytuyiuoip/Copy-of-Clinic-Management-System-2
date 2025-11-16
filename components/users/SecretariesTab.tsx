@@ -55,6 +55,8 @@ const AddSecretaryModal: React.FC<AddSecretaryModalProps> = ({ onSave, onClose }
         queryFn: api.permissions.getAll
     });
 
+    const availablePermissions = allPermissions?.filter(p => p.name !== 'view_all_appointments');
+
     const [formData, setFormData] = useState({ name: '', email: '', password: '', permissions: [] as number[] });
     const [isSaving, setIsSaving] = useState(false);
     const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
@@ -150,7 +152,7 @@ const AddSecretaryModal: React.FC<AddSecretaryModalProps> = ({ onSave, onClose }
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الصلاحيات</label>
                             <div className="mt-2 p-3 border border-gray-800 dark:border-gray-600 rounded-md max-h-40 overflow-y-auto space-y-2">
-                                {isLoadingPermissions ? <CenteredLoadingSpinner /> : allPermissions?.map(permission => (
+                                {isLoadingPermissions ? <CenteredLoadingSpinner /> : availablePermissions?.map(permission => (
                                     <label key={permission.id} className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer">
                                         <input
                                             type="checkbox"
@@ -190,6 +192,8 @@ const EditSecretaryModal: React.FC<EditSecretaryModalProps> = ({ secretary, onSa
         queryFn: api.permissions.getAll
     });
     
+    const availablePermissions = allPermissions?.filter(p => p.name !== 'view_all_appointments');
+
     const [formData, setFormData] = useState({ name: secretary.name, email: secretary.email, password: '', permissions: secretary.permissions?.map(p => p.id) || [] as number[] });
     const [isSaving, setIsSaving] = useState(false);
     const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
@@ -289,7 +293,7 @@ const EditSecretaryModal: React.FC<EditSecretaryModalProps> = ({ secretary, onSa
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الصلاحيات</label>
                             <div className="mt-2 p-3 border border-gray-800 dark:border-gray-600 rounded-md max-h-40 overflow-y-auto space-y-2">
-                                {isLoadingPermissions ? <CenteredLoadingSpinner /> : allPermissions?.map(permission => (
+                                {isLoadingPermissions ? <CenteredLoadingSpinner /> : availablePermissions?.map(permission => (
                                     <label key={permission.id} className="flex items-center space-x-3 rtl:space-x-reverse cursor-pointer">
                                         <input
                                             type="checkbox"
