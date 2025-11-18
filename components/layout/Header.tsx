@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { User, UserRole } from '../../types';
-import { MenuIcon, ResetIcon } from '../Icons';
+import { MenuIcon, ResetIcon, WifiIcon, WifiOffIcon } from '../Icons';
 import ThemeToggleButton from '../ThemeToggleButton';
 
 interface HeaderProps {
@@ -9,9 +10,10 @@ interface HeaderProps {
     onRefresh: () => void;
     pageName: string;
     currentPage: string;
+    isOnline: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ user, setSidebarOpen, onRefresh, pageName, currentPage }) => {
+const Header: React.FC<HeaderProps> = ({ user, setSidebarOpen, onRefresh, pageName, currentPage, isOnline }) => {
     // The "Treatments" settings for admins/submanagers are part of the "Profile" page.
     // The user requested to hide the refresh button on this page.
     // We keep it for other roles on the profile page (like Doctors for their schedule).
@@ -31,7 +33,15 @@ const Header: React.FC<HeaderProps> = ({ user, setSidebarOpen, onRefresh, pageNa
                         {pageName}
                     </h1>
                 </div>
-                <div className="flex items-center">
+                <div className="flex items-center gap-2">
+                     <div className="p-2 rounded-full" title={isOnline ? "متصل بالإنترنت" : "لا يوجد اتصال بالإنترنت"}>
+                        {isOnline ? (
+                            <WifiIcon className="h-6 w-6 text-green-600 dark:text-green-400" />
+                        ) : (
+                            <WifiOffIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
+                        )}
+                    </div>
+
                     <ThemeToggleButton />
                     {showRefreshButton && (
                         <button

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import DoctorsTab from '../components/users/DoctorsTab';
@@ -21,6 +22,8 @@ const UsersPage: React.FC<UsersPageProps> = ({ refreshTrigger }) => {
         queryKey: ['center', user?.center_id],
         queryFn: () => api.centers.getOne(),
         enabled: !!user?.center_id,
+        gcTime: 0,
+        staleTime: 0,
     });
 
     const { data: allUsersCount, isLoading: isLoadingUsers } = useQuery({
@@ -34,6 +37,8 @@ const UsersPage: React.FC<UsersPageProps> = ({ refreshTrigger }) => {
             ]);
             return doctors.length + secretaries.length + admins.length + subManagers.length;
         },
+        gcTime: 0,
+        staleTime: 0,
     });
 
     const maxUsers = centerData?.max_users ?? 0;

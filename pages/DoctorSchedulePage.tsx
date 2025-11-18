@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { User, Appointment, Patient, UserRole } from '../../types';
-import { api } from '../../services/api';
+import { User, Appointment, Patient, UserRole } from '../types';
+import { api } from '../services/api';
 import { CenteredLoadingSpinner } from '../components/LoadingSpinner';
 import { SearchIcon, CalendarIcon, ClockIcon, UserCircleIcon } from '../components/Icons';
 

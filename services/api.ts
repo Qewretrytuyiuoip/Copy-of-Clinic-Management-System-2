@@ -1,3 +1,4 @@
+
 // FIX: Removed 'SubManager' from import as it is not an exported member of '../types'.
 import { User, UserRole, Patient, Treatment, Session, Appointment, Payment, DoctorAvailability, SessionTreatment, Gender, DaySchedule, PatientPhoto, ActivityLog, ActivityLogActionType, CreatePatientPhotosPayload, Center, Permission } from '../types';
 import { API_BASE_URL } from '../appSettings';
@@ -296,13 +297,21 @@ const getAllUsers = async (forceRefresh: boolean = false): Promise<User[]> => {
 // Omitting `permissions` from the base type and adding it with the correct type (`number[]`) solves the incompatibility.
 const createUserCRUD = (role: UserRole) => ({
     getAll: async (): Promise<User[]> => {
-        await getAllUsers(); // Ensure cache is warm with users from current center
-        const storedUser = localStorage.getItem('currentUser');
-        const user = storedUser ? JSON.parse(storedUser) as User : null;
-        if (user?.center_id) {
-            return db.users.where({ role: role, center_id: user.center_id }).toArray();
+        const allUsers = await getAllUsers();
+        let roleUsers = allUsers.filter(u => u.role === role);
+        
+        // If we are online, allUsers comes from API which might miss locally created (offline) users.
+        // We merge them here.
+        if (navigator.onLine) {
+            const offlineUsers = await db.users.filter(u => u.id.startsWith('offline_') && u.role === role).toArray();
+            const existingIds = new Set(roleUsers.map(u => u.id));
+            offlineUsers.forEach(u => {
+                if(!existingIds.has(u.id)) {
+                    roleUsers.push(u);
+                }
+            });
         }
-        return db.users.where('role').equals(role).toArray();
+        return roleUsers;
     },
     create: async (item: Omit<User, 'id' | 'permissions'> & { permissions?: number[] }): Promise<User> => {
         const formData = new FormData();
