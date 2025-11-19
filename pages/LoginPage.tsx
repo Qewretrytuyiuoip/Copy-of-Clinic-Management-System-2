@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useAppSettings } from '../hooks/useAppSettings';
-import { EyeIcon, EyeSlashIcon, ArrowDownOnSquareIcon, WhatsappIcon, FacebookIcon, TelegramIcon, XIcon } from '../components/Icons';
+import { EyeIcon, EyeSlashIcon, ArrowDownOnSquareIcon, WhatsappIcon, FacebookIcon, TelegramIcon, XIcon, ResetIcon } from '../components/Icons';
 import { api, ApiError } from '../services/api';
 import { UserRole } from '../types';
 import { appSettings } from '../appSettings';
@@ -102,6 +102,17 @@ const LoginPage: React.FC = () => {
     const [isInstallable, setIsInstallable] = useState(false);
     const [subscriptionError, setSubscriptionError] = useState<{ role: UserRole } | null>(null);
 
+    // Captcha State
+    const [captchaNum1, setCaptchaNum1] = useState(0);
+    const [captchaNum2, setCaptchaNum2] = useState(0);
+    const [captchaInput, setCaptchaInput] = useState('');
+
+    const generateCaptcha = () => {
+        setCaptchaNum1(Math.floor(Math.random() * 10));
+        setCaptchaNum2(Math.floor(Math.random() * 10));
+        setCaptchaInput('');
+    };
+
     useEffect(() => {
         const savedEmail = localStorage.getItem('rememberedEmail');
         const savedPassword = localStorage.getItem('rememberedPassword');
@@ -110,6 +121,7 @@ const LoginPage: React.FC = () => {
             setPassword(savedPassword);
             setRememberMe(true);
         }
+        generateCaptcha();
     }, []);
 
     useEffect(() => {
@@ -150,6 +162,13 @@ const LoginPage: React.FC = () => {
         setError('');
         setSubscriptionError(null);
         
+        // Captcha Validation
+        if (parseInt(captchaInput) !== captchaNum1 + captchaNum2) {
+            setError('ناتج العملية الحسابية غير صحيح. يرجى المحاولة مرة أخرى.');
+            generateCaptcha();
+            return;
+        }
+
         const maliciousPattern = /[<>;]|--/;
         if (maliciousPattern.test(email) || maliciousPattern.test(password)) {
             setError('تم اكتشاف أحرف غير صالحة. يرجى إزالتها والمحاولة مرة أخرى.');
@@ -161,6 +180,7 @@ const LoginPage: React.FC = () => {
             const user = await login(email, password);
             if (!user) {
                 setError('البريد الإلكتروني أو كلمة المرور غير صالحة.');
+                generateCaptcha(); // Regenerate on fail
             } else {
                 if (rememberMe) {
                     localStorage.setItem('rememberedEmail', email);
@@ -176,6 +196,7 @@ const LoginPage: React.FC = () => {
             } else {
                 setError('حدث خطأ. يرجى المحاولة مرة أخرى.');
             }
+            generateCaptcha();
         } finally {
             setLoading(false);
         }
@@ -184,6 +205,13 @@ const LoginPage: React.FC = () => {
     const handleRegisterSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+
+        // Captcha Validation
+        if (parseInt(captchaInput) !== captchaNum1 + captchaNum2) {
+            setError('ناتج العملية الحسابية غير صحيح. يرجى المحاولة مرة أخرى.');
+            generateCaptcha();
+            return;
+        }
 
         const maliciousPattern = /[<>;]|--/;
         if (maliciousPattern.test(name) || maliciousPattern.test(email) || maliciousPattern.test(password)) {
@@ -201,6 +229,7 @@ const LoginPage: React.FC = () => {
             const user = await register(name, email, password);
             if (!user) {
                  setError('فشل إنشاء الحساب. قد يكون البريد الإلكتروني مستخدماً بالفعل.');
+                 generateCaptcha();
             }
         } catch (err) {
              if (err instanceof ApiError && err.errors) {
@@ -211,6 +240,7 @@ const LoginPage: React.FC = () => {
             } else {
                 setError('فشل إنشاء الحساب. يرجى المحاولة مرة أخرى.');
             }
+            generateCaptcha();
         } finally {
             setLoading(false);
         }
@@ -222,6 +252,7 @@ const LoginPage: React.FC = () => {
         setName('');
         setEmail('');
         setPassword('');
+        generateCaptcha(); // Reset captcha on toggle
     };
 
 
@@ -317,6 +348,33 @@ const LoginPage: React.FC = () => {
                                 )}
                             </button>
                         </div>
+                    </div>
+
+                    {/* Math Captcha Section */}
+                    <div className="space-y-2 bg-gray-50 dark:bg-gray-700/50 p-3 rounded-md border border-gray-200 dark:border-gray-600">
+                        <div className="flex items-center justify-between mb-1">
+                            <label htmlFor="captcha" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                اختبار الأمان: كم ناتج {captchaNum1} + {captchaNum2} ؟
+                            </label>
+                            <button 
+                                type="button" 
+                                onClick={generateCaptcha} 
+                                className="text-primary hover:text-primary-700 dark:hover:text-primary-300"
+                                title="تغيير السؤال"
+                            >
+                                <ResetIcon className="h-4 w-4" />
+                            </button>
+                        </div>
+                        <input
+                            id="captcha"
+                            name="captcha"
+                            type="number"
+                            required
+                            className="relative block w-full px-3 py-2 text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-400 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm appearance-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
+                            placeholder="اكتب الناتج هنا"
+                            value={captchaInput}
+                            onChange={(e) => setCaptchaInput(e.target.value)}
+                        />
                     </div>
                     
                     {!isRegisterMode && (
