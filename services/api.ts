@@ -63,6 +63,17 @@ export const performApiFetch = async (endpoint: string, options: RequestInit = {
         headers,
     });
 
+    // Handle Unauthorized (401) specifically
+    if (response.status === 401) {
+        console.warn(`Unauthorized access to ${endpoint}. Session expired or invalid token.`);
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
+        window.location.reload();
+        // Prevent further execution by returning a promise that doesn't resolve immediately (or throws)
+        // to allow the reload to take effect.
+        throw new Error('Session expired. Reloading...');
+    }
+
     if (!response.ok) {
         let errorMessage = `خطأ في الخادم: ${response.status} ${response.statusText}`;
         let validationErrors: Record<string, string[]> | undefined;

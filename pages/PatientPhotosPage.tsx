@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Patient, PatientPhoto, CreatePatientPhotosPayload, User } from '../types';
 import { api } from '../services/api';
 import { CenteredLoadingSpinner } from '../components/LoadingSpinner';
-import { PlusIcon, PencilIcon, TrashIcon, XIcon, ArrowBackIcon, PhotographIcon, MinusIcon, ResetIcon, ArrowDownOnSquareIcon } from '../components/Icons';
+import { PlusIcon, PencilIcon, TrashIcon, XIcon, ArrowBackIcon, PhotographIcon, MinusIcon, ResetIcon, ArrowDownOnSquareIcon, CameraIcon } from '../components/Icons';
 
 
 // ===================================================================
@@ -60,6 +60,13 @@ const AddEditPhotoModal: React.FC<AddEditPhotoModalProps> = ({ photo, patientId,
 
     const [isSaving, setIsSaving] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
+    
+    // Camera States
+    const [isCameraOpen, setIsCameraOpen] = useState(false);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [stream, setStream] = useState<MediaStream | null>(null);
+
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
@@ -116,6 +123,78 @@ const AddEditPhotoModal: React.FC<AddEditPhotoModalProps> = ({ photo, patientId,
         handleFilesSelect(e.dataTransfer.files);
     };
 
+    // Camera Logic
+    const startCamera = async () => {
+        try {
+            setIsCameraOpen(true);
+            const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'environment' } 
+            });
+            setStream(mediaStream);
+            if (videoRef.current) {
+                videoRef.current.srcObject = mediaStream;
+            }
+        } catch (err) {
+            console.error("Error accessing camera:", err);
+            alert("لا يمكن الوصول إلى الكاميرا. الرجاء التحقق من الأذونات.");
+            setIsCameraOpen(false);
+        }
+    };
+
+    const stopCamera = () => {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            setStream(null);
+        }
+        setIsCameraOpen(false);
+    };
+
+    const capturePhoto = () => {
+        if (videoRef.current && canvasRef.current) {
+            const video = videoRef.current;
+            const canvas = canvasRef.current;
+            
+            // Set canvas dimensions to match video
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            const context = canvas.getContext('2d');
+            if (context) {
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const dataUrl = canvas.toDataURL('image/jpeg');
+                
+                // Convert Data URL to File object
+                fetch(dataUrl)
+                    .then(res => res.blob())
+                    .then(blob => {
+                        const file = new File([blob], `camera_capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
+                        
+                        const newPreviews = [URL.createObjectURL(file)];
+
+                        if (isEditMode) {
+                            setFiles([file]);
+                            setPreviews(newPreviews);
+                        } else {
+                            setFiles(prev => [...prev, file]);
+                            setPreviews(prev => [...prev, ...newPreviews]);
+                            setCaptions(prev => [...prev, '']);
+                        }
+                        stopCamera();
+                    });
+            }
+        }
+    };
+
+    // Clean up camera stream on unmount
+    useEffect(() => {
+        return () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        };
+    }, [stream]);
+
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (previews.length === 0) {
@@ -155,45 +234,86 @@ const AddEditPhotoModal: React.FC<AddEditPhotoModalProps> = ({ photo, patientId,
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl" role="dialog" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
                     <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{isEditMode ? 'تعديل الصورة' : 'إضافة صور جديدة'}</h2>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
+                    <button onClick={() => { stopCamera(); onClose(); }} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-                        {isEditMode ? (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الصورة</label>
-                                <div className={`w-full h-48 border-2 border-dashed rounded-lg flex justify-center items-center cursor-pointer transition-colors hover:border-primary`} onClick={() => fileInputRef.current?.click()}>
-                                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
-                                    {previews.length > 0 ? <img src={previews[0]} alt="معاينة" className="max-h-full max-w-full object-contain rounded-md" /> : <div className="text-center text-gray-500 dark:text-gray-400"><PhotographIcon className="h-12 w-12 mx-auto" /><p>انقر لتغيير الصورة</p></div>}
-                                </div>
-                                <div className="mt-4">
-                                    <label htmlFor="caption" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تعليق</label>
-                                    <textarea id="caption" value={captions[0] || ''} onChange={(e) => handleCaptionChange(0, e.target.value)} rows={3} className={inputStyle} placeholder="أضف تعليقًا وصفيًا..."></textarea>
+                        {isCameraOpen ? (
+                            <div className="relative bg-black rounded-lg overflow-hidden h-64 flex justify-center items-center">
+                                <video ref={videoRef} autoPlay playsInline className="w-full h-full object-contain" />
+                                <canvas ref={canvasRef} className="hidden" />
+                                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-4">
+                                    <button 
+                                        type="button" 
+                                        onClick={capturePhoto} 
+                                        className="p-3 bg-white rounded-full shadow-lg hover:bg-gray-100 focus:outline-none"
+                                        title="التقاط"
+                                    >
+                                        <div className="w-12 h-12 rounded-full border-4 border-primary bg-transparent"></div>
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        onClick={stopCamera} 
+                                        className="p-2 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 focus:outline-none absolute right-4 bottom-2"
+                                        title="إلغاء"
+                                    >
+                                        <XIcon className="h-6 w-6" />
+                                    </button>
                                 </div>
                             </div>
                         ) : (
-                            <div>
-                                {previews.length > 0 && (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                                        {previews.map((previewUrl, index) => (
-                                            <div key={index} className="relative group border dark:border-gray-600 rounded-lg p-2 space-y-2 bg-gray-50 dark:bg-gray-900">
-                                                <img src={previewUrl} alt={`معاينة ${index + 1}`} className="w-full h-32 object-cover rounded-md" />
-                                                <textarea value={captions[index] || ''} onChange={(e) => handleCaptionChange(index, e.target.value)} placeholder={`تعليق الصورة ${index + 1}`} rows={2} className={inputStyle} />
-                                                <button type="button" onClick={() => handleRemoveImage(index)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100" aria-label={`Remove image ${index + 1}`}><XIcon className="h-4 w-4" /></button>
+                            <>
+                                {isEditMode ? (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الصورة</label>
+                                        <div className={`w-full h-48 border-2 border-dashed rounded-lg flex justify-center items-center cursor-pointer transition-colors hover:border-primary relative`} onClick={() => fileInputRef.current?.click()}>
+                                            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+                                            {previews.length > 0 ? <img src={previews[0]} alt="معاينة" className="max-h-full max-w-full object-contain rounded-md" /> : <div className="text-center text-gray-500 dark:text-gray-400"><PhotographIcon className="h-12 w-12 mx-auto" /><p>انقر لتغيير الصورة</p></div>}
+                                        </div>
+                                        <div className="flex justify-center mt-2">
+                                            <button type="button" onClick={startCamera} className="flex items-center gap-2 text-primary hover:text-primary-700">
+                                                <CameraIcon className="h-5 w-5" />
+                                                <span>التقاط صورة</span>
+                                            </button>
+                                        </div>
+                                        <div className="mt-4">
+                                            <label htmlFor="caption" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تعليق</label>
+                                            <textarea id="caption" value={captions[0] || ''} onChange={(e) => handleCaptionChange(0, e.target.value)} rows={3} className={inputStyle} placeholder="أضف تعليقًا وصفيًا..."></textarea>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        {previews.length > 0 && (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                                                {previews.map((previewUrl, index) => (
+                                                    <div key={index} className="relative group border dark:border-gray-600 rounded-lg p-2 space-y-2 bg-gray-50 dark:bg-gray-900">
+                                                        <img src={previewUrl} alt={`معاينة ${index + 1}`} className="w-full h-32 object-cover rounded-md" />
+                                                        <textarea value={captions[index] || ''} onChange={(e) => handleCaptionChange(index, e.target.value)} placeholder={`تعليق الصورة ${index + 1}`} rows={2} className={inputStyle} />
+                                                        <button type="button" onClick={() => handleRemoveImage(index)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100" aria-label={`Remove image ${index + 1}`}><XIcon className="h-4 w-4" /></button>
+                                                    </div>
+                                                ))}
                                             </div>
-                                        ))}
+                                        )}
+                                        <div className={`w-full h-32 border-2 border-dashed rounded-lg flex flex-col justify-center items-center cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary-50 dark:bg-primary-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-primary'}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => fileInputRef.current?.click()}>
+                                            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" multiple />
+                                            <div className="text-center text-gray-500 dark:text-gray-400"><PhotographIcon className="h-12 w-12 mx-auto" /><p>اسحب وأفلت الصور هنا، أو انقر للاختيار</p></div>
+                                        </div>
+                                        <div className="flex justify-center mt-3">
+                                             <button type="button" onClick={startCamera} className="flex items-center gap-2 px-4 py-2 bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 rounded-full hover:bg-primary-200 dark:hover:bg-primary-900/60 transition-colors">
+                                                <CameraIcon className="h-5 w-5" />
+                                                <span>استخدام الكاميرا</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
-                                <div className={`w-full h-32 border-2 border-dashed rounded-lg flex flex-col justify-center items-center cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary-50 dark:bg-primary-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-primary'}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => fileInputRef.current?.click()}>
-                                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" multiple />
-                                    <div className="text-center text-gray-500 dark:text-gray-400"><PhotographIcon className="h-12 w-12 mx-auto" /><p>اسحب وأفلت الصور هنا، أو انقر للاختيار</p></div>
-                                </div>
-                            </div>
+                            </>
                         )}
                     </div>
                     <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
-                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
+                        <button type="button" onClick={() => { stopCamera(); onClose(); }} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
+                        {!isCameraOpen && (
+                            <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
+                        )}
                     </div>
                 </form>
             </div>

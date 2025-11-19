@@ -150,7 +150,8 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
     const [availableSlots, setAvailableSlots] = useState<{ value: string; label: string; }[]>([]);
     const [slotsLoading, setSlotsLoading] = useState(false);
     const [slotsMessage, setSlotsMessage] = useState('');
-
+    
+    const isSecretary = user.role === UserRole.Secretary;
 
     useEffect(() => {
         if (appointment && patients.length > 0) {
@@ -293,12 +294,20 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
 
 
     const patientDoctors = useMemo(() => {
+        if (showNewPatientForm) {
+            // If adding a new patient as a secretary, only show diagnosis doctors
+            if (isSecretary) {
+                return doctors.filter(d => d.is_diagnosis_doctor);
+            }
+            return doctors;
+        }
+
         if (!formData.patientId) {
             return doctors;
         }
         const selectedPatient = patients.find(p => p.id === formData.patientId);
         return selectedPatient ? doctors.filter(d => selectedPatient.doctorIds.includes(d.id)) : [];
-    }, [formData.patientId, patients, doctors]);
+    }, [formData.patientId, patients, doctors, showNewPatientForm, isSecretary]);
 
 
     const handleNewPatientChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -325,6 +334,10 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
             let refreshPatientsList = false;
         
             if (showNewPatientForm) {
+                if (isSecretary && patientDoctors.length === 0) {
+                    throw new Error('لا يوجد اطباء تشخيص. يرجى الطلب من المدير اضافة طبيب تشخيص.');
+                }
+
                 if (!newPatientData.name || !newPatientData.phone || !newPatientData.age || !formData.doctorId) {
                     throw new Error('يرجى ملء اسم المريض الجديد ورقم هاتفه وعمره واختيار طبيب.');
                 }
@@ -482,10 +495,16 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                         </div>
                         <div className="md:col-span-2">
                             <label htmlFor="doctorId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الطبيب</label>
-                            <select id="doctorId" name="doctorId" value={formData.doctorId} onChange={handleChange} required className={inputStyle} disabled={!!initialData?.doctorId && !formData.patientId}>
-                                <option value="">اختر طبيب...</option>
-                                {patientDoctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                            </select>
+                            {showNewPatientForm && isSecretary && patientDoctors.length === 0 ? (
+                                <div className="p-3 border border-red-400 dark:border-red-600 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-center text-sm font-medium">
+                                    لا يوجد اطباء تشخيص يرجى الطلب من المدير اضافة طبيب تشخيص
+                                </div>
+                            ) : (
+                                <select id="doctorId" name="doctorId" value={formData.doctorId} onChange={handleChange} required className={inputStyle} disabled={!!initialData?.doctorId && !formData.patientId}>
+                                    <option value="">اختر طبيب...</option>
+                                    {patientDoctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                </select>
+                            )}
                         </div>
                         <div>
                             <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">التاريخ</label>
@@ -521,7 +540,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                     </div>
                     <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
-                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
+                        <button type="submit" disabled={isSaving || (showNewPatientForm && isSecretary && patientDoctors.length === 0)} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
                     </div>
                 </form>
             </div>

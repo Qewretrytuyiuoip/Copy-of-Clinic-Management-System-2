@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, UserRole, DaySchedule, Treatment } from '../types';
 import { useAuth } from '../hooks/useAuth';
@@ -607,40 +608,45 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ refreshTrigger }) => {
     return (
         <>
             <div className="max-w-4xl mx-auto">
-                <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl overflow-hidden">
+                <div className="relative bg-white dark:bg-slate-800 shadow-xl rounded-2xl overflow-hidden">
+                    {isAdmin && !isEditing && (
+                         <button 
+                             onClick={handleEditToggle} 
+                             className="absolute top-4 right-4 p-2 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 rounded-full shadow-sm hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors z-10"
+                             title="تعديل"
+                         >
+                             <PencilIcon className="h-5 w-5" />
+                         </button>
+                    )}
+
                     <div className="p-8">
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                            <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-right">
-                                <div className="flex-shrink-0">
-                                    <UserCircleIcon className="h-24 w-24 text-gray-300 dark:text-gray-600"/>
-                                </div>
-                                <div className="flex-grow">
-                                    <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{currentUser.name}</h2>
-                                    <p className="text-md text-gray-500 dark:text-gray-400">{currentUser.email}</p>
-                                    <span className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-300">
-                                        {ROLE_NAMES[currentUser.role]}
-                                    </span>
-                                </div>
+                        <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-right">
+                            <div className="flex-shrink-0">
+                                <UserCircleIcon className="h-24 w-24 text-gray-300 dark:text-gray-600"/>
                             </div>
-                            <div className="flex gap-2 mt-4 md:mt-0">
-                                {isAdmin && !isEditing && (
-                                    <>
-                                        <button onClick={handleExport} disabled={isExporting} className="flex items-center gap-2 px-4 py-2 font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/40 rounded-lg shadow-sm hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors disabled:opacity-50">
-                                            {isExporting ? <LoadingSpinner className="h-5 w-5" /> : <ArrowDownOnSquareIcon className="h-5 w-5" />}
-                                            <span>{isExporting ? 'جاري التصدير...' : 'تصدير البيانات'}</span>
-                                        </button>
-                                        <button onClick={handleEditToggle} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-700 rounded-lg shadow-sm hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">
-                                            <PencilIcon className="h-5 w-5" />
-                                            <span>تعديل</span>
-                                        </button>
-                                        <button onClick={() => setShowDeleteConfirm(true)} className="flex items-center gap-2 px-4 py-2 font-semibold text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/40 rounded-lg shadow-sm hover:bg-red-200 dark:hover:bg-red-800 transition-colors">
-                                            <TrashIcon className="h-5 w-5" />
-                                            <span>حذف الحساب</span>
-                                        </button>
-                                    </>
-                                )}
+                            <div className="flex-grow">
+                                <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{currentUser.name}</h2>
+                                <p className="text-md text-gray-500 dark:text-gray-400">{currentUser.email}</p>
+                                <span className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-300">
+                                    {ROLE_NAMES[currentUser.role]}
+                                </span>
                             </div>
                         </div>
+
+                        {/* Action Buttons (Export & Delete) - Optimized for Mobile */}
+                        {isAdmin && !isEditing && (
+                            <div className="mt-6 flex flex-row gap-3 justify-center md:justify-start">
+                                <button onClick={handleExport} disabled={isExporting} className="flex-1 md:flex-none items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/40 rounded-lg shadow-sm hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors disabled:opacity-50 whitespace-nowrap">
+                                    {isExporting ? <LoadingSpinner className="h-4 w-4" /> : <ArrowDownOnSquareIcon className="h-4 w-4" />}
+                                    <span>{isExporting ? 'جاري...' : 'تصدير البيانات'}</span>
+                                </button>
+                                
+                                <button onClick={() => setShowDeleteConfirm(true)} className="flex-1 md:flex-none items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/40 rounded-lg shadow-sm hover:bg-red-200 dark:hover:bg-red-800 transition-colors whitespace-nowrap">
+                                    <TrashIcon className="h-4 w-4" />
+                                    <span>حذف الحساب</span>
+                                </button>
+                            </div>
+                        )}
 
                         {error && <div className="mt-6 p-3 text-sm text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-300 rounded-lg text-center" role="alert">{error}</div>}
                         {success && <div className="mt-6 p-3 text-sm text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-300 rounded-lg text-center" role="alert">{success}</div>}

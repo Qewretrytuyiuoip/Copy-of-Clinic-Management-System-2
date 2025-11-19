@@ -261,8 +261,8 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
     return (
         <>
             {/* Mobile Sidebar with Overlay */}
-            <div className={`fixed inset-0 z-30 flex transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-                <div className="relative flex w-64 max-w-xs flex-1 flex-col bg-white dark:bg-slate-800">
+            <div className={`fixed inset-0 z-30 flex pointer-events-none transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className="relative flex w-64 max-w-xs flex-1 flex-col bg-white dark:bg-slate-800 pointer-events-auto">
                     {sidebarHeader}
                     <div className="flex-1 overflow-y-auto">
                         {navLinks}

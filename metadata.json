@@ -1,5 +1,7 @@
 {
   "name": "clinickey2",
   "description": "A comprehensive web application for managing clinic operations, including patients, appointments, treatments, and staff roles (Admin, Doctor, Secretary). It features a responsive, mobile-first design and is ready to be connected to a backend API.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "camera"
+  ]
 }
