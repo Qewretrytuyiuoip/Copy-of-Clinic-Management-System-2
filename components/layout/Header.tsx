@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { User, UserRole } from '../../types';
 import { MenuIcon, ResetIcon, WifiIcon, WifiOffIcon, ArrowBackIcon } from '../Icons';
@@ -40,11 +39,11 @@ const Header: React.FC<HeaderProps> = ({ user, setSidebarOpen, onRefresh, pageNa
 
     return (
         <>
-            <header className="relative flex items-center justify-between p-4 bg-white dark:bg-slate-800 border-b dark:border-gray-700">
+            <header className="relative flex items-center justify-between p-4 bg-primary dark:bg-slate-800 border-b border-primary-600 dark:border-gray-700 transition-colors duration-300 shadow-sm">
                 <div className="flex items-center lg:hidden gap-2">
                      <button
                         onClick={() => setSidebarOpen(true)}
-                        className="text-gray-500 dark:text-gray-400 focus:outline-none"
+                        className="text-white dark:text-gray-400 hover:bg-primary-600 dark:hover:bg-gray-700 p-1 rounded-full focus:outline-none"
                         aria-label="القائمة"
                     >
                         <MenuIcon className="h-6 w-6" />
@@ -52,7 +51,7 @@ const Header: React.FC<HeaderProps> = ({ user, setSidebarOpen, onRefresh, pageNa
                     {backRoute && (
                         <button
                             onClick={handleBack}
-                            className="lg:hidden p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none"
+                            className="lg:hidden p-2 rounded-full text-white dark:text-gray-400 hover:bg-primary-600 dark:hover:bg-gray-700 focus:outline-none"
                             aria-label="رجوع"
                         >
                             {/* Rotate 180 for RTL back arrow */}
@@ -61,25 +60,26 @@ const Header: React.FC<HeaderProps> = ({ user, setSidebarOpen, onRefresh, pageNa
                     )}
                 </div>
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                    <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-100 truncate pointer-events-none max-w-[150px] sm:max-w-md">
+                    <h1 className="text-lg font-bold text-white dark:text-gray-100 truncate pointer-events-none max-w-[150px] sm:max-w-md">
                         {pageName}
                     </h1>
                 </div>
                 <div className="flex items-center gap-2">
                      <div className="p-2 rounded-full" title={isOnline ? "متصل بالإنترنت" : "لا يوجد اتصال بالإنترنت"}>
                         {isOnline ? (
-                            <WifiIcon className="h-6 w-6 text-green-600 dark:text-green-400" />
+                            // Using text-green-300 for visibility on blue background
+                            <WifiIcon className="h-6 w-6 text-green-300 dark:text-green-400" />
                         ) : (
-                            <WifiOffIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
+                            <WifiOffIcon className="h-6 w-6 text-red-300 dark:text-red-400" />
                         )}
                     </div>
 
-                    <ThemeToggleButton />
+                    <ThemeToggleButton className="p-2 rounded-full text-white dark:text-gray-300 hover:bg-primary-600 dark:hover:bg-gray-700" />
 
                     {showRefreshButton && (
                         <button
                             onClick={onRefresh}
-                            className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-800 focus:ring-primary"
+                            className="p-2 rounded-full text-white dark:text-gray-300 hover:bg-primary-600 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-primary dark:focus:ring-offset-slate-800 focus:ring-white"
                             aria-label="إعادة تحميل البيانات"
                         >
                             <ResetIcon className="h-6 w-6" />

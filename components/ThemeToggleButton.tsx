@@ -13,14 +13,22 @@ const MoonIcon: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 );
 
+interface ThemeToggleButtonProps {
+    className?: string;
+}
 
-const ThemeToggleButton: React.FC = () => {
+const ThemeToggleButton: React.FC<ThemeToggleButtonProps> = ({ className }) => {
     const { theme, toggleTheme } = useTheme();
+
+    // Default classes if no className is provided (for other usages)
+    const buttonClass = className 
+        ? className 
+        : "p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700";
 
     return (
         <button
             onClick={toggleTheme}
-            className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-800 focus:ring-primary"
+            className={`${buttonClass} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-800 focus:ring-primary`}
             aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
         >
             {theme === 'light' ? (
