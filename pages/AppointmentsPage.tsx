@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { User, Appointment, Patient, UserRole, Gender, DaySchedule } from '../types';
 import { api } from '../services/api';
@@ -295,7 +296,6 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
 
     const patientDoctors = useMemo(() => {
         if (showNewPatientForm) {
-            // If adding a new patient as a secretary, only show diagnosis doctors
             if (isSecretary) {
                 return doctors.filter(d => d.is_diagnosis_doctor);
             }

@@ -13,26 +13,59 @@
       } else {
         document.documentElement.classList.remove('dark');
       }
-// يتم حذفهم ليس لهم داعي عند الانتاج 
+
       tailwind.config = {
-        darkMode: 'class', // Enable dark mode based on the 'dark' class
+        darkMode: 'class', 
         theme: {
           extend: {
             colors: {
               primary: {
-                DEFAULT: '#06b6d4',
-                '50': '#ecfeff',
-                '100': '#cffafe',
-                '200': '#a5f3fd',
-                '300': '#67e8f9',
-                '400': '#22d3ee',
-                '500': '#06b6d4',
-                '600': '#0891b2',
-                '700': '#0e7490',
-                '800': '#155e75',
-                '900': '#164e63',
-                '950': '#083344',
+                DEFAULT: '#1A73E8',
+                '50': '#E3F2FD',
+                '100': '#BBDEFB',
+                '200': '#90CAF9',
+                '300': '#63A4FF',
+                '400': '#42A5F5',
+                '500': '#1A73E8',
+                '600': '#0F4CBA',
+                '700': '#1565C0',
+                '800': '#0D47A1',
+                '900': '#0A367A',
+                '950': '#051E3C',
               },
+              secondary: {
+                DEFAULT: '#6CD4B1',
+                '50': '#E0F7F3',
+                '100': '#B2EBE0',
+                '200': '#80DDC9',
+                '300': '#4AC8E2', 
+                '400': '#26BACE',
+                '500': '#6CD4B1',
+                '600': '#4FA88A',
+              },
+              gray: {
+                '50': '#FFFFFF',
+                '100': '#F7F9FC', 
+                '200': '#E2E8F0',
+                '300': '#CBD5E1',
+                '400': '#94A3B8',
+                '500': '#64748B',
+                '600': '#475569',
+                '700': '#334155',
+                '800': '#1E293B',
+                '900': '#0F172A',
+              },
+              slate: {
+                '700': '#273447',
+                '800': '#1E293B',
+                '900': '#0F172A',
+              },
+              success: '#4CAF50',
+              warning: '#FFC107',
+              error: '#F44336',
+              green: { '500': '#4CAF50', '600': '#43A047' },
+              red: { '500': '#F44336', '600': '#E53935' },
+              yellow: { '400': '#FFC107', '500': '#FFB300' }
             }
           }
         }
@@ -54,7 +87,7 @@
 <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
 <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png" />
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#06b6d4">
+<meta name="theme-color" content="#1A73E8">
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/service-worker.js').then(registration => {

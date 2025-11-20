@@ -633,16 +633,23 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ refreshTrigger }) => {
                             </div>
                         </div>
 
-                        {/* Action Buttons (Export & Delete) - Optimized for Mobile */}
+                        {/* Action Buttons (Export & Delete) - Optimized for Mobile & Centered */}
                         {isAdmin && !isEditing && (
-                            <div className="mt-6 flex flex-row gap-3 justify-center md:justify-start">
-                                <button onClick={handleExport} disabled={isExporting} className="flex-1 md:flex-none items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/40 rounded-lg shadow-sm hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors disabled:opacity-50 whitespace-nowrap">
-                                    {isExporting ? <LoadingSpinner className="h-4 w-4" /> : <ArrowDownOnSquareIcon className="h-4 w-4" />}
+                            <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
+                                <button
+                                    onClick={handleExport}
+                                    disabled={isExporting}
+                                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/40 rounded-xl shadow-md hover:bg-blue-200 dark:hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-400 disabled:cursor-not-allowed transition-all"
+                                >
+                                    {isExporting ? <LoadingSpinner className="h-5 w-5" /> : <ArrowDownOnSquareIcon className="h-5 w-5" />}
                                     <span>{isExporting ? 'جاري...' : 'تصدير البيانات'}</span>
                                 </button>
                                 
-                                <button onClick={() => setShowDeleteConfirm(true)} className="flex-1 md:flex-none items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/40 rounded-lg shadow-sm hover:bg-red-200 dark:hover:bg-red-800 transition-colors whitespace-nowrap">
-                                    <TrashIcon className="h-4 w-4" />
+                                <button
+                                    onClick={() => setShowDeleteConfirm(true)}
+                                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/40 rounded-xl shadow-md hover:bg-red-200 dark:hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all"
+                                >
+                                    <TrashIcon className="h-5 w-5" />
                                     <span>حذف الحساب</span>
                                 </button>
                             </div>
