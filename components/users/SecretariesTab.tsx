@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { User, UserRole, Permission } from '../../types';
 import { api, ApiError } from '../../services/api';
@@ -181,7 +182,6 @@ const AddSecretaryModal: React.FC<AddSecretaryModalProps> = ({ onSave, onClose }
 // ===================================================================
 interface EditSecretaryModalProps {
     secretary: User;
-    // FIX: Changed onSave signature to pass ID and updates separately, resolving type errors.
     onSave: (id: string, updates: Partial<Omit<User, 'permissions'>> & { permissions?: number[] }) => Promise<void>;
     onClose: () => void;
 }
@@ -247,7 +247,6 @@ const EditSecretaryModal: React.FC<EditSecretaryModalProps> = ({ secretary, onSa
         setIsSaving(true);
         setValidationErrors({});
         try {
-            // FIX: Constructed a clean 'updates' object to pass to onSave, resolving type conflicts.
             const updates: Partial<Omit<User, 'permissions'>> & { permissions?: number[] } = {
                 name: formData.name,
                 email: formData.email,
@@ -372,7 +371,6 @@ const SecretariesTab: React.FC<SecretariesTabProps> = ({ refreshTrigger, canAddU
         }
     };
     
-    // FIX: Updated handler signature to match the corrected `onSave` prop, resolving type errors.
     const handleUpdateSecretary = async (id: string, updates: Partial<Omit<User, 'permissions'>> & { permissions?: number[] }) => {
         try {
             await api.secretaries.update(id, updates);
@@ -416,7 +414,7 @@ const SecretariesTab: React.FC<SecretariesTabProps> = ({ refreshTrigger, canAddU
                      secretaries.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {secretaries.map(sec => (
-                                <div key={sec.id} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col justify-between transition-shadow hover:shadow-lg">
+                                <div key={sec.id} className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-none rounded-2xl p-5 border border-gray-200 dark:border-white flex flex-col justify-between transition-all hover:scale-[1.01]">
                                     <div>
                                         <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{sec.name}</h3>
                                         <p className="text-gray-600 dark:text-gray-300 mt-1 text-sm">{sec.email}</p>

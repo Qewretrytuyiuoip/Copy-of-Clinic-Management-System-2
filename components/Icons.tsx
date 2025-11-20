@@ -221,3 +221,9 @@ export const WifiOffIcon: React.FC<IconProps> = ({ className }) => (
        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 10.5a8.25 8.25 0 00-2.625 2.625" />
     </svg>
 );
+
+export const TouchIcon: React.FC<IconProps> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+        <path d="M12 2a2 2 0 0 1 2 2v8h1a2 2 0 0 1 2 2v5a3 3 0 0 1-3 3h-2a3 3 0 0 1-3-3v-5a2 2 0 0 1 2-2h1V4a2 2 0 0 1 2-2z" />
+    </svg>
+);

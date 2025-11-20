@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { User, UserRole, Permission } from '../../types';
 import { api, ApiError } from '../../services/api';
@@ -294,7 +295,7 @@ const AdminsTab: React.FC<AdminsTabProps> = ({ refreshTrigger, canAddUser }) => 
                      admins.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {admins.map(admin => (
-                                <div key={admin.id} className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 transition-shadow">
+                                <div key={admin.id} className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-none rounded-2xl p-5 border border-gray-200 dark:border-white transition-all hover:scale-[1.01]">
                                     <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{admin.name}</h3>
                                     <p className="text-gray-600 dark:text-gray-300 mt-1 text-sm">{admin.email}</p>
                                 </div>
@@ -319,7 +320,7 @@ const AdminsTab: React.FC<AdminsTabProps> = ({ refreshTrigger, canAddUser }) => 
                      subManagers.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {subManagers.map(sub => (
-                                <div key={sub.id} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col justify-between transition-shadow hover:shadow-lg">
+                                <div key={sub.id} className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-none rounded-2xl p-5 border border-gray-200 dark:border-white flex flex-col justify-between transition-all hover:scale-[1.01]">
                                     <div>
                                         <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{sub.name}</h3>
                                         <p className="text-gray-600 dark:text-gray-300 mt-1 text-sm">{sub.email}</p>

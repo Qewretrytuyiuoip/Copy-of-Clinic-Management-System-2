@@ -14,10 +14,10 @@ export default {
           '50': '#E3F2FD',
           '100': '#BBDEFB',
           '200': '#90CAF9',
-          '300': '#63A4FF', // Lighter shade provided
+          '300': '#63A4FF',
           '400': '#42A5F5',
-          '500': '#1A73E8', // Main primary
-          '600': '#0F4CBA', // Darker shade provided
+          '500': '#1A73E8',
+          '600': '#0F4CBA',
           '700': '#1565C0',
           '800': '#0D47A1',
           '900': '#0A367A',
@@ -29,30 +29,28 @@ export default {
           '50': '#E0F7F3',
           '100': '#B2EBE0',
           '200': '#80DDC9',
-          '300': '#4AC8E2', // Secondary Cyan
+          '300': '#4AC8E2',
           '400': '#26BACE',
-          '500': '#6CD4B1', // Secondary Teal
+          '500': '#6CD4B1',
           '600': '#4FA88A',
           '700': '#387E66',
           '800': '#255645',
           '900': '#143328',
         },
         // BACKGROUND & NEUTRALS MAPPING
-        // We override gray to match the specific background requirements while keeping utility usage consistent.
         gray: {
           '50': '#FFFFFF',
-          '100': '#F7F9FC', // Light Mode Background
+          '100': '#F7F9FC', // Light Background
           '200': '#E2E8F0',
           '300': '#CBD5E1',
           '400': '#94A3B8',
           '500': '#64748B',
           '600': '#475569',
           '700': '#334155',
-          '800': '#1E293B', // Dark Surface fallback
-          '900': '#0F172A', // Dark Mode Background
+          '800': '#1E293B',
+          '900': '#0F172A', // Dark Background
         },
         // SURFACE MAPPING FOR DARK MODE
-        // Using slate mainly for dark mode components/cards
         slate: {
           '50': '#F8FAFC',
           '100': '#F1F5F9',
@@ -61,12 +59,11 @@ export default {
           '400': '#94A3B8',
           '500': '#64748B',
           '600': '#475569',
-          '700': '#273447', // Dark Mode Card / Elevated
-          '800': '#1E293B', // Dark Mode Surface
-          '900': '#0F172A', // Dark Mode Background
+          '700': '#273447', // Dark Elevated Card
+          '800': '#1E293B', // Dark Surface
+          '900': '#0F172A',
         },
         // STATUS COLORS
-        // Overriding base colors ensures all alerts/badges use the new palette automatically
         success: '#4CAF50',
         warning: '#FFC107',
         error: '#F44336',

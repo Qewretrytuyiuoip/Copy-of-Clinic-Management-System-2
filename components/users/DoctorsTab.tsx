@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { User, UserRole, Permission } from '../../types';
 import { api, ApiError } from '../../services/api';
@@ -225,7 +226,6 @@ const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ onSave, onClose }) => {
 // ===================================================================
 interface EditDoctorModalProps {
     doctor: User;
-    // FIX: Changed onSave signature to pass ID and updates separately, aligning with the API and preventing type errors.
     onSave: (id: string, updates: Partial<Omit<User, 'permissions'>> & { permissions?: number[] }) => Promise<void>;
     onClose: () => void;
 }
@@ -290,7 +290,6 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ doctor, onSave, onClo
         setIsSaving(true);
         setValidationErrors({});
         try {
-            // FIX: Constructed a clean 'updates' object to pass to onSave, resolving type conflicts.
             const updates: Partial<Omit<User, 'permissions'>> & { permissions?: number[] } = { 
                 name: formData.name, 
                 email: formData.email, 
@@ -431,7 +430,6 @@ const DoctorsTab: React.FC<DoctorsTabProps> = ({ refreshTrigger, canAddUser }) =
         }
     };
     
-    // FIX: Updated handler signature to match the corrected `onSave` prop, resolving type errors.
     const handleUpdateDoctor = async (id: string, updates: Partial<Omit<User, 'permissions'>> & { permissions?: number[] }) => {
         try {
             await api.doctors.update(id, updates);
@@ -491,7 +489,7 @@ const DoctorsTab: React.FC<DoctorsTabProps> = ({ refreshTrigger, canAddUser }) =
                      doctors.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {doctors.map(doc => (
-                                <div key={doc.id} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col justify-between transition-shadow hover:shadow-lg">
+                                <div key={doc.id} className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-none rounded-2xl p-5 border border-gray-200 dark:border-white flex flex-col justify-between transition-all hover:scale-[1.01]">
                                     <div>
                                         <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{doc.name}</h3>
                                         <div className="flex items-center gap-2 mt-1">

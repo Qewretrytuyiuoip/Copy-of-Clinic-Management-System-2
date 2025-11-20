@@ -17,8 +17,15 @@ const StatCard: React.FC<{ title: string; value: string | number; icon: React.El
     return (
         <Component
             {...props}
-            className={`p-4 sm:p-6 bg-white dark:bg-slate-800 rounded-xl shadow-md flex items-center space-x-4 rtl:space-x-reverse text-right w-full ${onClick ? 'hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors' : ''}`}
+            className={`relative p-4 sm:p-6 bg-white dark:bg-slate-800 rounded-xl shadow-md flex items-center space-x-4 rtl:space-x-reverse text-right w-full ${onClick ? 'hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors cursor-pointer group' : ''}`}
         >
+            {onClick && (
+                <div className="absolute top-2 left-2">
+                    <span className="text-[10px] font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-2 py-0.5 rounded-full opacity-80 group-hover:opacity-100 transition-opacity">
+                        انقر هنا لعرض التفاصيل
+                    </span>
+                </div>
+            )}
             <div className="flex-shrink-0">
                 <div className="p-3 bg-primary-100 dark:bg-primary-900/40 rounded-full">
                     <Icon className="h-6 w-6 text-primary dark:text-primary-300" />
