@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { User, Appointment, Patient, UserRole, Gender, DaySchedule } from '../types';
 import { api } from '../services/api';
-import { PlusIcon, PencilIcon, TrashIcon, XIcon, EyeIcon, SearchIcon, CalendarIcon, ClockIcon } from '../components/Icons';
+import { PlusIcon, PencilIcon, TrashIcon, XIcon, EyeIcon, SearchIcon, CalendarIcon, ClockIcon, ChevronDownIcon } from '../components/Icons';
 import { CenteredLoadingSpinner } from '../components/LoadingSpinner';
 import { DAY_NAMES } from '../constants';
 
@@ -22,6 +22,19 @@ const formatTo12Hour = (time24: string): string => {
         return time24;
     }
 };
+
+// Helper to safely get YYYY-MM-DD from a Date object in local time
+const getLocalDateString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const LEVANTINE_MONTHS = [
+    'كانون الثاني', 'شباط', 'آذار', 'نيسان', 'أيار', 'حزيران', 
+    'تموز', 'آب', 'أيلول', 'تشرين الأول', 'تشرين الثاني', 'كانون الأول'
+];
 
 
 // ===================================================================
@@ -560,9 +573,10 @@ interface AvailableSlotsModalProps {
     allAppointments: Appointment[];
     onClose: () => void;
     onSlotSelect: (doctorId: string, time: string) => void;
+    date: Date;
 }
 
-const AvailableSlotsModal: React.FC<AvailableSlotsModalProps> = ({ doctors, allAppointments, onClose, onSlotSelect }) => {
+const AvailableSlotsModal: React.FC<AvailableSlotsModalProps> = ({ doctors, allAppointments, onClose, onSlotSelect, date }) => {
     const [schedulesByDoctor, setSchedulesByDoctor] = useState<Record<string, DaySchedule[]>>({});
     const [loadingSchedules, setLoadingSchedules] = useState(true);
 
@@ -586,9 +600,8 @@ const AvailableSlotsModal: React.FC<AvailableSlotsModalProps> = ({ doctors, allA
         if(doctors.length > 0) fetchSchedules();
     }, [doctors]);
     
-    const today = new Date();
-    const todayString = today.toISOString().split('T')[0];
-    const dayOfWeek = today.getDay();
+    const dateString = getLocalDateString(date);
+    const dayOfWeek = date.getDay();
 
     const renderDoctorSlots = (doctor: User) => {
         const schedule = schedulesByDoctor[doctor.id];
@@ -606,7 +619,7 @@ const AvailableSlotsModal: React.FC<AvailableSlotsModalProps> = ({ doctors, allA
 
         const allSlots = generateTimeSlots(daySchedule.startTime, daySchedule.endTime, 30);
         const bookedSlots = allAppointments
-            .filter(app => app.doctorId === doctor.id && app.date === todayString)
+            .filter(app => app.doctorId === doctor.id && app.date === dateString)
             .map(app => app.time);
         
         const availableSlots = allSlots.filter(slot => !bookedSlots.includes(slot));
@@ -637,7 +650,7 @@ const AvailableSlotsModal: React.FC<AvailableSlotsModalProps> = ({ doctors, allA
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-3xl" role="dialog" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
-                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">المواعيد المتاحة لهذا اليوم ({`${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`})</h2>
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">المواعيد المتاحة ليوم ({new Intl.DateTimeFormat('ar-EG', { calendar: 'gregory', year: 'numeric', month: 'long', day: 'numeric' }).format(date)})</h2>
                     <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
                 </div>
                 <div className="p-2 max-h-[70vh] overflow-y-auto">
@@ -681,6 +694,10 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
 
+    // New states for interactive pickers
+    const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
+    const [isYearPickerOpen, setIsYearPickerOpen] = useState(false);
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         setFetchError(null);
@@ -722,7 +739,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
 
     const handleSlotSelect = (doctorId: string, time: string) => {
         setIsViewingAvailableSlots(false);
-        setInitialAppointmentData({ doctorId, time, date: new Date().toISOString().split('T')[0] });
+        setInitialAppointmentData({ doctorId, time, date: getLocalDateString(selectedDate) });
         setIsAddingAppointment(true);
     };
 
@@ -828,7 +845,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
 
     const selectedDateAppointments = useMemo(() => {
         if (!selectedDate) return [];
-        const dateString = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+        const dateString = getLocalDateString(selectedDate);
         const dayAppointments = appointmentsByDate[dateString] || [];
 
         if (!searchTerm) return dayAppointments.sort((a,b) => a.time.localeCompare(b.time));
@@ -857,10 +874,33 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
         setSelectedDate(today);
     };
 
+    const handleMonthSelect = (monthIndex: number) => {
+        setCurrentDate(prev => {
+            const newDate = new Date(prev);
+            newDate.setMonth(monthIndex);
+            return newDate;
+        });
+        setIsMonthPickerOpen(false);
+    };
+
+    const handleYearSelect = (year: number) => {
+        setCurrentDate(prev => {
+            const newDate = new Date(prev);
+            newDate.setFullYear(year);
+            return newDate;
+        });
+        setIsYearPickerOpen(false);
+    };
+
+    // Generate years for picker
+    const currentYear = new Date().getFullYear();
+    const yearsList = Array.from({ length: 21 }, (_, i) => currentYear - 10 + i);
+
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-                <div className="relative w-full max-w-sm">
+            {/* Top Search Bar */}
+            <div className="mb-6">
+                <div className="relative w-full">
                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                        <SearchIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
                    </div>
@@ -869,28 +909,98 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                        value={searchTerm}
                        onChange={(e) => setSearchTerm(e.target.value)}
                        placeholder="ابحث في مواعيد اليوم المحدد..."
-                       className="w-full pl-3 pr-10 py-2 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                       className="w-full pl-3 pr-10 py-3 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                    />
-                </div>
-                 <div className="flex items-center gap-2">
-                    <button onClick={() => setIsViewingAvailableSlots(true)} className="hidden lg:flex items-center bg-teal-600 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-700 transition-colors">
-                        <CalendarIcon className="h-5 w-5 ml-2" />
-                        المواعيد المتاحة
-                    </button>
-                    {(user.role === UserRole.Admin || user.role === UserRole.Secretary) && (
-                        <button onClick={() => setIsAddingAppointment(true)} className="hidden lg:flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
-                            <PlusIcon className="h-5 w-5 ml-2" />
-                            موعد جديد
-                        </button>
-                    )}
                 </div>
             </div>
 
             <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
-                <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                    {/* View Toggle & Title Group */}
-                    <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
-                        <div className="flex bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
+                <div className="flex flex-col lg:flex-row justify-between items-center mb-6 gap-4">
+                    
+                    {/* Right Side: Navigation & Title (RTL Start) */}
+                    <div className="flex items-center gap-4 order-1 lg:order-1 w-full lg:w-auto justify-between lg:justify-start relative z-20">
+                        
+                        {viewMode === 'month' ? (
+                            <div className="flex items-center gap-2">
+                                {/* Month Picker */}
+                                <div className="relative">
+                                    <button
+                                        onClick={() => { setIsMonthPickerOpen(!isMonthPickerOpen); setIsYearPickerOpen(false); }}
+                                        className="flex items-center gap-1 text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-slate-700 px-2 py-1 rounded transition-colors"
+                                    >
+                                        {LEVANTINE_MONTHS[currentDate.getMonth()]} ({currentDate.getMonth() + 1})
+                                        <ChevronDownIcon className={`w-4 h-4 transition-transform ${isMonthPickerOpen ? 'rotate-180' : ''}`} />
+                                    </button>
+                                    {isMonthPickerOpen && (
+                                        <>
+                                            <div className="fixed inset-0 z-40" onClick={() => setIsMonthPickerOpen(false)}></div>
+                                            <div className="absolute top-full right-0 mt-2 w-64 bg-white dark:bg-slate-700 shadow-xl rounded-lg p-2 z-50 grid grid-cols-3 gap-2 border dark:border-gray-600">
+                                                {LEVANTINE_MONTHS.map((month, index) => (
+                                                    <button
+                                                        key={month}
+                                                        onClick={() => handleMonthSelect(index)}
+                                                        className={`p-2 text-sm font-medium rounded hover:bg-primary-50 dark:hover:bg-slate-600 ${currentDate.getMonth() === index ? 'bg-primary text-white hover:bg-primary-700' : 'text-gray-700 dark:text-gray-200'}`}
+                                                    >
+                                                        {month}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* Year Picker */}
+                                <div className="relative">
+                                    <button
+                                        onClick={() => { setIsYearPickerOpen(!isYearPickerOpen); setIsMonthPickerOpen(false); }}
+                                        className="flex items-center gap-1 text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-slate-700 px-2 py-1 rounded transition-colors"
+                                    >
+                                        {currentDate.getFullYear()}
+                                        <ChevronDownIcon className={`w-4 h-4 transition-transform ${isYearPickerOpen ? 'rotate-180' : ''}`} />
+                                    </button>
+                                    {isYearPickerOpen && (
+                                        <>
+                                            <div className="fixed inset-0 z-40" onClick={() => setIsYearPickerOpen(false)}></div>
+                                            <div className="absolute top-full right-0 mt-2 w-24 max-h-64 overflow-y-auto bg-white dark:bg-slate-700 shadow-xl rounded-lg p-1 z-50 border dark:border-gray-600">
+                                                {yearsList.map((year) => (
+                                                    <button
+                                                        key={year}
+                                                        onClick={() => handleYearSelect(year)}
+                                                        className={`w-full p-2 text-sm font-medium rounded hover:bg-primary-50 dark:hover:bg-slate-600 ${currentDate.getFullYear() === year ? 'bg-primary text-white hover:bg-primary-700' : 'text-gray-700 dark:text-gray-200'}`}
+                                                    >
+                                                        {year}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 whitespace-nowrap min-w-[140px]">{headerTitle}</h2>
+                        )}
+
+                        <div className="flex items-center gap-2 bg-gray-50 dark:bg-slate-700/50 p-1 rounded-lg">
+                            <button onClick={() => changeDate(-1)} className="p-1.5 rounded-md hover:bg-white dark:hover:bg-slate-600 text-gray-600 dark:text-gray-300 shadow-sm transition-all">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                </svg>
+                            </button>
+                            <button onClick={goToToday} className="px-3 py-1 text-xs font-semibold rounded-md bg-white dark:bg-slate-600 text-primary dark:text-primary-300 shadow-sm border border-gray-200 dark:border-gray-500 hover:bg-gray-50 dark:hover:bg-slate-500 transition-colors">
+                                اليوم
+                            </button>
+                            <button onClick={() => changeDate(1)} className="p-1.5 rounded-md hover:bg-white dark:hover:bg-slate-600 text-gray-600 dark:text-gray-300 shadow-sm transition-all">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Left Side: Controls Toolbar (RTL End) */}
+                    <div className="flex items-center gap-3 order-2 lg:order-2 w-full lg:w-auto justify-center lg:justify-end overflow-x-auto py-1">
+                        {/* View Toggles */}
+                        <div className="flex bg-gray-100 dark:bg-slate-700 rounded-lg p-1 shrink-0">
                             <button 
                                 onClick={() => setViewMode('month')}
                                 className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'month' ? 'bg-white dark:bg-slate-600 text-primary shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
@@ -904,24 +1014,29 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                                 أسبوع
                             </button>
                         </div>
-                        <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 whitespace-nowrap">{headerTitle}</h2>
-                    </div>
 
-                    {/* Navigation Arrows */}
-                    <div className="flex items-center gap-2">
-                        <button onClick={() => changeDate(-1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                            </svg>
-                        </button>
-                        <button onClick={goToToday} className="px-4 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors">
-                            اليوم
-                        </button>
-                        <button onClick={() => changeDate(1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                            </svg>
-                        </button>
+                        {/* Desktop Action Buttons (Hidden on Mobile) */}
+                        <div className="hidden md:flex items-center gap-2 shrink-0 border-r dark:border-gray-600 pr-3 mr-1">
+                             <button 
+                                onClick={() => setIsViewingAvailableSlots(true)} 
+                                className="flex items-center gap-2 bg-teal-600 text-white px-3 py-1.5 rounded-lg shadow-sm hover:bg-teal-700 transition-colors text-sm font-medium"
+                            >
+                                <CalendarIcon className="h-4 w-4" />
+                                المواعيد المتاحة
+                            </button>
+                            {(user.role === UserRole.Admin || user.role === UserRole.Secretary) && (
+                                <button 
+                                    onClick={() => {
+                                        setInitialAppointmentData({ date: getLocalDateString(selectedDate) });
+                                        setIsAddingAppointment(true);
+                                    }}
+                                    className="flex items-center gap-2 bg-primary text-white px-3 py-1.5 rounded-lg shadow-sm hover:bg-primary-700 transition-colors text-sm font-medium"
+                                >
+                                    <PlusIcon className="h-4 w-4" />
+                                    موعد جديد
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -936,7 +1051,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
 
                     {/* Days */}
                     {daysToRender.map((day, index) => {
-                        const dateString = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+                        const dateString = getLocalDateString(day);
                         const dailyAppointments = appointmentsByDate[dateString] || [];
                         const isCurrentMonth = day.getMonth() === currentDate.getMonth();
                         const isToday = new Date().toDateString() === day.toDateString();
@@ -955,7 +1070,8 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                             textClasses += " text-gray-300 dark:text-gray-600";
                         } else {
                             cellClasses += " hover:bg-gray-100 dark:hover:bg-slate-700";
-                            textClasses += " text-gray-700 dark:text-gray-300";
+                            // Explicitly setting text color for normal days in Light Mode to be dark (visible)
+                            textClasses += " text-gray-900 dark:text-gray-100";
                         }
                         
                         return (
@@ -1018,7 +1134,10 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                 </button>
                 {(user.role === UserRole.Admin || user.role === UserRole.Secretary) && (
                     <button 
-                        onClick={() => setIsAddingAppointment(true)} 
+                        onClick={() => {
+                            setInitialAppointmentData({ date: getLocalDateString(selectedDate) });
+                            setIsAddingAppointment(true);
+                        }}
                         className="bg-primary text-white p-4 rounded-full shadow-lg hover:bg-primary-700 transition-colors"
                         aria-label="موعد جديد"
                     >
@@ -1033,6 +1152,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                     allAppointments={appointments}
                     onClose={() => setIsViewingAvailableSlots(false)}
                     onSlotSelect={handleSlotSelect}
+                    date={selectedDate}
                 />
             )}
             

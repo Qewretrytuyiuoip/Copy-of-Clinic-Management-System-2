@@ -45,21 +45,53 @@ const BottomNav: React.FC<BottomNavProps> = ({ user, currentPage, setCurrentPage
 
 
     return (
-        <div className="lg:hidden fixed bottom-0 left-0 z-10 w-full h-16 bg-primary dark:bg-slate-800 border-t border-primary-600 dark:border-gray-700 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-            <div className="flex h-full max-w-lg mx-auto font-medium">
-                {navItems.slice(0, 5).map((item) => (
-                    <button
-                        key={item.name}
-                        type="button"
-                        onClick={() => setCurrentPage(item.page)}
-                        className={`flex-1 inline-flex flex-col items-center justify-center p-2 hover:bg-primary-600 dark:hover:bg-gray-700 group transition-colors duration-200 ${
-                            currentPage === item.page ? 'text-white' : 'text-blue-200 dark:text-gray-400'
-                        }`}
-                    >
-                        <item.icon className="w-6 h-6 mb-1" />
-                        <span className="text-xs text-center">{item.name}</span>
-                    </button>
-                ))}
+        <div className="lg:hidden fixed bottom-0 left-0 z-50 w-full">
+            {/* Glassmorphism Container */}
+            <div className="relative bg-white/90 dark:bg-slate-900/95 backdrop-blur-xl border-t border-gray-200 dark:border-gray-800 shadow-[0_-10px_30px_-10px_rgba(0,0,0,0.1)] pb-safe">
+                <div className="flex justify-around items-center h-[60px] px-2">
+                    {navItems.slice(0, 5).map((item) => {
+                        const isActive = currentPage === item.page;
+                        return (
+                            <button
+                                key={item.name}
+                                type="button"
+                                onClick={() => setCurrentPage(item.page)}
+                                className="relative flex flex-col items-center justify-center w-full h-full group outline-none"
+                            >
+                                {/* Animated Icon Container */}
+                                <span
+                                    className={`absolute transition-all duration-500 ease-in-out rounded-2xl flex items-center justify-center
+                                        ${isActive
+                                            ? '-top-5 w-12 h-12 bg-primary shadow-lg shadow-primary/40 rotate-6 scale-110' // Active: Float up, Color, Shadow, Tilt
+                                            : 'top-2 w-8 h-8 bg-transparent' // Inactive: Sits inside
+                                        }
+                                    `}
+                                >
+                                    <item.icon
+                                        className={`w-6 h-6 transition-all duration-300
+                                            ${isActive 
+                                                ? 'text-white -rotate-6' 
+                                                : 'text-gray-400 dark:text-gray-500 group-hover:text-primary dark:group-hover:text-primary-400'
+                                            }
+                                        `}
+                                    />
+                                </span>
+
+                                {/* Animated Label */}
+                                <span
+                                    className={`absolute bottom-1 text-[10px] font-bold transition-all duration-300
+                                        ${isActive
+                                            ? 'text-primary dark:text-primary-400 opacity-100 translate-y-0'
+                                            : 'text-gray-400 opacity-0 translate-y-4'
+                                        }
+                                    `}
+                                >
+                                    {item.name}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
         </div>
     );
