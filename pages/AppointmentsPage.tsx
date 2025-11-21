@@ -154,6 +154,10 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
     
     const isSecretary = user.role === UserRole.Secretary;
 
+    const diagnosisDoctors = useMemo(() => {
+        return doctors.filter(doc => doc.is_diagnosis_doctor);
+    }, [doctors]);
+
     useEffect(() => {
         if (appointment && patients.length > 0) {
             const currentPatient = patients.find(p => p.id === appointment.patientId);
@@ -297,7 +301,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
     const patientDoctors = useMemo(() => {
         if (showNewPatientForm) {
             if (isSecretary) {
-                return doctors.filter(d => d.is_diagnosis_doctor);
+                return diagnosisDoctors;
             }
             return doctors;
         }
@@ -307,7 +311,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
         }
         const selectedPatient = patients.find(p => p.id === formData.patientId);
         return selectedPatient ? doctors.filter(d => selectedPatient.doctorIds.includes(d.id)) : [];
-    }, [formData.patientId, patients, doctors, showNewPatientForm, isSecretary]);
+    }, [formData.patientId, patients, doctors, showNewPatientForm, isSecretary, diagnosisDoctors]);
 
 
     const handleNewPatientChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -335,7 +339,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
         
             if (showNewPatientForm) {
                 if (isSecretary && patientDoctors.length === 0) {
-                    throw new Error('لا يوجد اطباء تشخيص. يرجى الطلب من المدير اضافة طبيب تشخيص.');
+                    throw new Error('لا يوجد اطباء تشخيص يرجى الطلب من المدير اضافة طبيب تشخيص');
                 }
 
                 if (!newPatientData.name || !newPatientData.phone || !newPatientData.age || !formData.doctorId) {
@@ -675,6 +679,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
 
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(new Date());
+    const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -768,37 +773,58 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
         }, {} as Record<string, Appointment[]>);
     }, [appointments]);
 
-    const { calendarRows, monthName, year } = useMemo(() => {
+    const { daysToRender, headerTitle } = useMemo(() => {
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth();
-        const monthName = new Intl.DateTimeFormat('ar-EG', { calendar: 'gregory', month: 'long', year: 'numeric' }).format(currentDate);
-
-        const firstDayOfMonth = new Date(year, month, 1);
-        const lastDayOfMonth = new Date(year, month + 1, 0);
-
-        const startDate = new Date(firstDayOfMonth);
-        startDate.setDate(startDate.getDate() - startDate.getDay());
-
-        const endDate = new Date(lastDayOfMonth);
-        if (endDate.getDay() !== 6) { // 6 is Saturday
-          endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
+        
+        // Header title logic
+        let headerTitle = "";
+        if (viewMode === 'month') {
+            headerTitle = new Intl.DateTimeFormat('ar-EG', { calendar: 'gregory', month: 'long', year: 'numeric' }).format(currentDate);
+        } else {
+            const startOfWeek = new Date(currentDate);
+            startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+            
+            const startStr = new Intl.DateTimeFormat('ar-EG', { calendar: 'gregory', month: 'short', day: 'numeric' }).format(startOfWeek);
+            const endStr = new Intl.DateTimeFormat('ar-EG', { calendar: 'gregory', month: 'short', day: 'numeric' }).format(endOfWeek);
+            headerTitle = `${startStr} - ${endStr}`;
         }
 
-        const rows = [];
         let days = [];
-        let day = new Date(startDate);
 
-        while (day <= endDate) {
-            for (let i = 0; i < 7; i++) {
+        if (viewMode === 'month') {
+            const firstDayOfMonth = new Date(year, month, 1);
+            const lastDayOfMonth = new Date(year, month + 1, 0);
+
+            const startDate = new Date(firstDayOfMonth);
+            startDate.setDate(startDate.getDate() - startDate.getDay());
+
+            const endDate = new Date(lastDayOfMonth);
+            if (endDate.getDay() !== 6) { 
+              endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
+            }
+
+            let day = new Date(startDate);
+            while (day <= endDate) {
                 days.push(new Date(day));
                 day.setDate(day.getDate() + 1);
             }
-            rows.push(days);
-            days = [];
+        } else {
+            // Week view
+            const startOfWeek = new Date(currentDate);
+            startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+            
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(startOfWeek);
+                d.setDate(startOfWeek.getDate() + i);
+                days.push(d);
+            }
         }
         
-        return { calendarRows: rows, monthName, year };
-    }, [currentDate]);
+        return { daysToRender: days, headerTitle };
+    }, [currentDate, viewMode]);
 
     const selectedDateAppointments = useMemo(() => {
         if (!selectedDate) return [];
@@ -813,9 +839,14 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
         ).sort((a,b) => a.time.localeCompare(b.time));
     }, [selectedDate, appointmentsByDate, searchTerm, getPatientName, getDoctorName]);
 
-    const changeMonth = (amount: number) => {
+    const changeDate = (amount: number) => {
         setCurrentDate(prev => {
-            const newDate = new Date(prev.getFullYear(), prev.getMonth() + amount, 1);
+            const newDate = new Date(prev);
+            if (viewMode === 'month') {
+                newDate.setMonth(prev.getMonth() + amount);
+            } else {
+                newDate.setDate(prev.getDate() + (amount * 7));
+            }
             return newDate;
         });
     };
@@ -855,42 +886,87 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl shadow-md">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{monthName}</h2>
+            <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
+                <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                    {/* View Toggle & Title Group */}
+                    <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
+                        <div className="flex bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
+                            <button 
+                                onClick={() => setViewMode('month')}
+                                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'month' ? 'bg-white dark:bg-slate-600 text-primary shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                            >
+                                شهر
+                            </button>
+                            <button 
+                                onClick={() => setViewMode('week')}
+                                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'week' ? 'bg-white dark:bg-slate-600 text-primary shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                            >
+                                أسبوع
+                            </button>
+                        </div>
+                        <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 whitespace-nowrap">{headerTitle}</h2>
+                    </div>
+
+                    {/* Navigation Arrows */}
                     <div className="flex items-center gap-2">
-                        <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700">&lt;</button>
-                        <button onClick={goToToday} className="px-4 py-1.5 text-sm font-semibold rounded-full bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600">اليوم</button>
-                        <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700">&gt;</button>
+                        <button onClick={() => changeDate(-1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                            </svg>
+                        </button>
+                        <button onClick={goToToday} className="px-4 py-1.5 text-xs sm:text-sm font-semibold rounded-full bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors">
+                            اليوم
+                        </button>
+                        <button onClick={() => changeDate(1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-7 gap-1 text-center border-b dark:border-gray-700 pb-2 mb-2">
-                    {DAY_NAMES.map(day => <div key={day} className="font-semibold text-xs sm:text-sm text-gray-600 dark:text-gray-300 py-2">{day}</div>)}
-                </div>
+                {/* Calendar Grid */}
+                <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center">
+                    {/* Weekday Headers */}
+                    {DAY_NAMES.map(day => (
+                        <div key={day} className="text-xs font-medium text-gray-400 dark:text-gray-500 py-2">
+                            {day}
+                        </div>
+                    ))}
 
-                <div className="grid grid-cols-7 gap-1">
-                    {calendarRows.flat().map((day, index) => {
+                    {/* Days */}
+                    {daysToRender.map((day, index) => {
                         const dateString = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
                         const dailyAppointments = appointmentsByDate[dateString] || [];
                         const isCurrentMonth = day.getMonth() === currentDate.getMonth();
                         const isToday = new Date().toDateString() === day.toDateString();
                         const isSelected = selectedDate?.toDateString() === day.toDateString();
+                        const hasAppointments = dailyAppointments.length > 0;
                         
-                        let cellClasses = "p-1 sm:p-2 h-20 sm:h-24 rounded-lg cursor-pointer transition-colors relative flex flex-col items-center justify-start";
-                        if (!isCurrentMonth) cellClasses += " text-gray-300 dark:text-gray-600 bg-gray-50 dark:bg-slate-800/50";
-                        else if (isSelected) cellClasses += " bg-primary text-white shadow-lg";
-                        else if (isToday) cellClasses += " bg-primary-100 dark:bg-primary-900/40 text-primary-800 dark:text-primary-200";
-                        else cellClasses += " bg-white dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700";
+                        let cellClasses = "relative flex flex-col items-center justify-center h-10 w-10 sm:h-12 sm:w-12 mx-auto rounded-full cursor-pointer transition-all duration-200 select-none";
+                        let textClasses = "text-sm font-medium z-10";
+                        
+                        if (isSelected) {
+                            cellClasses += " bg-primary shadow-md scale-105";
+                            textClasses += " text-white";
+                        } else if (isToday) {
+                            cellClasses += " bg-primary-50 dark:bg-primary-900/20 ring-1 ring-primary text-primary dark:text-primary-300";
+                        } else if (viewMode === 'month' && !isCurrentMonth) {
+                            textClasses += " text-gray-300 dark:text-gray-600";
+                        } else {
+                            cellClasses += " hover:bg-gray-100 dark:hover:bg-slate-700";
+                            textClasses += " text-gray-700 dark:text-gray-300";
+                        }
                         
                         return (
-                            <div key={index} className={cellClasses} onClick={() => setSelectedDate(day)}>
-                                <span className={`text-sm font-semibold ${isToday && !isSelected ? 'text-primary' : ''}`}>{day.getDate()}</span>
-                                {dailyAppointments.length > 0 && isCurrentMonth && (
-                                    <div className={`absolute bottom-2 w-5 h-5 flex items-center justify-center text-xs rounded-full ${isSelected ? 'bg-white text-primary' : 'bg-primary text-white'}`}>
-                                        {dailyAppointments.length}
-                                    </div>
-                                )}
+                            <div key={index} className="py-1">
+                                <div className={cellClasses} onClick={() => setSelectedDate(day)}>
+                                    <span className={textClasses}>{day.getDate()}</span>
+                                    {/* Compact Appointment Indicator */}
+                                    {hasAppointments && (
+                                        <span className={`absolute bottom-1.5 block h-1 w-1 rounded-full ${isSelected ? 'bg-white' : 'bg-primary'}`}></span>
+                                    )}
+                                </div>
                             </div>
                         );
                     })}
@@ -899,7 +975,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
 
             <div className="mt-8">
                  {selectedDate && (
-                    <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">
+                    <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100 px-1">
                         مواعيد يوم: {new Intl.DateTimeFormat('ar-EG', { calendar: 'gregory', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).format(selectedDate)}
                     </h3>
                 )}
@@ -926,7 +1002,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                         ))}
                     </div>
                 ) : (
-                    <div className="text-center py-10 text-gray-500 dark:text-gray-400 bg-white dark:bg-slate-800 rounded-xl shadow-md">
+                    <div className="text-center py-10 text-gray-500 dark:text-gray-400 bg-white dark:bg-slate-800 rounded-xl shadow-md border border-dashed border-gray-300 dark:border-gray-700">
                         <p>{searchTerm ? 'لا توجد مواعيد تطابق بحثك في هذا اليوم.' : 'لا توجد مواعيد لهذا اليوم.'}</p>
                     </div>
                 )}

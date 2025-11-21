@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query';
 import { User, Patient, UserRole, Session, Gender } from '../types';
 import { api } from '../services/api';
-import { PlusIcon, PencilIcon, TrashIcon, XIcon, BeakerIcon, EyeIcon, CurrencyDollarIcon, SearchIcon, PhotographIcon, ListBulletIcon, DocumentTextIcon, CheckIcon } from '../components/Icons';
+import { PlusIcon, PencilIcon, TrashIcon, XIcon, BeakerIcon, EyeIcon, CurrencyDollarIcon, SearchIcon, PhotographIcon, ListBulletIcon, DocumentTextIcon, CheckIcon, ChevronDownIcon } from '../components/Icons';
 import LoadingSpinner, { CenteredLoadingSpinner } from '../components/LoadingSpinner';
 import { useAppSettings } from '../hooks/useAppSettings';
 
@@ -860,7 +860,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                                     setSelectedDoctorId(e.target.value);
                                     setPage(1);
                                 }}
-                                className="w-full sm:w-48 px-3 py-2 pr-8 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary appearance-none"
+                                className="w-full sm:w-48 px-3 py-2 pl-10 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary appearance-none"
                                 aria-label="Filter by doctor"
                             >
                                 <option value="">كل الأطباء</option>
@@ -868,6 +868,9 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                                     <option key={doctor.id} value={doctor.id}>{doctor.name}</option>
                                 ))}
                             </select>
+                            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                <ChevronDownIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                            </div>
                         </div>
                     )}
                     <div className="relative">
@@ -877,7 +880,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                                 setStatusFilter(e.target.value);
                                 setPage(1);
                             }}
-                            className="w-full sm:w-48 px-3 py-2 pr-8 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary appearance-none"
+                            className="w-full sm:w-48 px-3 py-2 pl-10 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary appearance-none"
                             aria-label="تصفية حسب الحالة"
                         >
                             {isDoctor ? (
@@ -894,6 +897,9 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                                 </>
                             )}
                         </select>
+                         <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <ChevronDownIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                        </div>
                     </div>
                      {canAddPatient && (
                         <button onClick={() => setIsAddingPatient(true)} className="hidden lg:flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">

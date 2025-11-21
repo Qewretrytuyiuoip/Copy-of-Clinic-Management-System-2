@@ -417,7 +417,7 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user, refreshTrigger }) => 
                                         <div>
                                             <div className="flex justify-between items-start">
                                                 <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">{getPatientName(pay.patientId)}</h3>
-                                                <p className="text-xl font-bold text-green-600 dark:text-green-400">SYP {pay.amount.toFixed(2)}</p>
+                                                <p className="text-xl font-bold text-green-600 dark:text-green-400">SYP {pay.amount.toLocaleString('en-US')}</p>
                                             </div>
                                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{new Date(pay.date).toLocaleDateString()}</p>
                                         </div>
@@ -465,7 +465,7 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user, refreshTrigger }) => 
             {paymentToDelete && (
                  <ConfirmDeleteModal
                     title="حذف الدفعة"
-                    message={`هل أنت متأكد من حذف دفعة بقيمة SYP ${paymentToDelete.amount.toFixed(2)} للمريض ${getPatientName(paymentToDelete.patientId)}؟`}
+                    message={`هل أنت متأكد من حذف دفعة بقيمة SYP ${paymentToDelete.amount.toLocaleString('en-US')} للمريض ${getPatientName(paymentToDelete.patientId)}؟`}
                     onConfirm={confirmDeletePayment}
                     onCancel={() => !isDeleting && setPaymentToDelete(null)}
                     isDeleting={isDeleting}

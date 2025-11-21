@@ -40,25 +40,31 @@ const Header: React.FC<HeaderProps> = ({ user, setSidebarOpen, onRefresh, pageNa
     return (
         <>
             <header className="relative flex items-center justify-between p-4 bg-primary dark:bg-slate-800 border-b border-primary-600 dark:border-gray-700 transition-colors duration-300 shadow-sm">
-                <div className="flex items-center lg:hidden gap-2">
-                     <button
-                        onClick={() => setSidebarOpen(true)}
-                        className="text-white dark:text-gray-400 hover:bg-primary-600 dark:hover:bg-gray-700 p-1 rounded-full focus:outline-none"
-                        aria-label="القائمة"
-                    >
-                        <MenuIcon className="h-6 w-6" />
-                    </button>
-                    {backRoute && (
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center lg:hidden gap-2">
                         <button
-                            onClick={handleBack}
-                            className="lg:hidden p-2 rounded-full text-white dark:text-gray-400 hover:bg-primary-600 dark:hover:bg-gray-700 focus:outline-none"
-                            aria-label="رجوع"
+                            onClick={() => setSidebarOpen(true)}
+                            className="text-white dark:text-gray-400 hover:bg-primary-600 dark:hover:bg-gray-700 p-1 rounded-full focus:outline-none"
+                            aria-label="القائمة"
                         >
-                            {/* Rotate 180 for RTL back arrow */}
-                            <ArrowBackIcon className="h-6 w-6 transform rotate-180" />
+                            <MenuIcon className="h-6 w-6" />
                         </button>
-                    )}
+                        {backRoute && (
+                            <button
+                                onClick={handleBack}
+                                className="lg:hidden p-2 rounded-full text-white dark:text-gray-400 hover:bg-primary-600 dark:hover:bg-gray-700 focus:outline-none"
+                                aria-label="رجوع"
+                            >
+                                {/* Rotate 180 for RTL back arrow */}
+                                <ArrowBackIcon className="h-6 w-6 transform rotate-180" />
+                            </button>
+                        )}
+                    </div>
+                    <div className="px-2 py-1 border border-yellow-400 text-yellow-400 text-xs font-bold rounded-md bg-yellow-400/10 select-none">
+                        تجريبي
+                    </div>
                 </div>
+
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
                     <h1 className="text-lg font-bold text-white dark:text-gray-100 truncate pointer-events-none max-w-[150px] sm:max-w-md">
                         {pageName}
