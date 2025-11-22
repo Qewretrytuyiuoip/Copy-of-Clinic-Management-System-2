@@ -680,6 +680,12 @@ const generateExcelXml = (data: any): string => {
 
 // API Object with Offline Support
 export const api = {
+    profile: {
+        delete: async (): Promise<void> => {
+            const formData = new FormData();
+            await performApiFetch('profile/delete', { method: 'POST', body: formData });
+        }
+    },
     exportCenterData: async (): Promise<void> => {
         const data = await performApiFetch('center-data', { method: 'POST' });
 

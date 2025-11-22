@@ -161,6 +161,11 @@ const TreatmentsSettings: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
     const [newTreatment, setNewTreatment] = useState({ name: '', price: '', notes: '' });
+    
+    // Editing state
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editData, setEditData] = useState({ name: '', price: '', notes: '' });
+    
     const [isSaving, setIsSaving] = useState(false);
 
     const fetchTreatments = async () => {
@@ -210,6 +215,35 @@ const TreatmentsSettings: React.FC = () => {
         }
     };
 
+    // Edit Handlers
+    const handleEditClick = (t: Treatment) => {
+        setEditingId(t.id);
+        setEditData({ name: t.name, price: t.price.toString(), notes: t.notes || '' });
+    };
+
+    const handleUpdateSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingId) return;
+        setIsSaving(true);
+        try {
+            await api.treatmentSettings.update(editingId, {
+                name: editData.name,
+                price: parseFloat(editData.price),
+                notes: editData.notes
+            });
+            setEditingId(null);
+            fetchTreatments();
+        } catch (e) {
+            alert('فشل التعديل');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setEditingId(null);
+    };
+
     const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
     return (
@@ -240,19 +274,38 @@ const TreatmentsSettings: React.FC = () => {
                     {treatments.length > 0 ? (
                         <ul className="divide-y divide-gray-200 dark:divide-gray-700">
                             {treatments.map(t => (
-                                <li key={t.id} className="p-4 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
-                                    <div>
-                                        <p className="font-bold text-gray-800 dark:text-gray-100">{t.name}</p>
-                                        {t.notes && <p className="text-xs text-gray-500 dark:text-gray-400">{t.notes}</p>}
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                        <span className="font-semibold text-green-600 dark:text-green-400">
-                                            {t.price.toLocaleString('en-US')} SYP
-                                        </span>
-                                        <button onClick={() => handleDelete(t.id)} className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/20">
-                                            <TrashIcon className="h-5 w-5" />
-                                        </button>
-                                    </div>
+                                <li key={t.id} className="p-4 transition-colors hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                                    {editingId === t.id ? (
+                                        <form onSubmit={handleUpdateSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center w-full">
+                                            <input type="text" value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className={inputStyle} required />
+                                            <input type="number" value={editData.price} onChange={e => setEditData({...editData, price: e.target.value})} className={inputStyle} required />
+                                            <input type="text" value={editData.notes} onChange={e => setEditData({...editData, notes: e.target.value})} className={inputStyle} />
+                                            <div className="flex gap-2 justify-end">
+                                                <button type="button" onClick={handleCancelEdit} className="px-2 py-1 text-sm bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-slate-500">إلغاء</button>
+                                                <button type="submit" disabled={isSaving} className="px-2 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700">{isSaving ? 'حفظ...' : 'حفظ'}</button>
+                                            </div>
+                                        </form>
+                                    ) : (
+                                        <div className="flex justify-between items-center w-full">
+                                            <div>
+                                                <p className="font-bold text-gray-800 dark:text-gray-100">{t.name}</p>
+                                                {t.notes && <p className="text-xs text-gray-500 dark:text-gray-400">{t.notes}</p>}
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <span className="font-semibold text-green-600 dark:text-green-400">
+                                                    {t.price.toLocaleString('en-US')} SYP
+                                                </span>
+                                                <div className="flex gap-1">
+                                                    <button onClick={() => handleEditClick(t)} className="text-blue-600 hover:text-blue-800 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/20" title="تعديل">
+                                                        <PencilIcon className="h-5 w-5" />
+                                                    </button>
+                                                    <button onClick={() => handleDelete(t.id)} className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/20" title="حذف">
+                                                        <TrashIcon className="h-5 w-5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </li>
                             ))}
                         </ul>
@@ -391,24 +444,27 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ refreshTrigger }) => {
         setIsDeleteAccountModalOpen(true);
     };
 
-    const performAccountDeletion = async () => {
+    const handleExportAndDelete = async () => {
         setIsDeletingAccount(true);
         try {
-            // Since we don't have a direct self-delete endpoint exposed in api.ts yet in the context provided,
-            // we simulate the action or use a placeholder. Ideally, this calls api.users.delete(user.id) 
-            // or a dedicated profile deletion endpoint.
-            // For now, keeping the instruction to contact support as a safeguard or simulating delay.
+            // 1. Export Data first
+            await api.exportCenterData();
             
-            await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network request
+            // Wait a moment to ensure download starts
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            // 2. Perform server deletion
+            await api.profile.delete();
             
-            // If there was an API: await api.profile.delete();
+            // 3. Logout user
+            await logout();
             
-            alert('يرجى التواصل مع الدعم الفني لحذف الحساب بشكل كامل.');
-            setIsDeleteAccountModalOpen(false);
         } catch (error) {
-            alert('حدث خطأ أثناء محاولة حذف الحساب.');
+            console.error("Delete account failed:", error);
+            alert('حدث خطأ أثناء محاولة حذف الحساب. يرجى المحاولة مرة أخرى أو التواصل مع الدعم.');
         } finally {
             setIsDeletingAccount(false);
+            setIsDeleteAccountModalOpen(false);
         }
     };
     
@@ -539,37 +595,28 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ refreshTrigger }) => {
                                 </div>
                                 <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">حذف الحساب</h3>
                                 <p className="text-sm text-gray-600 dark:text-gray-300 mt-3 px-2 leading-relaxed">
-                                    سيتم حذف الحساب بشكل كامل ونهائي وانه سيتم الغاء الاشتراك في حال حذف الحساب
+                                    تحذير: سيتم حذف الحساب والاشتراك بشكل نهائي. لا يمكن التراجع عن هذا الإجراء.
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                    سيتم تحميل نسخة احتياطية من بياناتك تلقائياً قبل الحذف.
                                 </p>
                             </div>
                             
                             <div className="mt-8 space-y-3 flex flex-col">
-                                {isManager && (
-                                    <button
-                                        type="button"
-                                        onClick={handleExportData}
-                                        disabled={isExporting || isDeletingAccount}
-                                        className="w-full flex items-center justify-center gap-2 rounded-xl border border-transparent shadow-sm px-4 py-3 bg-blue-600 text-white font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        {isExporting ? <LoadingSpinner className="h-5 w-5" /> : <ArrowDownOnSquareIcon className="h-5 w-5" />}
-                                        <span>تصدير البيانات</span>
-                                    </button>
-                                )}
-                                
                                 <button
                                     type="button"
-                                    onClick={performAccountDeletion}
-                                    disabled={isDeletingAccount || isExporting}
+                                    onClick={handleExportAndDelete}
+                                    disabled={isDeletingAccount}
                                     className="w-full flex items-center justify-center gap-2 rounded-xl border border-transparent shadow-sm px-4 py-3 bg-red-600 text-white font-semibold hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
                                 >
-                                    {isDeletingAccount ? <LoadingSpinner className="h-5 w-5" /> : null}
-                                    <span>حذف الحساب بشكل نهائي</span>
+                                    {isDeletingAccount ? <LoadingSpinner className="h-5 w-5" /> : <ArrowDownOnSquareIcon className="h-5 w-5" />}
+                                    <span>تصدير البيانات وحذف الحساب</span>
                                 </button>
                                 
                                 <button
                                     type="button"
                                     onClick={() => setIsDeleteAccountModalOpen(false)}
-                                    disabled={isDeletingAccount || isExporting}
+                                    disabled={isDeletingAccount}
                                     className="w-full rounded-xl border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-3 bg-transparent text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
                                 >
                                     الغاء
