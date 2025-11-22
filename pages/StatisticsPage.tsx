@@ -17,19 +17,89 @@ const isDateInRange = (dateStr: string, startDate?: string, endDate?: string) =>
     return true;
 };
 
-const StatCard: React.FC<{ title: string; value: string; icon: React.ElementType; color: string; }> = ({ title, value, icon: Icon, color }) => (
-    <div className="p-4 sm:p-6 bg-white dark:bg-slate-800 rounded-xl shadow-md flex items-center space-x-4 rtl:space-x-reverse">
-        <div className="flex-shrink-0">
-            <div className={`p-3 bg-${color}-100 dark:bg-${color}-900/40 rounded-full`}>
-                <Icon className={`h-6 w-6 text-${color}-600 dark:text-${color}-300`} />
+const StatCard: React.FC<{ title: string; value: string; icon: React.ElementType; color: string; }> = ({ title, value, icon: Icon, color }) => {
+    // Map simple color names to Tailwind classes
+    const colorClasses = {
+        red: {
+            glow: 'via-red-400',
+            dot: 'bg-red-400/80',
+            iconBg: 'text-red-600 dark:text-red-400',
+            shadow: 'shadow-[0_0_15px_rgba(248,113,113,0.5)]',
+            dotShadow: 'shadow-[0_0_8px_rgba(248,113,113,0.6)]',
+            hoverBg: 'group-hover:bg-red-500/10'
+        },
+        green: {
+            glow: 'via-green-400',
+            dot: 'bg-green-400/80',
+            iconBg: 'text-green-600 dark:text-green-400',
+            shadow: 'shadow-[0_0_15px_rgba(74,222,128,0.5)]',
+            dotShadow: 'shadow-[0_0_8px_rgba(74,222,128,0.6)]',
+            hoverBg: 'group-hover:bg-green-500/10'
+        },
+        yellow: {
+            glow: 'via-yellow-400',
+            dot: 'bg-yellow-400/80',
+            iconBg: 'text-yellow-600 dark:text-yellow-400',
+            shadow: 'shadow-[0_0_15px_rgba(250,204,21,0.5)]',
+            dotShadow: 'shadow-[0_0_8px_rgba(250,204,21,0.6)]',
+            hoverBg: 'group-hover:bg-yellow-500/10'
+        },
+        blue: {
+            glow: 'via-blue-400',
+            dot: 'bg-blue-400/80',
+            iconBg: 'text-blue-600 dark:text-blue-400',
+            shadow: 'shadow-[0_0_15px_rgba(96,165,250,0.5)]',
+            dotShadow: 'shadow-[0_0_8px_rgba(96,165,250,0.6)]',
+            hoverBg: 'group-hover:bg-blue-500/10'
+        },
+        purple: {
+            glow: 'via-purple-400',
+            dot: 'bg-purple-400/80',
+            iconBg: 'text-purple-600 dark:text-purple-400',
+            shadow: 'shadow-[0_0_15px_rgba(192,132,252,0.5)]',
+            dotShadow: 'shadow-[0_0_8px_rgba(192,132,252,0.6)]',
+            hoverBg: 'group-hover:bg-purple-500/10'
+        }
+    }[color] || {
+        glow: 'via-primary-400',
+        dot: 'bg-primary-400/80',
+        iconBg: 'text-primary-600 dark:text-primary-400',
+        shadow: 'shadow-[0_0_15px_rgba(56,189,248,0.5)]',
+        dotShadow: 'shadow-[0_0_8px_rgba(56,189,248,0.6)]',
+        hoverBg: 'group-hover:bg-primary-500/10'
+    };
+
+    return (
+        <div className="group relative w-full p-5 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/60 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+            {/* Right Glow Bar - Neon Effect */}
+            <div className={`absolute top-1/2 -translate-y-1/2 right-0 h-12 w-1 bg-gradient-to-b from-transparent ${colorClasses.glow} to-transparent rounded-l-full opacity-70 group-hover:opacity-100 group-hover:h-16 group-hover:w-1.5 transition-all duration-500 ${colorClasses.shadow}`}></div>
+
+            <div className="relative z-10 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    {/* Icon Container */}
+                    <div className={`flex-shrink-0 p-3.5 rounded-2xl bg-gray-50 dark:bg-slate-900/50 ${colorClasses.iconBg} shadow-inner group-hover:scale-110 transition-transform duration-300`}>
+                        <Icon className="h-7 w-7" />
+                    </div>
+                    
+                    <div className="text-right">
+                        <p className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 transition-colors duration-300">
+                            {title}
+                        </p>
+                        <div className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mt-1 tracking-tight truncate max-w-[150px] sm:max-w-[200px]">
+                            {value}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Left Dot Indicator */}
+                <div className={`w-2 h-2 rounded-full ${colorClasses.dot} ${colorClasses.dotShadow}`}></div>
             </div>
+
+            {/* Background Gradient Highlight */}
+            <div className={`absolute -bottom-4 -left-4 w-24 h-24 rounded-full blur-2xl ${colorClasses.hoverBg} bg-gray-100/5 transition-colors duration-500`}></div>
         </div>
-        <div>
-            <div className="text-lg sm:text-xl font-medium text-black dark:text-white">{value}</div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
-        </div>
-    </div>
-);
+    );
+};
 
 
 const StatisticsPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => {
@@ -115,7 +185,7 @@ const StatisticsPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
 
     return (
         <div>
-             <div className="mb-6 p-4 bg-white dark:bg-slate-800 rounded-xl shadow-md flex flex-wrap items-center gap-4">
+             <div className="mb-6 p-4 bg-white dark:bg-slate-800 rounded-xl shadow-md flex flex-wrap items-center gap-4 border border-gray-100 dark:border-slate-700">
                 <div className="flex-grow">
                     <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">من تاريخ</label>
                     <input
@@ -123,7 +193,7 @@ const StatisticsPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
                         id="startDate"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
-                        className="mt-1 w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white"
+                        className="mt-1 w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white transition-colors"
                     />
                 </div>
                 <div className="flex-grow">
@@ -133,7 +203,7 @@ const StatisticsPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
                         id="endDate"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
-                        className="mt-1 w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white"
+                        className="mt-1 w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white transition-colors"
                     />
                 </div>
             </div>
@@ -142,17 +212,17 @@ const StatisticsPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
                 <div className="text-center py-16 text-red-500 dark:text-red-400 bg-white dark:bg-slate-800 rounded-xl shadow-md"><p>{fetchError}</p></div>
             ) : (
                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                         <StatCard title="إجمالي تكاليف العلاج" value={`SYP ${calculatedStats.overallCosts.toLocaleString('en-US')}`} icon={BeakerIcon} color="red" />
                         <StatCard title="إجمالي الإيرادات" value={`SYP ${calculatedStats.overallRevenue.toLocaleString('en-US')}`} icon={CurrencyDollarIcon} color="green" />
                         <StatCard title="المتبقي" value={`SYP ${calculatedStats.overallBalance.toLocaleString('en-US')}`} icon={ListBulletIcon} color={calculatedStats.overallBalance > 0 ? 'yellow' : 'blue'} />
                     </div>
 
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md">
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-gray-100 dark:border-slate-700">
                         <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">ملخص المرضى</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {calculatedStats.patientStats.map(stat => (
-                                <div key={stat.patientId} className="border bg-gray-50 dark:bg-gray-800 dark:border-gray-700 rounded-lg p-4 shadow-sm">
+                                <div key={stat.patientId} className="border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-slate-700/30 rounded-xl p-4 shadow-sm hover:shadow-md transition-all">
                                     <h3 className="font-bold text-lg text-primary">{stat.patientName}</h3>
                                     <div className="mt-3 space-y-2 text-sm">
                                         <div className="flex justify-between items-center text-red-600 dark:text-red-400">
@@ -163,7 +233,7 @@ const StatisticsPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }
                                             <span>مجموع الدفعات:</span>
                                             <span className="font-semibold">SYP {stat.totalPayments.toLocaleString('en-US')}</span>
                                         </div>
-                                        <div className={`flex justify-between items-center pt-2 border-t dark:border-gray-600 font-bold ${stat.balance > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                                        <div className={`flex justify-between items-center pt-2 border-t border-gray-200 dark:border-gray-600 font-bold ${stat.balance > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-blue-600 dark:text-blue-400'}`}>
                                             <span>الرصيد المتبقي:</span>
                                             <span>SYP {stat.balance.toLocaleString('en-US')}</span>
                                         </div>

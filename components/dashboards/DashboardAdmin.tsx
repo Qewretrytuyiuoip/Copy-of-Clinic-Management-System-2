@@ -18,24 +18,34 @@ const StatCard: React.FC<{ title: string; value: string | number; icon: React.El
     return (
         <Component
             {...props}
-            className={`relative p-4 sm:p-6 bg-white dark:bg-slate-800 rounded-xl shadow-md flex items-center space-x-4 rtl:space-x-reverse text-right w-full ${onClick ? 'hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors cursor-pointer group' : ''}`}
+            className={`group relative w-full p-5 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/60 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${onClick ? 'cursor-pointer text-right' : ''}`}
         >
-            {onClick && (
-                <div className="absolute top-2 left-2">
-                    <span className="text-[10px] font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-2 py-0.5 rounded-full opacity-80 group-hover:opacity-100 transition-opacity">
-                        انقر هنا لعرض التفاصيل
-                    </span>
+            {/* Right Glow Bar - Neon Effect */}
+            <div className="absolute top-1/2 -translate-y-1/2 right-0 h-12 w-1 bg-gradient-to-b from-transparent via-primary-400 to-transparent rounded-l-full opacity-70 group-hover:opacity-100 group-hover:h-16 group-hover:w-1.5 transition-all duration-500 shadow-[0_0_15px_rgba(56,189,248,0.5)]"></div>
+
+            <div className="relative z-10 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    {/* Icon Container */}
+                    <div className="flex-shrink-0 p-3.5 rounded-2xl bg-gray-50 dark:bg-slate-900/50 text-primary-600 dark:text-primary-400 shadow-inner group-hover:scale-110 transition-transform duration-300">
+                        <Icon className="h-7 w-7" />
+                    </div>
+                    
+                    <div className="text-right">
+                        <p className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 group-hover:text-primary-600 dark:group-hover:text-primary-300 transition-colors duration-300">
+                            {title}
+                        </p>
+                        <div className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mt-1 tracking-tight">
+                            {value}
+                        </div>
+                    </div>
                 </div>
-            )}
-            <div className="flex-shrink-0">
-                <div className="p-3 bg-primary-100 dark:bg-primary-900/40 rounded-full">
-                    <Icon className="h-6 w-6 text-primary dark:text-primary-300" />
-                </div>
+
+                {/* Left Dot Indicator */}
+                <div className="w-2 h-2 rounded-full bg-primary-400/80 dark:bg-primary-500/80 shadow-[0_0_8px_rgba(56,189,248,0.6)]"></div>
             </div>
-            <div>
-                <div className="text-lg sm:text-xl font-medium text-black dark:text-white">{value}</div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
-            </div>
+
+            {/* Background Gradient Highlight */}
+            <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-primary-500/5 rounded-full blur-2xl group-hover:bg-primary-500/10 transition-colors duration-500"></div>
         </Component>
     );
 };
@@ -207,7 +217,7 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger, s
         <div>
             {isModalOpen && <OnDutyDoctorsModal doctors={onDutyDoctors} onClose={() => setIsModalOpen(false)} />}
              {fetchError && logs.length === 0 && <p className="text-center text-lg text-red-500 mb-4">{fetchError}</p>}
-            <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard title="الأطباء المداومون اليوم" value={stats.doctors.toLocaleString('en-US')} icon={UsersIcon} onClick={() => setIsModalOpen(true)} />
                 <StatCard title="المرضى الغير مكتملين" value={stats.patients.toLocaleString('en-US')} icon={UserGroupIcon} />
                 <StatCard title="مواعيد اليوم" value={stats.appointments.toLocaleString('en-US')} icon={CalendarIcon} />

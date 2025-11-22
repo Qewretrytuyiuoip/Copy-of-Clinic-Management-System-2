@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { User, Patient, UserRole, Session, Gender } from '../types';
@@ -916,7 +917,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                         <>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 {patients.map(p => (
-                                    <div key={p.id} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col justify-between transition-shadow hover:shadow-lg">
+                                    <div key={p.id} className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 flex flex-col justify-between shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 dark:shadow-slate-900/50">
                                         <div>
                                             <div className="flex justify-between items-start">
                                                 <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{p.name}</h3>

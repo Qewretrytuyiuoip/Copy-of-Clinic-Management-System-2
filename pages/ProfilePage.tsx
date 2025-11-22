@@ -372,6 +372,9 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ refreshTrigger }) => {
     const { user, logout, setUser } = useAuth();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
+    const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+    const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
+    const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
     const handleExportData = async () => {
         setIsExporting(true);
@@ -384,11 +387,28 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ refreshTrigger }) => {
         }
     };
 
-    const handleDeleteAccount = async () => {
-        if (window.confirm('هل أنت متأكد تماماً من رغبتك في حذف حسابك؟ هذا الإجراء لا يمكن التراجع عنه وسيؤدي إلى فقدان البيانات المرتبطة بك.')) {
-             // In a real app, you'd likely have a dedicated endpoint or logic for self-deletion
-             // For now, we just show an alert as it's a critical action.
-             alert('يرجى التواصل مع الدعم الفني لحذف الحساب بشكل كامل.');
+    const handleDeleteAccountClick = () => {
+        setIsDeleteAccountModalOpen(true);
+    };
+
+    const performAccountDeletion = async () => {
+        setIsDeletingAccount(true);
+        try {
+            // Since we don't have a direct self-delete endpoint exposed in api.ts yet in the context provided,
+            // we simulate the action or use a placeholder. Ideally, this calls api.users.delete(user.id) 
+            // or a dedicated profile deletion endpoint.
+            // For now, keeping the instruction to contact support as a safeguard or simulating delay.
+            
+            await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network request
+            
+            // If there was an API: await api.profile.delete();
+            
+            alert('يرجى التواصل مع الدعم الفني لحذف الحساب بشكل كامل.');
+            setIsDeleteAccountModalOpen(false);
+        } catch (error) {
+            alert('حدث خطأ أثناء محاولة حذف الحساب.');
+        } finally {
+            setIsDeletingAccount(false);
         }
     };
     
@@ -398,6 +418,15 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ refreshTrigger }) => {
              setUser(JSON.parse(storedUser));
          }
     }
+
+    const handleLogoutClick = () => {
+        setIsLogoutConfirmOpen(true);
+    };
+
+    const confirmLogout = async () => {
+        await logout();
+        setIsLogoutConfirmOpen(false);
+    };
 
     if (!user) return null;
 
@@ -447,7 +476,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ refreshTrigger }) => {
                         )}
                         
                         <button
-                            onClick={handleDeleteAccount}
+                            onClick={handleDeleteAccountClick}
                             className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-red-100 text-red-600 rounded-xl shadow hover:bg-red-200 transition-transform active:scale-95"
                         >
                             <TrashIcon className="h-5 w-5" />
@@ -455,7 +484,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ refreshTrigger }) => {
                         </button>
                         
                         <button
-                            onClick={logout}
+                            onClick={handleLogoutClick}
                             className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl shadow hover:bg-gray-300 dark:hover:bg-gray-600 transition-transform active:scale-95"
                         >
                             <LogoutIcon className="h-5 w-5" />
@@ -474,6 +503,81 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ refreshTrigger }) => {
                     onClose={() => setIsEditModalOpen(false)}
                     onSave={refreshUser}
                 />
+            )}
+
+            {isLogoutConfirmOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 transition-opacity" onClick={() => setIsLogoutConfirmOpen(false)}>
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
+                        <div className="p-6">
+                            <div className="text-center">
+                                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 dark:bg-yellow-900/30">
+                                    <LogoutIcon className="h-6 w-6 text-yellow-600 dark:text-yellow-400" aria-hidden="true" />
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-4">تسجيل الخروج</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 px-4">هل أنت متأكد من رغبتك في تسجيل الخروج؟</p>
+                            </div>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex justify-center gap-4">
+                            <button type="button" onClick={confirmLogout} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                نعم
+                            </button>
+                            <button type="button" onClick={() => setIsLogoutConfirmOpen(false)} className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                                لا
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {isDeleteAccountModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4 transition-opacity" onClick={() => setIsDeleteAccountModalOpen(false)}>
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
+                        <div className="p-6">
+                            <div className="text-center">
+                                <div className="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
+                                    <TrashIcon className="h-8 w-8 text-red-600 dark:text-red-400" aria-hidden="true" />
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">حذف الحساب</h3>
+                                <p className="text-sm text-gray-600 dark:text-gray-300 mt-3 px-2 leading-relaxed">
+                                    سيتم حذف الحساب بشكل كامل ونهائي وانه سيتم الغاء الاشتراك في حال حذف الحساب
+                                </p>
+                            </div>
+                            
+                            <div className="mt-8 space-y-3 flex flex-col">
+                                {isManager && (
+                                    <button
+                                        type="button"
+                                        onClick={handleExportData}
+                                        disabled={isExporting || isDeletingAccount}
+                                        className="w-full flex items-center justify-center gap-2 rounded-xl border border-transparent shadow-sm px-4 py-3 bg-blue-600 text-white font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        {isExporting ? <LoadingSpinner className="h-5 w-5" /> : <ArrowDownOnSquareIcon className="h-5 w-5" />}
+                                        <span>تصدير البيانات</span>
+                                    </button>
+                                )}
+                                
+                                <button
+                                    type="button"
+                                    onClick={performAccountDeletion}
+                                    disabled={isDeletingAccount || isExporting}
+                                    className="w-full flex items-center justify-center gap-2 rounded-xl border border-transparent shadow-sm px-4 py-3 bg-red-600 text-white font-semibold hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    {isDeletingAccount ? <LoadingSpinner className="h-5 w-5" /> : null}
+                                    <span>حذف الحساب بشكل نهائي</span>
+                                </button>
+                                
+                                <button
+                                    type="button"
+                                    onClick={() => setIsDeleteAccountModalOpen(false)}
+                                    disabled={isDeletingAccount || isExporting}
+                                    className="w-full rounded-xl border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-3 bg-transparent text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+                                >
+                                    الغاء
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

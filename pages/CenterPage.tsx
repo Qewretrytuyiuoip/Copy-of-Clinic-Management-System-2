@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
@@ -9,15 +10,20 @@ import { OfficeBuildingIcon, UsersIcon, CalendarIcon, DocumentTextIcon, BeakerIc
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const InfoCard: React.FC<{ label: string; value: string | number | null; icon?: React.ElementType }> = ({ label, value, icon: Icon }) => (
-    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md flex items-start gap-4 h-full">
-        {Icon && (
-            <div className="flex-shrink-0 mt-1 p-3 bg-primary-100 dark:bg-primary-900/40 rounded-full">
-                <Icon className="h-6 w-6 text-primary dark:text-primary-300" />
+    <div className="group relative w-full p-5 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/60 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md h-full flex flex-col justify-center">
+        {/* Subtle Glow on right */}
+        <div className="absolute top-1/2 -translate-y-1/2 right-0 h-10 w-1 bg-gradient-to-b from-transparent via-primary-300 to-transparent rounded-l-full opacity-50 group-hover:opacity-100 group-hover:h-12 transition-all duration-500"></div>
+
+        <div className="relative z-10 flex items-start gap-4">
+            {Icon && (
+                <div className="flex-shrink-0 p-3 rounded-2xl bg-gray-50 dark:bg-slate-900/50 text-primary-600 dark:text-primary-400 shadow-inner">
+                    <Icon className="h-6 w-6" />
+                </div>
+            )}
+            <div className="flex-grow">
+                <h3 className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">{label}</h3>
+                <p className="mt-1 text-lg font-bold text-gray-900 dark:text-gray-100 break-words">{value || 'غير متوفر'}</p>
             </div>
-        )}
-        <div className="flex-grow">
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">{label}</h3>
-            <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100 break-words">{value || 'غير متوفر'}</p>
         </div>
     </div>
 );

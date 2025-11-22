@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { Patient, Payment, Session, User, UserRole } from '../types';
 import { api } from '../services/api';
@@ -227,6 +228,90 @@ interface PatientFinancialPageProps {
     refreshTrigger: number;
 }
 
+const StatCard: React.FC<{ title: string; value: string; icon: React.ElementType; color: string; }> = ({ title, value, icon: Icon, color }) => {
+    // Map simple color names to Tailwind classes
+    const colorClasses = {
+        red: {
+            glow: 'via-red-400',
+            dot: 'bg-red-400/80',
+            iconBg: 'text-red-600 dark:text-red-400',
+            shadow: 'shadow-[0_0_15px_rgba(248,113,113,0.5)]',
+            dotShadow: 'shadow-[0_0_8px_rgba(248,113,113,0.6)]',
+            hoverBg: 'group-hover:bg-red-500/10'
+        },
+        green: {
+            glow: 'via-green-400',
+            dot: 'bg-green-400/80',
+            iconBg: 'text-green-600 dark:text-green-400',
+            shadow: 'shadow-[0_0_15px_rgba(74,222,128,0.5)]',
+            dotShadow: 'shadow-[0_0_8px_rgba(74,222,128,0.6)]',
+            hoverBg: 'group-hover:bg-green-500/10'
+        },
+        yellow: {
+            glow: 'via-yellow-400',
+            dot: 'bg-yellow-400/80',
+            iconBg: 'text-yellow-600 dark:text-yellow-400',
+            shadow: 'shadow-[0_0_15px_rgba(250,204,21,0.5)]',
+            dotShadow: 'shadow-[0_0_8px_rgba(250,204,21,0.6)]',
+            hoverBg: 'group-hover:bg-yellow-500/10'
+        },
+        blue: {
+            glow: 'via-blue-400',
+            dot: 'bg-blue-400/80',
+            iconBg: 'text-blue-600 dark:text-blue-400',
+            shadow: 'shadow-[0_0_15px_rgba(96,165,250,0.5)]',
+            dotShadow: 'shadow-[0_0_8px_rgba(96,165,250,0.6)]',
+            hoverBg: 'group-hover:bg-blue-500/10'
+        },
+        purple: {
+            glow: 'via-purple-400',
+            dot: 'bg-purple-400/80',
+            iconBg: 'text-purple-600 dark:text-purple-400',
+            shadow: 'shadow-[0_0_15px_rgba(192,132,252,0.5)]',
+            dotShadow: 'shadow-[0_0_8px_rgba(192,132,252,0.6)]',
+            hoverBg: 'group-hover:bg-purple-500/10'
+        }
+    }[color] || {
+        glow: 'via-primary-400',
+        dot: 'bg-primary-400/80',
+        iconBg: 'text-primary-600 dark:text-primary-400',
+        shadow: 'shadow-[0_0_15px_rgba(56,189,248,0.5)]',
+        dotShadow: 'shadow-[0_0_8px_rgba(56,189,248,0.6)]',
+        hoverBg: 'group-hover:bg-primary-500/10'
+    };
+
+    return (
+        <div className="group relative w-full p-5 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/60 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+            {/* Right Glow Bar - Neon Effect */}
+            <div className={`absolute top-1/2 -translate-y-1/2 right-0 h-12 w-1 bg-gradient-to-b from-transparent ${colorClasses.glow} to-transparent rounded-l-full opacity-70 group-hover:opacity-100 group-hover:h-16 group-hover:w-1.5 transition-all duration-500 ${colorClasses.shadow}`}></div>
+
+            <div className="relative z-10 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    {/* Icon Container */}
+                    <div className={`flex-shrink-0 p-3.5 rounded-2xl bg-gray-50 dark:bg-slate-900/50 ${colorClasses.iconBg} shadow-inner group-hover:scale-110 transition-transform duration-300`}>
+                        <Icon className="h-7 w-7" />
+                    </div>
+                    
+                    <div className="text-right">
+                        <p className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 transition-colors duration-300">
+                            {title}
+                        </p>
+                        <div className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mt-1 tracking-tight truncate max-w-[150px] sm:max-w-[200px]">
+                            {value}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Left Dot Indicator */}
+                <div className={`w-2 h-2 rounded-full ${colorClasses.dot} ${colorClasses.dotShadow}`}></div>
+            </div>
+
+            {/* Background Gradient Highlight */}
+            <div className={`absolute -bottom-4 -left-4 w-24 h-24 rounded-full blur-2xl ${colorClasses.hoverBg} bg-gray-100/5 transition-colors duration-500`}></div>
+        </div>
+    );
+};
+
 const PatientFinancialPage: React.FC<PatientFinancialPageProps> = ({ patient: initialPatient, onBack, user, refreshTrigger }) => {
     const [payments, setPayments] = useState<Payment[]>([]);
     const [patient, setPatient] = useState<Patient>(initialPatient);
@@ -330,20 +415,6 @@ const PatientFinancialPage: React.FC<PatientFinancialPageProps> = ({ patient: in
         }
     };
     
-    const StatCard: React.FC<{ title: string; value: string; icon: React.ElementType; color: string; }> = ({ title, value, icon: Icon, color }) => (
-        <div className="p-4 sm:p-6 bg-white dark:bg-slate-800 rounded-xl shadow-md flex items-center space-x-4 rtl:space-x-reverse">
-            <div className="flex-shrink-0">
-                <div className={`p-3 bg-${color}-100 dark:bg-${color}-900/40 rounded-full`}>
-                    <Icon className={`h-6 w-6 text-${color}-600 dark:text-${color}-300`} />
-                </div>
-            </div>
-            <div>
-                <div className="text-lg sm:text-xl font-medium text-black dark:text-white">{value}</div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
-            </div>
-        </div>
-    );
-    
     return (
         <div>
             <div className="flex items-center gap-4 mb-6">
@@ -373,7 +444,7 @@ const PatientFinancialPage: React.FC<PatientFinancialPageProps> = ({ patient: in
                 <StatCard title="المتبقي" value={`SYP ${stats.balance.toLocaleString('en-US')}`} icon={ListBulletIcon} color={stats.balance > 0 ? 'yellow' : 'blue'} />
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md">
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-gray-100 dark:border-slate-700">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">سجل الدفعات</h2>
                     <button onClick={() => setIsAddingPayment(true)} className="flex items-center bg-primary text-white px-4 py-2 rounded-lg shadow hover:bg-primary-700 transition-colors">
