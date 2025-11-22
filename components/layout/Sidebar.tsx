@@ -1,7 +1,8 @@
-import React, { Fragment, useState, useEffect, useMemo } from 'react';
+
+import React, { useMemo, useState } from 'react';
 import { User, UserRole } from '../../types';
 import { NAV_ITEMS } from '../../constants';
-import { XIcon, BellIcon, BellSlashIcon, CheckIcon } from '../Icons';
+import { XIcon, BellIcon, BellSlashIcon, ChevronRightIcon, ChevronLeftIcon, PlusIcon } from '../Icons';
 import { appSettings } from '../../appSettings';
 import LoadingSpinner from '../LoadingSpinner';
 import { API_BASE_URL } from '../../appSettings';
@@ -27,23 +28,22 @@ function urlBase64ToUint8Array(base64String: string) {
 const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, sidebarOpen, setSidebarOpen }) => {
     const baseNavItems = NAV_ITEMS[user.role];
     const { settings } = useAppSettings();
+    const [isCollapsed, setIsCollapsed] = useState(false);
 
-    const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
-    const [isSubscribed, setIsSubscribed] = useState(false);
-    const [subscriptionLoading, setSubscriptionLoading] = useState(true);
-    const [isSupported, setIsSupported] = useState(false);
+    const [permissionStatus, setPermissionStatus] = React.useState<NotificationPermission>('default');
+    const [isSubscribed, setIsSubscribed] = React.useState(false);
+    const [subscriptionLoading, setSubscriptionLoading] = React.useState(true);
+    const [isSupported, setIsSupported] = React.useState(false);
     
     const navItems = useMemo(() => {
         let filteredNavItems = [...baseNavItems];
 
         if (user.role === UserRole.Doctor) {
-            // For doctors, hide if they HAVE financial permission (they get button on patient card instead)
             const hasFinancialPermission = user.permissions?.some(p => p.name === 'financial_management');
             if (hasFinancialPermission) {
                 filteredNavItems = filteredNavItems.filter(item => item.page !== 'payments');
             }
         } else if (user.role === UserRole.Secretary || user.role === UserRole.SubManager) {
-            // For others, hide if they DON'T have financial permission
             const hasFinancialPermission = user.permissions?.some(p => p.name === 'financial_management');
             if (!hasFinancialPermission) {
                 filteredNavItems = filteredNavItems.filter(item => item.page !== 'payments');
@@ -54,7 +54,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
     }, [user, baseNavItems]);
 
 
-    useEffect(() => {
+    React.useEffect(() => {
         if ('serviceWorker' in navigator && 'PushManager' in window) {
             setIsSupported(true);
             setPermissionStatus(Notification.permission);
@@ -84,26 +84,19 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
         const currentSubscription = await reg.pushManager.getSubscription();
 
         if (currentSubscription) {
-            // إلغاء الاشتراك
             await currentSubscription.unsubscribe();
-
-            // حذف الاشتراك من الـ backend
             await fetch(`${API_BASE_URL}delete-subscription`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ endpoint: currentSubscription.endpoint })
             });
-
-            console.log('Unsubscribed successfully.');
             setIsSubscribed(false);
         } else {
-            // عمل subscribe جديد
             const subscription = await reg.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
             });
 
-            // إرسال الاشتراك للـ backend لحفظه
            const saveResponse = await fetch(`${API_BASE_URL}save-subscription`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -121,14 +114,6 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
             if (!saveResponse.ok) {
                 throw new Error(`Failed to save subscription on server: ${saveResponse.statusText}`);
             }
-
-            const saveData = await saveResponse.json();
-            if (!saveData.success) {
-                throw new Error('Backend failed to save subscription.');
-            }
-
-
-            console.log('Subscribed successfully:', JSON.stringify(subscription));
             setIsSubscribed(true);
         }
     } catch(err) {
@@ -141,36 +126,31 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
 
 
     const renderNotificationButton = () => {
-        if (!isSupported) {
-            return null;
-        }
+        if (!isSupported) return null;
 
         if (subscriptionLoading) {
             return (
-                 <div className="flex items-center mt-4 py-2 px-6 text-gray-600 dark:text-gray-300">
-                    <LoadingSpinner className="h-6 w-6" />
-                    <span className="mx-3">جاري التحميل...</span>
+                 <div className={`flex items-center mt-4 py-3 ${isCollapsed ? 'justify-center' : 'px-6'} text-white/50`}>
+                    <LoadingSpinner className="h-5 w-5" />
+                    {!isCollapsed && <span className="mx-3 text-sm">جاري التحميل...</span>}
                 </div>
             )
         }
         
         if (permissionStatus === 'denied') {
             return (
-                <div
-                    className="flex items-center mt-4 py-2 px-6 text-red-600 dark:text-red-400 cursor-help"
-                    title="تم حظر الإشعارات. يرجى تغيير الإعدادات في متصفحك."
-                >
-                    <BellSlashIcon className="h-6 w-6" />
-                    <span className="mx-3">الإشعارات محظورة</span>
+                <div className={`flex items-center mt-4 py-3 ${isCollapsed ? 'justify-center' : 'px-6'} text-red-300/80 cursor-help`} title="تم حظر الإشعارات">
+                    <BellSlashIcon className="h-5 w-5" />
+                    {!isCollapsed && <span className="mx-3 text-sm">محظورة</span>}
                 </div>
             );
         }
 
         const buttonText = isSubscribed ? 'إيقاف الإشعارات' : 'تفعيل الإشعارات';
         const Icon = isSubscribed ? BellSlashIcon : BellIcon;
-        const hoverClasses = isSubscribed 
-            ? 'hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400' 
-            : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300';
+        const containerClasses = isSubscribed 
+            ? 'bg-red-500/10 text-red-200 hover:bg-red-500/20 border border-red-500/20' 
+            : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white border border-white/5';
 
         return (
              <a
@@ -179,10 +159,11 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
                     e.preventDefault();
                     handleToggleSubscription();
                 }}
-                className={`flex items-center mt-4 py-2 px-6 rounded-md transition-colors duration-200 ${hoverClasses}`}
+                className={`flex items-center mt-4 py-3 mx-3 rounded-xl transition-all duration-300 backdrop-blur-sm ${containerClasses} ${isCollapsed ? 'justify-center px-0' : 'px-6'}`}
+                title={isCollapsed ? buttonText : undefined}
             >
-                <Icon className="h-6 w-6" />
-                <span className="mx-3">{buttonText}</span>
+                <Icon className="h-5 w-5" />
+                {!isCollapsed && <span className="mx-3 text-sm font-medium">{buttonText}</span>}
             </a>
         );
     };
@@ -192,15 +173,22 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
         setSidebarOpen(false);
     }
     
+    const toggleCollapse = () => setIsCollapsed(!isCollapsed);
+
     const sidebarHeader = (
-        <div className="flex items-center justify-between lg:justify-center h-20 border-b dark:border-gray-700 px-4">
-            <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                <img src={settings.appLogo} alt="شعار التطبيق" className="h-10 w-10" />
-                <h1 className="text-xl font-bold text-primary truncate">{settings.appName}</h1>
+        <div className={`flex items-center ${isCollapsed ? 'justify-center h-20' : 'justify-between h-24 px-6'} mb-2 transition-all duration-300`}>
+            <div className={`flex items-center transition-all duration-300 ${isCollapsed ? 'flex-col gap-2' : 'space-x-3 rtl:space-x-reverse'} relative z-10`}>
+                <div className="relative flex-shrink-0">
+                    {!isCollapsed && <div className="absolute inset-0 bg-blue-400 blur-lg opacity-20 rounded-full"></div>}
+                    <img src={settings.appLogo} alt="شعار التطبيق" className={`${isCollapsed ? 'h-10 w-10' : 'h-12 w-12'} relative z-10 drop-shadow-lg transition-all duration-300`} />
+                </div>
+                <h1 className={`font-bold text-white tracking-wide drop-shadow-md transition-all duration-300 overflow-hidden whitespace-nowrap ${isCollapsed ? 'w-0 opacity-0 h-0' : 'w-auto opacity-100 text-2xl'}`}>
+                    {settings.appName}
+                </h1>
             </div>
             <button
                 type="button"
-                className="lg:hidden p-2 -mr-2 text-gray-500 dark:text-gray-400 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="lg:hidden p-2 -mr-2 text-white/70 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
                 onClick={() => setSidebarOpen(false)}
             >
                 <span className="sr-only">إغلاق الشريط الجانبي</span>
@@ -212,28 +200,85 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
     const contactItem = navItems.find(item => item.page === 'contact');
     const mainNavItems = navItems.filter(item => item.page !== 'contact');
 
+    // Glassmorphism Item Style
+    const getItemClass = (isActive: boolean) => `
+        relative flex items-center py-3.5 mx-3 my-1.5 rounded-xl transition-all duration-300 group
+        ${isCollapsed ? 'justify-center px-0' : 'px-6'}
+        ${isActive 
+            ? 'bg-gradient-to-r from-white/20 to-white/5 shadow-[0_0_20px_rgba(255,255,255,0.15)] border border-white/30 text-white backdrop-blur-md' 
+            : 'text-white/70 hover:text-white hover:bg-white/10 border border-transparent'
+        }
+    `;
+
     const navLinks = (
-        <nav className="mt-8 px-2">
-            {mainNavItems.map((item) => (
-                <a
-                    key={item.name}
-                    href="#"
-                    onClick={(e) => {
-                        e.preventDefault();
-                        handleNavigation(item.page);
-                    }}
-                    className={`flex items-center mt-4 py-2 px-6 rounded-md transition-colors duration-200 ${
-                        currentPage === item.page
-                            ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300'
-                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                    }`}
+        <nav className="mt-2 flex-1 overflow-y-auto custom-scrollbar overflow-x-hidden">
+            <style>{`
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 4px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background-color: rgba(255, 255, 255, 0.2);
+                    border-radius: 20px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background-color: rgba(255, 255, 255, 0.3);
+                }
+            `}</style>
+            
+            {/* Compose Button */}
+            <div className={`mb-6 px-3 transition-all duration-300 ${isCollapsed ? 'flex justify-center' : ''}`}>
+                <button
+                    onClick={() => handleNavigation('patients')} // Or trigger a modal directly
+                    className={`
+                        flex items-center justify-center bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white 
+                        shadow-lg shadow-blue-500/30 rounded-xl transition-all duration-300 border border-white/20
+                        ${isCollapsed ? 'w-12 h-12 p-0' : 'w-full py-3 px-4'}
+                    `}
+                    title={isCollapsed ? "إضافة مريض" : undefined}
                 >
-                    <item.icon className="h-6 w-6" />
-                    <span className="mx-3">{item.name}</span>
-                </a>
-            ))}
+                    <PlusIcon className="h-6 w-6" />
+                    {!isCollapsed && <span className="mx-2 font-bold tracking-wide">إضافة مريض</span>}
+                </button>
+            </div>
+
+            {mainNavItems.map((item) => {
+                const isActive = currentPage === item.page;
+                return (
+                    <a
+                        key={item.name}
+                        href="#"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            handleNavigation(item.page);
+                        }}
+                        className={getItemClass(isActive)}
+                        title={isCollapsed ? item.name : undefined}
+                    >
+                        {/* Glowing Dot for active state */}
+                        {isActive && (
+                            <span className={`absolute ${isCollapsed ? 'bottom-1 w-1 h-1 left-1/2 -translate-x-1/2 rounded-full' : 'right-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-l-full'} bg-blue-300 shadow-[0_0_10px_rgba(147,197,253,0.8)]`}></span>
+                        )}
+                        
+                        <item.icon className={`h-5 w-5 transition-transform duration-300 ${isActive ? 'scale-110 text-blue-200' : 'group-hover:scale-110'}`} />
+                        
+                        <span className={`mx-3 font-medium text-sm tracking-wide transition-all duration-300 overflow-hidden whitespace-nowrap ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
+                            {item.name}
+                        </span>
+                        
+                        {/* Categories Dot Simulation (just decoration) */}
+                        {!isCollapsed && isActive && (
+                            <span className="absolute left-4 w-1.5 h-1.5 rounded-full bg-blue-400 shadow-sm"></span>
+                        )}
+                    </a>
+                );
+            })}
+            
             {(contactItem || isSupported) && (
-                <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className={`mt-6 pt-6 border-t border-white/10 mx-4 ${isCollapsed ? 'flex flex-col items-center' : ''}`}>
+                    {!isCollapsed && <p className="px-4 text-xs font-semibold text-white/30 uppercase tracking-wider mb-2">الدعم والإعدادات</p>}
                     {contactItem && (
                         <a
                             key={contactItem.name}
@@ -242,14 +287,11 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
                                 e.preventDefault();
                                 handleNavigation(contactItem.page);
                             }}
-                            className={`flex items-center py-2 px-6 rounded-md transition-colors duration-200 ${
-                                currentPage === contactItem.page
-                                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                            }`}
+                            className={getItemClass(currentPage === contactItem.page)}
+                            title={isCollapsed ? contactItem.name : undefined}
                         >
-                            <contactItem.icon className="h-6 w-6" />
-                            <span className="mx-3">{contactItem.name}</span>
+                            <contactItem.icon className="h-5 w-5" />
+                            {!isCollapsed && <span className="mx-3 font-medium text-sm">{contactItem.name}</span>}
                         </a>
                     )}
                     {isSupported && renderNotificationButton()}
@@ -258,32 +300,53 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
         </nav>
     );
 
+    const SidebarContent = () => (
+        <div className="relative flex flex-col h-full overflow-hidden bg-white/10 dark:bg-slate-900/30 backdrop-blur-2xl border-r border-white/10">
+            {/* Content Layer */}
+            <div className="relative z-10 flex flex-col h-full">
+                {sidebarHeader}
+                {navLinks}
+                
+                {/* Collapse Toggle Button (Desktop Only) */}
+                <div className="hidden lg:flex justify-center p-4 border-t border-white/10">
+                    <button 
+                        onClick={toggleCollapse}
+                        className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all duration-300 border border-white/5 hover:border-white/20"
+                    >
+                        {isCollapsed ? <ChevronLeftIcon className="h-5 w-5" /> : <ChevronRightIcon className="h-5 w-5" />}
+                    </button>
+                </div>
+
+                {!isCollapsed && (
+                    <div className="p-4 text-center transition-opacity duration-300">
+                        <p className="text-xs text-white/20 font-light tracking-widest">
+                            VERSION {appSettings.appVersion}
+                        </p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+
     return (
         <>
             {/* Mobile Sidebar with Overlay */}
-            <div className={`fixed inset-0 z-30 flex pointer-events-none transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-                <div className="relative flex w-64 max-w-xs flex-1 flex-col bg-white dark:bg-slate-800 pointer-events-auto">
-                    {sidebarHeader}
-                    <div className="flex-1 overflow-y-auto">
-                        {navLinks}
-                    </div>
-                    <div className="p-4 text-center text-xs text-gray-500 dark:text-gray-400">
-                        الإصدار {appSettings.appVersion}
-                    </div>
+            <div className={`fixed inset-0 z-40 flex pointer-events-none lg:hidden ${sidebarOpen ? 'visible' : 'invisible'}`}>
+                {/* Overlay */}
+                <div 
+                    className={`absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto ${sidebarOpen ? 'opacity-100' : 'opacity-0'}`} 
+                    onClick={() => setSidebarOpen(false)}
+                ></div>
+                
+                {/* Sidebar Panel Mobile */}
+                <div className={`relative w-72 max-w-[85vw] h-full shadow-2xl transform transition-transform duration-300 ease-out pointer-events-auto ${sidebarOpen ? 'translate-x-0' : 'translate-x-full rtl:-translate-x-full'}`}>
+                    <SidebarContent />
                 </div>
-                <div className="w-14 flex-shrink-0" aria-hidden="true"></div>
             </div>
-            {sidebarOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden" onClick={() => setSidebarOpen(false)}></div>}
 
-            {/* Desktop Sidebar */}
-            <aside className="hidden lg:flex lg:flex-col w-64 bg-white dark:bg-slate-800 border-r dark:border-gray-700">
-                {sidebarHeader}
-                <div className="flex-1 overflow-y-auto">
-                   {navLinks}
-                </div>
-                <div className="p-4 text-center text-xs text-gray-500 dark:text-gray-400">
-                    الإصدار {appSettings.appVersion}
-                </div>
+            {/* Desktop Sidebar - Dynamic Width */}
+            <aside className={`hidden lg:block ${isCollapsed ? 'w-24' : 'w-72'} h-screen sticky top-0 shadow-2xl z-30 transition-all duration-500 ease-in-out`}>
+                <SidebarContent />
             </aside>
         </>
     );

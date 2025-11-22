@@ -68,10 +68,14 @@ export const performApiFetch = async (endpoint: string, options: RequestInit = {
         console.warn(`Unauthorized access to ${endpoint}. Session expired or invalid token.`);
         localStorage.removeItem('authToken');
         localStorage.removeItem('currentUser');
-        window.location.reload();
-        // Prevent further execution by returning a promise that doesn't resolve immediately (or throws)
-        // to allow the reload to take effect.
-        throw new Error('Session expired. Reloading...');
+        
+        // FIX: Only reload if we are NOT already on the login page to avoid infinite loops.
+        // Also check if window exists to be safe.
+        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+             window.location.reload();
+        }
+        
+        throw new Error('Session expired. Please login again.');
     }
 
     if (!response.ok) {
@@ -295,7 +299,8 @@ const getAllUsers = async (forceRefresh: boolean = false): Promise<User[]> => {
         await db.users.bulkPut(mappedUsers);
         return mappedUsers;
     } catch (error) {
-        console.error("Failed to fetch all users online, trying offline:", error);
+        // FIX: Changed from console.error to console.warn for cleaner logs when offline fallback is expected
+        console.warn("Failed to fetch all users online, trying offline:", error);
         if (centerId) {
             return db.users.where({ center_id: centerId }).toArray();
         }
