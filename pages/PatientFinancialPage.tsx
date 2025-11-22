@@ -356,10 +356,10 @@ const PatientFinancialPage: React.FC<PatientFinancialPageProps> = ({ patient: in
             </div>
             
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-                <StatCard title="إجمالي تكاليف العلاج" value={`SYP ${stats.totalCost.toFixed(2)}`} icon={BeakerIcon} color="red" />
-                <StatCard title="إجمالي الإيرادات" value={`SYP ${stats.totalPayments.toFixed(2)}`} icon={CurrencyDollarIcon} color="green" />
+                <StatCard title="إجمالي تكاليف العلاج" value={`SYP ${stats.totalCost.toLocaleString('en-US')}`} icon={BeakerIcon} color="red" />
+                <StatCard title="إجمالي الإيرادات" value={`SYP ${stats.totalPayments.toLocaleString('en-US')}`} icon={CurrencyDollarIcon} color="green" />
                 <div className="relative group">
-                    <StatCard title="إجمالي الخصم" value={`SYP ${stats.discount.toFixed(2)}`} icon={CurrencyDollarIcon} color="purple" />
+                    <StatCard title="إجمالي الخصم" value={`SYP ${stats.discount.toLocaleString('en-US')}`} icon={CurrencyDollarIcon} color="purple" />
                     {(user.role === UserRole.Admin || user.role === UserRole.SubManager) && (
                         <button
                             onClick={() => setIsEditingDiscount(true)}
@@ -370,7 +370,7 @@ const PatientFinancialPage: React.FC<PatientFinancialPageProps> = ({ patient: in
                         </button>
                     )}
                 </div>
-                <StatCard title="المتبقي" value={`SYP ${stats.balance.toFixed(2)}`} icon={ListBulletIcon} color={stats.balance > 0 ? 'yellow' : 'blue'} />
+                <StatCard title="المتبقي" value={`SYP ${stats.balance.toLocaleString('en-US')}`} icon={ListBulletIcon} color={stats.balance > 0 ? 'yellow' : 'blue'} />
             </div>
 
             <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md">
@@ -396,7 +396,7 @@ const PatientFinancialPage: React.FC<PatientFinancialPageProps> = ({ patient: in
                                 {payments.map(pay => (
                                     <tr key={pay.id} className="bg-white dark:bg-slate-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                                         <td className="px-6 py-4 font-medium">{formatDate(pay.date)}</td>
-                                        <td className="px-6 py-4 font-bold text-green-600 dark:text-green-400">SYP {pay.amount.toFixed(2)}</td>
+                                        <td className="px-6 py-4 font-bold text-green-600 dark:text-green-400">SYP {pay.amount.toLocaleString('en-US')}</td>
                                         <td className="px-6 py-4 flex justify-end items-center gap-2">
                                             <button onClick={() => setEditingPayment(pay)} className="p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
                                             <button onClick={() => setPaymentToDelete(pay)} className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400" title="حذف"><TrashIcon className="h-5 w-5" /></button>
@@ -416,7 +416,7 @@ const PatientFinancialPage: React.FC<PatientFinancialPageProps> = ({ patient: in
             {paymentToDelete && (
                  <ConfirmDeleteModal
                     title="حذف الدفعة"
-                    message={`هل أنت متأكد من حذف دفعة بقيمة SYP ${paymentToDelete.amount.toFixed(2)}؟`}
+                    message={`هل أنت متأكد من حذف دفعة بقيمة SYP ${paymentToDelete.amount.toLocaleString('en-US')}؟`}
                     onConfirm={confirmDeletePayment}
                     onCancel={() => !isDeleting && setPaymentToDelete(null)}
                     isDeleting={isDeleting}

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { User, Appointment, ActivityLog, ActivityLogActionType } from '../../types';
 import { api } from '../../services/api';
@@ -77,6 +78,20 @@ const ActionIcon: React.FC<{ action: ActivityLogActionType }> = ({ action }) => 
         default:
             return <div className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full p-2"><UsersIcon {...iconProps} /></div>;
     }
+};
+
+const formatLogText = (text: string) => {
+    if (!text) return '';
+    return text.replace(/\b\d+(\.\d+)?\b/g, (match) => {
+        // Check if it's likely a phone number (starts with 0, no decimals, length > 4)
+        // or just preserving leading zeros for codes
+        if (match.startsWith('0') && !match.includes('.') && match.length > 1) return match;
+        
+        const num = Number(match);
+        if (isNaN(num)) return match;
+        
+        return num.toLocaleString('en-US');
+    });
 };
 
 const LOGS_PER_PAGE = 10;
@@ -193,9 +208,9 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger, s
             {isModalOpen && <OnDutyDoctorsModal doctors={onDutyDoctors} onClose={() => setIsModalOpen(false)} />}
              {fetchError && logs.length === 0 && <p className="text-center text-lg text-red-500 mb-4">{fetchError}</p>}
             <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
-                <StatCard title="الأطباء المداومون اليوم" value={stats.doctors} icon={UsersIcon} onClick={() => setIsModalOpen(true)} />
-                <StatCard title="المرضى الغير مكتملين" value={stats.patients} icon={UserGroupIcon} />
-                <StatCard title="مواعيد اليوم" value={stats.appointments} icon={CalendarIcon} />
+                <StatCard title="الأطباء المداومون اليوم" value={stats.doctors.toLocaleString('en-US')} icon={UsersIcon} onClick={() => setIsModalOpen(true)} />
+                <StatCard title="المرضى الغير مكتملين" value={stats.patients.toLocaleString('en-US')} icon={UserGroupIcon} />
+                <StatCard title="مواعيد اليوم" value={stats.appointments.toLocaleString('en-US')} icon={CalendarIcon} />
                 <StatCard title="أرشيف الأحداث" value="عرض السجل" icon={DocumentTextIcon} onClick={() => setCurrentPage('activity-archives')} />
             </div>
             <div className="mt-8 bg-white dark:bg-slate-800 rounded-xl shadow-md">
@@ -224,9 +239,9 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger, s
                                 <div key={log.id} className="flex items-start space-x-4 rtl:space-x-reverse p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50">
                                     <ActionIcon action={log.actionType} />
                                     <div className="flex-grow">
-                                        <p className="text-sm text-gray-800 dark:text-gray-200">{log.description}</p>
+                                        <p className="text-sm text-gray-800 dark:text-gray-200">{formatLogText(log.description)}</p>
                                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                            بواسطة {log.userName} &bull; {new Date(log.timestamp).toLocaleString('ar-SA', { dateStyle: 'medium', timeStyle: 'short' })}
+                                            بواسطة {log.userName} &bull; {new Date(log.timestamp).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
                                         </p>
                                     </div>
                                 </div>

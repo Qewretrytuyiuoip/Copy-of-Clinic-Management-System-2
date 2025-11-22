@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { User, Patient, Appointment } from '../../types';
 import { api } from '../../services/api';
@@ -67,8 +68,8 @@ const DashboardDoctor: React.FC<DashboardDoctorProps> = ({ user, refreshTrigger 
     return (
         <div>
             <div className="grid grid-cols-2 gap-4 sm:gap-6 mb-8">
-                <StatCard title="مرضاي" value={loading ? '...' : patientCount} icon={UserGroupIcon} />
-                <StatCard title="مواعيد اليوم" value={loading ? '...' : todaysAppointments} icon={CalendarIcon} />
+                <StatCard title="مرضاي" value={loading ? '...' : patientCount.toLocaleString('en-US')} icon={UserGroupIcon} />
+                <StatCard title="مواعيد اليوم" value={loading ? '...' : todaysAppointments.toLocaleString('en-US')} icon={CalendarIcon} />
             </div>
              
             <DoctorSchedulePage user={user} refreshTrigger={refreshTrigger} />

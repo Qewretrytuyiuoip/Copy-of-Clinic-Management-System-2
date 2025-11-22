@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { User, Appointment, Patient } from '../../types';
 import { api } from '../../services/api';
@@ -62,8 +63,8 @@ const DashboardSecretary: React.FC<DashboardSecretaryProps> = ({ user, refreshTr
     return (
         <div>
             <div className="grid grid-cols-2 gap-4 sm:gap-6 mb-8">
-                <StatCard title="مواعيد اليوم" value={loading ? '...' : stats.appointments} icon={CalendarIcon} />
-                <StatCard title="إجمالي المرضى" value={loading ? '...' : stats.patients} icon={UserGroupIcon} />
+                <StatCard title="مواعيد اليوم" value={loading ? '...' : stats.appointments.toLocaleString('en-US')} icon={CalendarIcon} />
+                <StatCard title="إجمالي المرضى" value={loading ? '...' : stats.patients.toLocaleString('en-US')} icon={UserGroupIcon} />
             </div>
             
             <AppointmentsPage user={user} refreshTrigger={refreshTrigger} />

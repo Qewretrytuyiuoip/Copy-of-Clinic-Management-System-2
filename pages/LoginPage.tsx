@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useAppSettings } from '../hooks/useAppSettings';
-import { EyeIcon, EyeSlashIcon, ArrowDownOnSquareIcon, WhatsappIcon, FacebookIcon, TelegramIcon, XIcon, ResetIcon } from '../components/Icons';
+import { EyeIcon, EyeSlashIcon, ArrowDownOnSquareIcon, WhatsappIcon, FacebookIcon, TelegramIcon, XIcon, ResetIcon, EnvelopeIcon, LockClosedIcon } from '../components/Icons';
 import { api, ApiError } from '../services/api';
 import { UserRole } from '../types';
 import { appSettings } from '../appSettings';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ThemeToggleButton from '../components/ThemeToggleButton';
 
 const SubscriptionExpiredModal: React.FC<{
     role: UserRole;
@@ -86,13 +87,24 @@ const SubscriptionExpiredModal: React.FC<{
     );
 };
 
+const SocialButton: React.FC<{ icon: React.ElementType, href: string, label: string }> = ({ icon: Icon, href, label }) => (
+    <a 
+        href={href} 
+        target="_blank" 
+        rel="noopener noreferrer" 
+        title={label}
+        className="group relative w-12 h-12 flex items-center justify-center rounded-full bg-white/50 dark:bg-slate-700/50 border border-white/20 dark:border-white/5 shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:bg-white dark:hover:bg-slate-600 hover:shadow-primary/30"
+    >
+        <Icon className="w-6 h-6 text-gray-600 dark:text-gray-300 group-hover:text-primary-500 transition-colors" />
+        <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 dark:text-gray-400 whitespace-nowrap font-medium">{label}</span>
+    </a>
+);
 
 const LoginPage: React.FC = () => {
     const [isRegisterMode, setIsRegisterMode] = useState(false);
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [rememberMe, setRememberMe] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -114,13 +126,6 @@ const LoginPage: React.FC = () => {
     };
 
     useEffect(() => {
-        const savedEmail = localStorage.getItem('rememberedEmail');
-        const savedPassword = localStorage.getItem('rememberedPassword');
-        if (savedEmail && savedPassword) {
-            setEmail(savedEmail);
-            setPassword(savedPassword);
-            setRememberMe(true);
-        }
         generateCaptcha();
     }, []);
 
@@ -162,16 +167,15 @@ const LoginPage: React.FC = () => {
         setError('');
         setSubscriptionError(null);
         
-        // Captcha Validation
         if (parseInt(captchaInput) !== captchaNum1 + captchaNum2) {
-            setError('ناتج العملية الحسابية غير صحيح. يرجى المحاولة مرة أخرى.');
+            setError('ناتج العملية الحسابية غير صحيح.');
             generateCaptcha();
             return;
         }
 
         const maliciousPattern = /[<>;]|--/;
         if (maliciousPattern.test(email) || maliciousPattern.test(password)) {
-            setError('تم اكتشاف أحرف غير صالحة. يرجى إزالتها والمحاولة مرة أخرى.');
+            setError('أحرف غير صالحة.');
             return;
         }
         
@@ -179,22 +183,14 @@ const LoginPage: React.FC = () => {
         try {
             const user = await login(email, password);
             if (!user) {
-                setError('البريد الإلكتروني أو كلمة المرور غير صالحة.');
-                generateCaptcha(); // Regenerate on fail
-            } else {
-                if (rememberMe) {
-                    localStorage.setItem('rememberedEmail', email);
-                    localStorage.setItem('rememberedPassword', password);
-                } else {
-                    localStorage.removeItem('rememberedEmail');
-                    localStorage.removeItem('rememberedPassword');
-                }
+                setError('بيانات الدخول غير صحيحة.');
+                generateCaptcha(); 
             }
         } catch (err) {
             if (err instanceof Error && err.name === 'SubscriptionExpiredError') {
                 setSubscriptionError({ role: (err as any).role });
             } else {
-                setError('حدث خطأ. يرجى المحاولة مرة أخرى.');
+                setError('حدث خطأ. حاول مرة أخرى.');
             }
             generateCaptcha();
         } finally {
@@ -206,21 +202,20 @@ const LoginPage: React.FC = () => {
         e.preventDefault();
         setError('');
 
-        // Captcha Validation
         if (parseInt(captchaInput) !== captchaNum1 + captchaNum2) {
-            setError('ناتج العملية الحسابية غير صحيح. يرجى المحاولة مرة أخرى.');
+            setError('ناتج العملية الحسابية غير صحيح.');
             generateCaptcha();
             return;
         }
 
         const maliciousPattern = /[<>;]|--/;
         if (maliciousPattern.test(name) || maliciousPattern.test(email) || maliciousPattern.test(password)) {
-            setError('تم اكتشاف أحرف غير صالحة. يرجى إزالتها والمحاولة مرة أخرى.');
+            setError('أحرف غير صالحة.');
             return;
         }
 
         if (password.length < 6) {
-            setError('يجب أن تكون كلمة المرور 6 أحرف على الأقل.');
+            setError('كلمة المرور قصيرة جداً.');
             return;
         }
 
@@ -228,17 +223,15 @@ const LoginPage: React.FC = () => {
         try {
             const user = await register(name, email, password);
             if (!user) {
-                 setError('فشل إنشاء الحساب. قد يكون البريد الإلكتروني مستخدماً بالفعل.');
+                 setError('فشل إنشاء الحساب.');
                  generateCaptcha();
             }
         } catch (err) {
              if (err instanceof ApiError && err.errors) {
                  const errorMessages = Object.values(err.errors).flat().join(' ');
-                 setError(errorMessages || 'فشل التحقق من البيانات.');
-            } else if (err instanceof Error){
-                setError(err.message || 'فشل إنشاء الحساب. يرجى المحاولة مرة أخرى.');
+                 setError(errorMessages || 'فشل التحقق.');
             } else {
-                setError('فشل إنشاء الحساب. يرجى المحاولة مرة أخرى.');
+                setError('فشل إنشاء الحساب.');
             }
             generateCaptcha();
         } finally {
@@ -252,172 +245,163 @@ const LoginPage: React.FC = () => {
         setName('');
         setEmail('');
         setPassword('');
-        generateCaptcha(); // Reset captcha on toggle
+        generateCaptcha(); 
     };
 
-
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+        <div className="relative flex items-center justify-center min-h-screen bg-[#F7F9FC] dark:bg-[#0F172A] transition-colors duration-500 overflow-hidden font-sans">
+            
             {subscriptionError && (
                 <SubscriptionExpiredModal
                     role={subscriptionError.role}
                     onClose={() => setSubscriptionError(null)}
                 />
             )}
-            <div className="relative w-full max-w-md p-8 space-y-8 bg-white dark:bg-slate-800 rounded-lg shadow-md">
-                <div className="absolute top-4 right-4 px-2 py-1 bg-yellow-400 text-yellow-900 text-xs font-bold rounded">
-                    تجريبي
-                </div>
-                 {isInstallable && (
+
+            {/* Top Right Controls */}
+            <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
+                {isInstallable && (
                     <button
                         onClick={handleInstallClick}
-                        className="absolute top-4 left-4 p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-800 focus:ring-primary"
-                        aria-label="تثبيت التطبيق"
+                        className="p-2.5 rounded-full bg-white/80 dark:bg-slate-800/80 text-gray-700 dark:text-gray-200 shadow-md backdrop-blur-sm hover:scale-105 transition-all"
                         title="تثبيت التطبيق"
                     >
-                        <ArrowDownOnSquareIcon className="h-6 w-6" />
+                        <ArrowDownOnSquareIcon className="h-5 w-5" />
                     </button>
                 )}
-                <div className="text-center">
-                    <img src={settings.appLogo} alt="شعار التطبيق" className="mx-auto h-16 w-16" />
-                    <h1 className="mt-2 text-3xl font-bold text-primary">{settings.appName}</h1>
-                    <p className="mt-2 text-gray-600 dark:text-gray-300">
-                        {isRegisterMode ? 'إنشاء حساب جديد للبدء.' : 'مرحباً بعودتك! الرجاء تسجيل الدخول إلى حسابك.'}
-                    </p>
-                </div>
-                <form className="mt-8 space-y-6" onSubmit={isRegisterMode ? handleRegisterSubmit : handleLoginSubmit}>
-                    {error && (
-                        <div className="p-3 text-sm text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-300 rounded-lg" role="alert">
-                            {error}
+                <ThemeToggleButton className="p-2.5 rounded-full bg-white/80 dark:bg-slate-800/80 text-gray-700 dark:text-gray-200 shadow-md backdrop-blur-sm hover:scale-105 transition-all" />
+            </div>
+
+            {/* Main Glass Card */}
+            <div className="relative w-full max-w-[400px] mx-4">
+                <div className="relative z-10 bg-white/60 dark:bg-slate-800/50 backdrop-blur-xl rounded-[40px] shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] border border-white/50 dark:border-white/10 p-8 overflow-hidden">
+                    
+                    {/* Top Highlight/Reflection */}
+                    <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent opacity-50"></div>
+
+                    {/* Logo & Header */}
+                    <div className="flex flex-col items-center mb-8">
+                        <div className="mb-4 relative group">
+                            <div className="absolute inset-0 bg-primary-500/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                            <img 
+                                src={settings.appLogo} 
+                                alt="App Logo" 
+                                className="relative h-24 w-24 object-contain drop-shadow-md transform transition-transform duration-500 hover:scale-110 hover:rotate-3" 
+                            />
                         </div>
-                    )}
-                    <div className="space-y-4 rounded-md">
+                        <h1 className="text-3xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-secondary-500 dark:from-primary-400 dark:to-secondary-300 animate-pulse">
+                            {settings.appName.toUpperCase()}
+                        </h1>
+                    </div>
+
+                    <form className="space-y-5" onSubmit={isRegisterMode ? handleRegisterSubmit : handleLoginSubmit}>
+                        {error && (
+                            <div className="p-3 text-sm text-center text-red-600 dark:text-red-300 bg-red-100/80 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl backdrop-blur-sm animate-pulse">
+                                {error}
+                            </div>
+                        )}
+
                         {isRegisterMode && (
-                            <div>
-                                <label htmlFor="name" className="sr-only">الاسم</label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
+                                    <span className="text-gray-400 dark:text-gray-500 group-focus-within:text-primary-500 transition-colors">
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                    </span>
+                                </div>
                                 <input
-                                    id="name"
                                     name="name"
                                     type="text"
-                                    autoComplete="name"
                                     required
-                                    className="relative block w-full px-3 py-2 text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-400 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm appearance-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
                                     placeholder="الاسم الكامل"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
+                                    className="w-full pl-12 pr-4 py-3.5 rounded-full bg-white/50 dark:bg-slate-900/50 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:focus:ring-primary-900 outline-none transition-all shadow-inner"
                                 />
                             </div>
                         )}
-                        <div>
-                            <label htmlFor="email-address" className="sr-only">البريد الإلكتروني</label>
+
+                        <div className="relative group">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
+                                <EnvelopeIcon className="h-5 w-5 text-gray-400 dark:text-gray-500 group-focus-within:text-primary-500 transition-colors" />
+                            </div>
                             <input
-                                id="email-address"
                                 name="email"
                                 type="email"
-                                autoComplete="email"
                                 required
-                                className="relative block w-full px-3 py-2 text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-400 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm appearance-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
-                                placeholder="البريد الإلكتروني"
+                                placeholder="البريد الإلكتروني / اسم المستخدم"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                className="w-full pl-12 pr-4 py-3.5 rounded-full bg-white/50 dark:bg-slate-900/50 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:focus:ring-primary-900 outline-none transition-all shadow-inner"
                             />
                         </div>
-                        <div className="relative">
-                            <label htmlFor="password" className="sr-only">كلمة المرور</label>
+
+                        <div className="relative group">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
+                                <LockClosedIcon className="h-5 w-5 text-gray-400 dark:text-gray-500 group-focus-within:text-primary-500 transition-colors" />
+                            </div>
                             <input
-                                id="password"
                                 name="password"
                                 type={showPassword ? 'text' : 'password'}
-                                autoComplete="current-password"
                                 required
-                                className="relative block w-full px-3 pr-10 py-2 text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-400 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm appearance-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
                                 placeholder="كلمة المرور"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
+                                className="w-full pl-12 pr-12 py-3.5 rounded-full bg-white/50 dark:bg-slate-900/50 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:focus:ring-primary-900 outline-none transition-all shadow-inner"
                             />
-                             <button
+                            <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none"
-                                aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+                                className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors focus:outline-none"
                             >
-                                {showPassword ? (
-                                    <EyeSlashIcon className="h-5 w-5" />
-                                ) : (
-                                    <EyeIcon className="h-5 w-5" />
-                                )}
+                                {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                             </button>
                         </div>
-                    </div>
 
-                    {/* Math Captcha Section */}
-                    <div className="space-y-2 bg-gray-50 dark:bg-gray-700/50 p-3 rounded-md border border-gray-200 dark:border-gray-600">
-                        <div className="flex items-center justify-between mb-1">
-                            <label htmlFor="captcha" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                اختبار الأمان: كم ناتج {captchaNum1} + {captchaNum2} ؟
-                            </label>
-                            <button 
-                                type="button" 
-                                onClick={generateCaptcha} 
-                                className="text-primary hover:text-primary-700 dark:hover:text-primary-300"
-                                title="تغيير السؤال"
-                            >
+                        {/* Compact Captcha */}
+                        <div className="flex items-center gap-3 bg-white/50 dark:bg-slate-900/50 rounded-full px-4 py-2 border border-gray-200 dark:border-gray-700">
+                            <span className="text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap font-medium">{captchaNum1} + {captchaNum2} = ?</span>
+                            <input
+                                type="number"
+                                required
+                                value={captchaInput}
+                                onChange={(e) => setCaptchaInput(e.target.value)}
+                                className="w-full bg-transparent border-none text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:ring-0 text-center font-bold h-8"
+                                placeholder="الناتج"
+                            />
+                            <button type="button" onClick={generateCaptcha} className="text-gray-400 hover:text-primary-500 transition-colors">
                                 <ResetIcon className="h-4 w-4" />
                             </button>
                         </div>
-                        <input
-                            id="captcha"
-                            name="captcha"
-                            type="number"
-                            required
-                            className="relative block w-full px-3 py-2 text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-400 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm appearance-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
-                            placeholder="اكتب الناتج هنا"
-                            value={captchaInput}
-                            onChange={(e) => setCaptchaInput(e.target.value)}
-                        />
-                    </div>
-                    
-                    {!isRegisterMode && (
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center">
-                                <input
-                                    id="remember-me"
-                                    name="remember-me"
-                                    type="checkbox"
-                                    checked={rememberMe}
-                                    onChange={(e) => setRememberMe(e.target.checked)}
-                                    className="h-4 w-4 text-primary focus:ring-primary border-gray-300 dark:border-gray-500 rounded"
-                                />
-                                <label htmlFor="remember-me" className="mr-2 block text-sm text-gray-900 dark:text-gray-300">
-                                    تذكرني
-                                </label>
-                            </div>
-                        </div>
-                    )}
 
-
-                    <div>
                         <button
                             type="submit"
                             disabled={loading}
-                            className="relative flex justify-center w-full px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md group bg-primary hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:bg-primary-300"
+                            className="w-full py-4 mt-6 rounded-full bg-gradient-to-r from-primary-600 to-secondary-500 text-white font-bold text-lg tracking-widest uppercase shadow-[0_10px_20px_-10px_rgba(26,115,232,0.5)] hover:shadow-[0_15px_25px_-10px_rgba(26,115,232,0.6)] transform transition-all duration-300 hover:scale-[1.02] active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed relative overflow-hidden group"
                         >
-                            {loading ? (isRegisterMode ? 'جاري الإنشاء...' : 'جاري تسجيل الدخول...') : (isRegisterMode ? 'إنشاء حساب' : 'تسجيل الدخول')}
+                            <span className="relative z-10">{loading ? 'جاري المعالجة...' : (isRegisterMode ? 'إنشاء حساب' : 'LOGIN')}</span>
+                            <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:animate-shimmer"></div>
                         </button>
-                    </div>
 
-                    <div className="text-sm text-center">
-                        <button
-                            type="button"
-                            onClick={toggleMode}
-                            className="font-medium text-primary hover:text-primary-700 dark:hover:text-primary-300 focus:outline-none"
-                        >
-                            {isRegisterMode 
-                                ? 'لديك حساب بالفعل؟ تسجيل الدخول' 
-                                : 'ليس لديك حساب؟ إنشاء حساب جديد'}
-                        </button>
+                        <div className="text-center mt-4">
+                            <button
+                                type="button"
+                                onClick={toggleMode}
+                                className="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors underline underline-offset-4 decoration-transparent hover:decoration-primary-500"
+                            >
+                                {isRegisterMode ? 'تسجيل الدخول' : 'إنشاء حساب جديد'}
+                            </button>
+                        </div>
+                    </form>
+
+                    {/* Social Icons Section */}
+                    <div className="mt-8 pt-6 border-t border-gray-200/50 dark:border-gray-700/50 flex justify-center gap-6">
+                        <SocialButton icon={appSettings.contact.whatsapp ? WhatsappIcon : () => null} href={appSettings.contact.whatsapp} label="Whatsapp" />
+                        <SocialButton icon={appSettings.contact.facebook ? FacebookIcon : () => null} href={appSettings.contact.facebook} label="Facebook" />
+                        <SocialButton icon={appSettings.contact.telegram ? TelegramIcon : () => null} href={appSettings.contact.telegram} label="Telegram" />
                     </div>
-                </form>
+                </div>
             </div>
         </div>
     );

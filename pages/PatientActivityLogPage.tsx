@@ -11,6 +11,16 @@ interface PatientActivityLogPageProps {
     refreshTrigger: number;
 }
 
+const formatLogText = (text: string) => {
+    if (!text) return '';
+    return text.replace(/\b\d+(\.\d+)?\b/g, (match) => {
+        if (match.startsWith('0') && !match.includes('.') && match.length > 1) return match;
+        const num = Number(match);
+        if (isNaN(num)) return match;
+        return num.toLocaleString('en-US');
+    });
+};
+
 const PatientActivityLogPage: React.FC<PatientActivityLogPageProps> = ({ patient, onBack, refreshTrigger }) => {
     const [logs, setLogs] = useState<ActivityLog[]>([]);
     const [loading, setLoading] = useState(true);
@@ -58,9 +68,9 @@ const PatientActivityLogPage: React.FC<PatientActivityLogPageProps> = ({ patient
                             <div key={log.id} className="flex items-start space-x-4 rtl:space-x-reverse p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50">
                                 <ActionIcon action={log.actionType} />
                                 <div className="flex-grow">
-                                    <p className="text-sm text-gray-800 dark:text-gray-200">{log.description}</p>
+                                    <p className="text-sm text-gray-800 dark:text-gray-200">{formatLogText(log.description)}</p>
                                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                        بواسطة {log.userName} &bull; {new Date(log.timestamp).toLocaleString('ar-SA', { dateStyle: 'medium', timeStyle: 'short' })}
+                                        بواسطة {log.userName} &bull; {new Date(log.timestamp).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
                                     </p>
                                 </div>
                             </div>

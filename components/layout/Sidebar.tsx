@@ -301,7 +301,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
     );
 
     const SidebarContent = () => (
-        <div className="relative flex flex-col h-full overflow-hidden bg-white/10 dark:bg-slate-900/30 backdrop-blur-2xl border-r border-white/10">
+        <div className="relative flex flex-col h-full overflow-hidden bg-primary/95 dark:bg-slate-900/95 backdrop-blur-2xl border-r border-white/10">
             {/* Content Layer */}
             <div className="relative z-10 flex flex-col h-full">
                 {sidebarHeader}

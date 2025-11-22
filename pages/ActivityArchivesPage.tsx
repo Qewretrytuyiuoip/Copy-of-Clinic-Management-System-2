@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ActivityLog, ActivityLogActionType } from '../types';
 import { api } from '../services/api';
@@ -56,6 +57,16 @@ const ActionIcon: React.FC<{ action: ActivityLogActionType }> = ({ action }) => 
         default:
             return <div className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full p-2"><UsersIcon {...iconProps} /></div>;
     }
+};
+
+const formatLogText = (text: string) => {
+    if (!text) return '';
+    return text.replace(/\b\d+(\.\d+)?\b/g, (match) => {
+        if (match.startsWith('0') && !match.includes('.') && match.length > 1) return match;
+        const num = Number(match);
+        if (isNaN(num)) return match;
+        return num.toLocaleString('en-US');
+    });
 };
 
 const ActivityArchivesPage: React.FC<ActivityArchivesPageProps> = ({ onBack, refreshTrigger }) => {
@@ -142,9 +153,9 @@ const ActivityArchivesPage: React.FC<ActivityArchivesPageProps> = ({ onBack, ref
                                 <div key={log.id} className="flex items-start space-x-4 rtl:space-x-reverse p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50">
                                     <ActionIcon action={log.actionType} />
                                     <div className="flex-grow min-w-0">
-                                        <p className="text-sm text-gray-800 dark:text-gray-200 break-words">{log.description}</p>
+                                        <p className="text-sm text-gray-800 dark:text-gray-200 break-words">{formatLogText(log.description)}</p>
                                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                            بواسطة {log.userName} &bull; {new Date(log.timestamp).toLocaleString('ar-SA', { dateStyle: 'medium', timeStyle: 'short' })}
+                                            بواسطة {log.userName} &bull; {new Date(log.timestamp).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
                                         </p>
                                     </div>
                                 </div>
