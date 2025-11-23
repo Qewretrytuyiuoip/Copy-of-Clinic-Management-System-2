@@ -70,6 +70,7 @@ export const performApiFetch = async (endpoint: string, options: RequestInit = {
         localStorage.removeItem('currentUser');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('refreshTokenExpiry');
+        localStorage.removeItem('accessTokenExpiry');
         
         // FIX: Only reload if we are NOT already on the login page to avoid infinite loops.
         // Also check if window exists to be safe.
@@ -221,6 +222,7 @@ export const logout = async (): Promise<void> => {
     localStorage.removeItem('currentUser');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('refreshTokenExpiry');
+    localStorage.removeItem('accessTokenExpiry');
 
     if (!token) return;
 
@@ -274,6 +276,7 @@ export const getMe = async (): Promise<User | null> => {
     localStorage.removeItem('currentUser');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('refreshTokenExpiry');
+    localStorage.removeItem('accessTokenExpiry');
     return null;
 };
 
@@ -707,13 +710,14 @@ export const api = {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     },
-    refreshToken: async (): Promise<void> => {
+    refreshToken: async (): Promise<number | null> => {
         const refreshToken = localStorage.getItem('refreshToken');
         if (!refreshToken) {
-            return;
+            return null;
         }
 
         try {
+            // The user requested X-Refresh-Token header. Authorization is not needed here.
             const response = await fetch(`${API_BASE_URL}api/refresh-token`, {
                 method: 'POST',
                 headers: {
@@ -729,8 +733,19 @@ export const api = {
                 if (data && data.api_token) {
                     console.log('Token refreshed successfully.');
                     localStorage.setItem('authToken', data.api_token);
+                    
                     if (data.refresh_token) localStorage.setItem('refreshToken', data.refresh_token);
                     if (data.refresh_expires_at) localStorage.setItem('refreshTokenExpiry', data.refresh_expires_at);
+
+                    // Handle Access Token Expiry
+                    // Prefer 'expires_in' (seconds) or calculate from fixed duration if missing
+                    // Default to 60 minutes if not provided to ensure scheduling works
+                    const expiresInSeconds = data.expires_in ? parseInt(data.expires_in) : 3600; 
+                    const expiryTimestamp = Date.now() + (expiresInSeconds * 1000);
+                    
+                    localStorage.setItem('accessTokenExpiry', String(expiryTimestamp));
+                    
+                    return expiryTimestamp;
                 }
             } else {
                 if (response.status === 401) {
@@ -739,6 +754,7 @@ export const api = {
                     localStorage.removeItem('currentUser');
                     localStorage.removeItem('refreshToken');
                     localStorage.removeItem('refreshTokenExpiry');
+                    localStorage.removeItem('accessTokenExpiry');
                     window.location.reload();
                 } else {
                     console.error(`Token refresh request failed with status ${response.status}`);
@@ -747,6 +763,7 @@ export const api = {
         } catch (error) {
             console.error('An error occurred during token refresh:', error);
         }
+        return null;
     },
     permissions: {
         getAll: async (): Promise<Permission[]> => {

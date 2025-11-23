@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Patient, User, UserRole } from './types';
@@ -176,12 +177,35 @@ const App: React.FC = () => {
     useEffect(() => {
         setupSyncListeners();
 
-        // Token refresh logic
-        const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
-        api.refreshToken(); // Immediately check token on app load
-        const intervalId = setInterval(() => {
-            api.refreshToken();
-        }, REFRESH_INTERVAL);
+        let refreshTimeout: ReturnType<typeof setTimeout>;
+
+        const scheduleTokenRefresh = async () => {
+            const expiryTimestamp = await api.refreshToken();
+            
+            if (expiryTimestamp) {
+                const now = Date.now();
+                const bufferTime = 15 * 60 * 1000; // 15 minutes before expiry
+                const timeToExpiry = expiryTimestamp - now;
+                
+                // Calculate delay: Time until expiry minus buffer
+                // If timeToExpiry is less than buffer (e.g. token valid for 10 mins), 
+                // refresh in 1 minute to avoid spamming but ensure we get a new one soon.
+                let delay = timeToExpiry - bufferTime;
+                
+                if (delay <= 0) {
+                    delay = 60 * 1000; // Retry/Refresh in 1 minute if close to expiry
+                }
+
+                console.log(`Next token refresh scheduled in ${(delay / 1000 / 60).toFixed(2)} minutes`);
+                refreshTimeout = setTimeout(scheduleTokenRefresh, delay);
+            } else {
+                // If refresh failed (e.g. network error), retry in 1 minute
+                refreshTimeout = setTimeout(scheduleTokenRefresh, 60 * 1000);
+            }
+        };
+
+        // Initial call to start the cycle
+        scheduleTokenRefresh();
 
 
         // Check for mobile/touch device to enable touch sounds
@@ -219,7 +243,7 @@ const App: React.FC = () => {
             if (interactionHandlerAttached) {
                 document.removeEventListener('click', handleInteraction, { capture: true });
             }
-            clearInterval(intervalId);
+            clearTimeout(refreshTimeout);
         };
     }, []);
 
