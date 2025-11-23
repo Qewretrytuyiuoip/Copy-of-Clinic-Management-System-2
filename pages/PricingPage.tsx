@@ -12,52 +12,70 @@ interface PricingPlan {
 
 const plans: PricingPlan[] = [
     {
-        name: 'الخطة الأساسية',
-        price: '$9',
+        name: 'تجربة مجانية',
+        price: '$0',
         period: 'شهرياً',
         features: [
             'إدارة عدد محدود من المرضى',
             'نظام الحجز الأساسي',
-            'دعم فني عبر البريد'
+            'دعم فني عبر البريد',
+            'مفعلة افتراضيا',
+            'فترة تجريبية لمدة 7 أيام'
         ],
         color: 'bg-white dark:bg-slate-800',
     },
     {
-        name: 'الخطة القياسية',
-        price: '$29',
+        name: 'الخطة الشهرية',
+        price: '$-',
         period: 'شهرياً',
         features: [
-            'إدارة مرضى غير محدودة',
-            'نظام الحجز المتقدم',
-            'تقارير مالية أساسية',
-            'تخصيص وصفات طبية'
+            // 'إدارة عدد محدود من المرضى',
+            // 'نظام الحجز الأساسي',
+            // 'دعم فني عبر البريد'
+            "--"
         ],
         color: 'bg-white dark:bg-slate-800',
     },
     {
-        name: 'الخطة الاحترافية',
-        price: '$59',
-        period: 'شهرياً',
+        name: 'الخطة ربع سنوية',
+        price: '$-',
+        period: '3 أشهر',
         features: [
-            'جميع ميزات الخطة القياسية',
-            'إدارة المخزون المتقدمة',
-            'دعم فني 24/7',
-            'تحليلات ورسوم بيانية',
-            'نسخ احتياطي يومي'
+            // 'إدارة مرضى غير محدودة',
+            // 'نظام الحجز المتقدم',
+            // 'تقارير مالية أساسية',
+            // 'تخصيص وصفات طبية'
+            "--"
         ],
-        recommended: true,
-        color: 'bg-gradient-to-b from-primary-600 to-primary-800 text-white',
+        color: 'bg-white dark:bg-slate-800',
     },
     {
-        name: 'خطة الشركات',
-        price: '$99',
-        period: 'شهرياً',
+        name: 'الخطة نصف سنوية',
+        price: '$-',
+        period: '6 أشهر',
         features: [
-            'حلول مخصصة بالكامل',
-            'ربط مع أنظمة خارجية',
-            'مدير حساب مخصص',
-            'تدريب للموظفين',
-            'سيرفر خاص'
+            // 'جميع ميزات الخطة القياسية',
+            // 'إدارة المخزون المتقدمة',
+            // 'دعم فني 24/7',
+            // 'تحليلات ورسوم بيانية',
+            // 'نسخ احتياطي يومي'
+            "--"
+        ],
+        recommended: false,
+        // color: 'bg-gradient-to-b from-primary-600 to-primary-800 text-white',
+         color: 'bg-white dark:bg-slate-800',
+    },
+    {
+        name: 'خطة سنوية',
+        price: '$-',
+        period: 'سنة',
+        features: [
+            // 'حلول مخصصة بالكامل',
+            // 'ربط مع أنظمة خارجية',
+            // 'مدير حساب مخصص',
+            // 'تدريب للموظفين',
+            // 'سيرفر خاص'
+            "--"
         ],
         color: 'bg-white dark:bg-slate-800',
     }
@@ -115,17 +133,19 @@ const PricingPage: React.FC = () => {
                             </ul>
                         </div>
 
-                        <div className="mt-8">
-                            <button
-                                className={`w-full block text-center rounded-lg px-6 py-3 text-base font-medium transition-colors duration-200 ${
-                                    plan.recommended
-                                        ? 'bg-white text-primary-700 hover:bg-gray-50'
-                                        : 'bg-primary-600 text-white hover:bg-primary-700'
-                                }`}
-                            >
-                                اختر الخطة
-                            </button>
-                        </div>
+                        {plan.name !== 'تجربة مجانية' && (
+                            <div className="mt-8">
+                                <button
+                                    className={`w-full block text-center rounded-lg px-6 py-3 text-base font-medium transition-colors duration-200 ${
+                                        plan.recommended
+                                            ? 'bg-white text-primary-700 hover:bg-gray-50'
+                                            : 'bg-primary-600 text-white hover:bg-primary-700'
+                                    }`}
+                                >
+                                    اختر الخطة
+                                </button>
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>

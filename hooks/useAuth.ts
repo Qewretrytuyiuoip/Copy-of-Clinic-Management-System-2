@@ -43,10 +43,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const login = async (email: string, password: string): Promise<User | null> => {
         const loginData = await apiLogin(email, password);
         if (loginData) {
-            const { user: userFromApi, center: centerFromApi, token, permissions } = loginData;
+            const { user: userFromApi, center: centerFromApi, token, permissions, refresh_token, refresh_expires_at } = loginData;
 
             // Set token early to allow API calls from subscription modal
             localStorage.setItem('authToken', token);
+            
+            // Save refresh token and its expiry if present
+            if (refresh_token) {
+                localStorage.setItem('refreshToken', refresh_token);
+            }
+            if (refresh_expires_at) {
+                localStorage.setItem('refreshTokenExpiry', refresh_expires_at);
+            }
 
             const today = new Date();
             today.setHours(0, 0, 0, 0); // Compare dates only, not time
@@ -90,7 +98,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const register = async (name: string, email: string, password: string): Promise<User | null> => {
         const registerData = await apiRegister(name, email, password);
         if (registerData) {
-            const { user: userFromApi, center: centerFromApi, token, permissions } = registerData;
+            const { user: userFromApi, center: centerFromApi, token, permissions, refresh_token, refresh_expires_at } = registerData;
 
             const mappedPermissions: Permission[] = (permissions || []).map((pName: string, index: number) => ({
                 id: index, // Placeholder ID
@@ -110,6 +118,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             };
             
             localStorage.setItem('authToken', token);
+            
+            // Save refresh token and its expiry if present
+            if (refresh_token) {
+                localStorage.setItem('refreshToken', refresh_token);
+            }
+            if (refresh_expires_at) {
+                localStorage.setItem('refreshTokenExpiry', refresh_expires_at);
+            }
+
             localStorage.setItem('currentUser', JSON.stringify(user));
             setUser(user);
 

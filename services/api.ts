@@ -68,6 +68,8 @@ export const performApiFetch = async (endpoint: string, options: RequestInit = {
         console.warn(`Unauthorized access to ${endpoint}. Session expired or invalid token.`);
         localStorage.removeItem('authToken');
         localStorage.removeItem('currentUser');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('refreshTokenExpiry');
         
         // FIX: Only reload if we are NOT already on the login page to avoid infinite loops.
         // Also check if window exists to be safe.
@@ -217,6 +219,8 @@ export const logout = async (): Promise<void> => {
     // نظف البيانات محليًا فورًا
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('refreshTokenExpiry');
 
     if (!token) return;
 
@@ -268,6 +272,8 @@ export const getMe = async (): Promise<User | null> => {
     // If no token, no stored user, or parsing fails, clear everything.
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('refreshTokenExpiry');
     return null;
 };
 
@@ -702,20 +708,18 @@ export const api = {
         URL.revokeObjectURL(url);
     },
     refreshToken: async (): Promise<void> => {
-        const token = localStorage.getItem('authToken');
-        if (!token) {
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (!refreshToken) {
             return;
         }
 
         try {
-            // FIX: Ensure the current token is sent in the Authorization header as requested.
-            // Added Content-Type and an empty body to ensure server processes it as a valid JSON request.
             const response = await fetch(`${API_BASE_URL}api/refresh-token`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-Refresh-Token': refreshToken,
                 },
                 body: JSON.stringify({})
             });
@@ -725,16 +729,17 @@ export const api = {
                 if (data && data.api_token) {
                     console.log('Token refreshed successfully.');
                     localStorage.setItem('authToken', data.api_token);
+                    if (data.refresh_token) localStorage.setItem('refreshToken', data.refresh_token);
+                    if (data.refresh_expires_at) localStorage.setItem('refreshTokenExpiry', data.refresh_expires_at);
                 }
             } else {
                 if (response.status === 401) {
-                    const data = await response.json().catch(() => ({}));
-                    if (data.message === "Invalid token" || data.message === "Token missing") {
-                        console.log('Token is invalid or expired. Logging out.');
-                        localStorage.removeItem('authToken');
-                        localStorage.removeItem('currentUser');
-                        window.location.reload();
-                    }
+                    console.log('Refresh token is invalid or expired. Logging out.');
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('currentUser');
+                    localStorage.removeItem('refreshToken');
+                    localStorage.removeItem('refreshTokenExpiry');
+                    window.location.reload();
                 } else {
                     console.error(`Token refresh request failed with status ${response.status}`);
                 }
