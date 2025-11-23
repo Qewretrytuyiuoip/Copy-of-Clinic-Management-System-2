@@ -1,5 +1,5 @@
 import React from 'react';
-import { HomeIcon, UsersIcon, ClipboardListIcon, CurrencyDollarIcon, CalendarIcon, UserGroupIcon, BeakerIcon, UserCircleIcon, ChatBubbleIcon, OfficeBuildingIcon } from './components/Icons';
+import { HomeIcon, UsersIcon, ClipboardListIcon, CurrencyDollarIcon, CalendarIcon, UserGroupIcon, BeakerIcon, UserCircleIcon, ChatBubbleIcon, OfficeBuildingIcon, TagIcon } from './components/Icons';
 import { UserRole } from './types';
 
 export const NAV_ITEMS = {
@@ -13,6 +13,7 @@ export const NAV_ITEMS = {
     { name: 'المدفوعات', icon: CurrencyDollarIcon, page: 'payments' },
     { name: 'الاحصائيات', icon: ClipboardListIcon, page: 'statistics' },
     { name: 'الدعم', icon: ChatBubbleIcon, page: 'contact' },
+    { name: 'التسعيرات', icon: TagIcon, page: 'pricing' },
   ],
   [UserRole.SubManager]: [
     { name: 'الملف الشخصي', icon: UserCircleIcon, page: 'profile' },

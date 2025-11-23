@@ -20,6 +20,7 @@ import PatientDetailsPage from './pages/PatientDetailsPage';
 import PatientFinancialPage from './pages/PatientFinancialPage';
 import PatientPhotosPage from './pages/PatientPhotosPage';
 import ContactPage from './pages/ContactPage';
+import PricingPage from './pages/PricingPage';
 import ActivityArchivesPage from './pages/ActivityArchivesPage';
 import CenterPage from './pages/CenterPage';
 import { api } from './services/api';
@@ -155,6 +156,8 @@ const AppContent: React.FC = () => {
                 return <CenterPage refreshTrigger={refreshTrigger} />;
             case 'contact':
                 return <ContactPage />;
+            case 'pricing':
+                return (user.role === UserRole.Admin) ? <PricingPage /> : <div>الوصول مرفوض</div>;
             case 'activity-archives':
                 return <ActivityArchivesPage onBack={() => handleNavigation('dashboard')} refreshTrigger={refreshTrigger} />;
             default:

@@ -708,12 +708,16 @@ export const api = {
         }
 
         try {
-            const response = await fetch(`${API_BASE_URL}/api/refresh-token`, {
+            // FIX: Ensure the current token is sent in the Authorization header as requested.
+            // Added Content-Type and an empty body to ensure server processes it as a valid JSON request.
+            const response = await fetch(`${API_BASE_URL}api/refresh-token`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Accept': 'application/json',
+                    'Content-Type': 'application/json',
                 },
+                body: JSON.stringify({})
             });
 
             if (response.ok) {
@@ -773,6 +777,10 @@ export const api = {
                 if (!c) return null;
                 return mapApiCenterToCenter(c);
             } catch (error) {
+                // FIX: Suppress logging for session expiry as it's handled globally
+                if (error instanceof Error && error.message === 'Session expired. Please login again.') {
+                    return null;
+                }
                 console.error(`Fetching center online failed.`, error);
                 return null;
             }

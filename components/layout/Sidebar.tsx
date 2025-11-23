@@ -198,7 +198,8 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
     );
 
     const contactItem = navItems.find(item => item.page === 'contact');
-    const mainNavItems = navItems.filter(item => item.page !== 'contact');
+    const pricingItem = navItems.find(item => item.page === 'pricing');
+    const mainNavItems = navItems.filter(item => item.page !== 'contact' && item.page !== 'pricing');
 
     // Glassmorphism Item Style
     const getItemClass = (isActive: boolean) => `
@@ -276,7 +277,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
                 );
             })}
             
-            {(contactItem || isSupported) && (
+            {(contactItem || pricingItem || isSupported) && (
                 <div className={`mt-6 pt-6 border-t border-white/10 mx-4 ${isCollapsed ? 'flex flex-col items-center' : ''}`}>
                     {!isCollapsed && <p className="px-4 text-xs font-semibold text-white/30 uppercase tracking-wider mb-2">الدعم والإعدادات</p>}
                     {contactItem && (
@@ -292,6 +293,21 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
                         >
                             <contactItem.icon className="h-5 w-5" />
                             {!isCollapsed && <span className="mx-3 font-medium text-sm">{contactItem.name}</span>}
+                        </a>
+                    )}
+                    {pricingItem && (
+                        <a
+                            key={pricingItem.name}
+                            href="#"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                handleNavigation(pricingItem.page);
+                            }}
+                            className={getItemClass(currentPage === pricingItem.page)}
+                            title={isCollapsed ? pricingItem.name : undefined}
+                        >
+                            <pricingItem.icon className="h-5 w-5" />
+                            {!isCollapsed && <span className="mx-3 font-medium text-sm">{pricingItem.name}</span>}
                         </a>
                     )}
                     {isSupported && renderNotificationButton()}
@@ -331,15 +347,16 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
     return (
         <>
             {/* Mobile Sidebar with Overlay */}
-            <div className={`fixed inset-0 z-40 flex pointer-events-none lg:hidden ${sidebarOpen ? 'visible' : 'invisible'}`}>
+            <div className={`fixed inset-0 z-40 flex pointer-events-none lg:hidden`}>
                 {/* Overlay */}
                 <div 
-                    className={`absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto ${sidebarOpen ? 'opacity-100' : 'opacity-0'}`} 
+                    className={`absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 ${sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} 
                     onClick={() => setSidebarOpen(false)}
                 ></div>
                 
                 {/* Sidebar Panel Mobile */}
-                <div className={`relative w-72 max-w-[85vw] h-full shadow-2xl transform transition-transform duration-300 ease-out pointer-events-auto ${sidebarOpen ? 'translate-x-0' : 'translate-x-full rtl:-translate-x-full'}`}>
+                {/* Changed translate-x-full logic here to slide from the right in RTL mode */}
+                <div className={`relative w-72 max-w-[85vw] h-full shadow-2xl transform transition-transform duration-300 ease-out pointer-events-auto ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
                     <SidebarContent />
                 </div>
             </div>
