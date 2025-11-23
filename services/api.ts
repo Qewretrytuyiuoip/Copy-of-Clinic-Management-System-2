@@ -169,6 +169,13 @@ export const register = async (name: string, email: string, password: string): P
         const data = await response.json();
         
         if (data.user && data.token && data.center) {
+            // Save Access Token Expiry if available
+            if (data.token_expires_at) {
+                const date = new Date(data.token_expires_at);
+                if (!isNaN(date.getTime())) {
+                    localStorage.setItem('accessTokenExpiry', String(date.getTime()));
+                }
+            }
             return data;
         }
 
@@ -190,8 +197,13 @@ export const login = async (email: string, password: string): Promise<any | null
         formData.append('email', email);
         formData.append('password', password);
 
+        const deviceName = `${navigator.platform} - ${navigator.userAgent}`;
+
         const response = await fetch(`${API_BASE_URL}login`, {
             method: 'POST',
+            headers: {
+                'X-Device-Name': deviceName
+            },
             body: formData,
         });
 
@@ -202,6 +214,13 @@ export const login = async (email: string, password: string): Promise<any | null
         const data = await response.json();
         
         if (data.user && data.token && data.center) {
+            // Save Access Token Expiry if available
+            if (data.token_expires_at) {
+                const date = new Date(data.token_expires_at);
+                if (!isNaN(date.getTime())) {
+                    localStorage.setItem('accessTokenExpiry', String(date.getTime()));
+                }
+            }
             return data;
         }
 
@@ -717,7 +736,6 @@ export const api = {
         }
 
         try {
-            // The user requested X-Refresh-Token header. Authorization is not needed here.
             const response = await fetch(`${API_BASE_URL}api/refresh-token`, {
                 method: 'POST',
                 headers: {
@@ -732,20 +750,35 @@ export const api = {
                 const data = await response.json();
                 if (data && data.api_token) {
                     console.log('Token refreshed successfully.');
+                    
+                    // Cleanup old values
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('accessTokenExpiry');
+                    localStorage.removeItem('refreshToken');
+                    localStorage.removeItem('refreshTokenExpiry');
+
+                    // Set new values immediately
                     localStorage.setItem('authToken', data.api_token);
                     
-                    if (data.refresh_token) localStorage.setItem('refreshToken', data.refresh_token);
-                    if (data.refresh_expires_at) localStorage.setItem('refreshTokenExpiry', data.refresh_expires_at);
+                    if (data.refresh_token) {
+                        localStorage.setItem('refreshToken', data.refresh_token);
+                    }
+                    
+                    if (data.refresh_expires_at) {
+                        localStorage.setItem('refreshTokenExpiry', data.refresh_expires_at);
+                    }
 
                     // Handle Access Token Expiry
-                    // Prefer 'expires_in' (seconds) or calculate from fixed duration if missing
-                    // Default to 60 minutes if not provided to ensure scheduling works
-                    const expiresInSeconds = data.expires_in ? parseInt(data.expires_in) : 3600; 
-                    const expiryTimestamp = Date.now() + (expiresInSeconds * 1000);
+                    let accessTokenExpiryTimestamp = 0;
+                    if (data.token_expires_at) {
+                        const date = new Date(data.token_expires_at);
+                        if (!isNaN(date.getTime())) {
+                            accessTokenExpiryTimestamp = date.getTime();
+                            localStorage.setItem('accessTokenExpiry', String(accessTokenExpiryTimestamp));
+                        }
+                    }
                     
-                    localStorage.setItem('accessTokenExpiry', String(expiryTimestamp));
-                    
-                    return expiryTimestamp;
+                    return accessTokenExpiryTimestamp;
                 }
             } else {
                 if (response.status === 401) {

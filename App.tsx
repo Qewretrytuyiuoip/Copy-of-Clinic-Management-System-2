@@ -179,33 +179,47 @@ const App: React.FC = () => {
 
         let refreshTimeout: ReturnType<typeof setTimeout>;
 
-        const scheduleTokenRefresh = async () => {
-            const expiryTimestamp = await api.refreshToken();
-            
-            if (expiryTimestamp) {
-                const now = Date.now();
-                const bufferTime = 15 * 60 * 1000; // 15 minutes before expiry
-                const timeToExpiry = expiryTimestamp - now;
-                
-                // Calculate delay: Time until expiry minus buffer
-                // If timeToExpiry is less than buffer (e.g. token valid for 10 mins), 
-                // refresh in 1 minute to avoid spamming but ensure we get a new one soon.
-                let delay = timeToExpiry - bufferTime;
-                
-                if (delay <= 0) {
-                    delay = 60 * 1000; // Retry/Refresh in 1 minute if close to expiry
+        const performRefresh = async () => {
+            try {
+                const newExpiry = await api.refreshToken();
+                if (newExpiry) {
+                    scheduleTokenRefresh(newExpiry);
                 }
-
-                console.log(`Next token refresh scheduled in ${(delay / 1000 / 60).toFixed(2)} minutes`);
-                refreshTimeout = setTimeout(scheduleTokenRefresh, delay);
-            } else {
-                // If refresh failed (e.g. network error), retry in 1 minute
-                refreshTimeout = setTimeout(scheduleTokenRefresh, 60 * 1000);
+            } catch (e) {
+                // Retry in 1 minute if refresh fails due to network error
+                console.error("Refresh token failed", e);
+                refreshTimeout = setTimeout(performRefresh, 60 * 1000);
             }
         };
 
-        // Initial call to start the cycle
-        scheduleTokenRefresh();
+        const scheduleTokenRefresh = (expiryTimestamp: number) => {
+            const now = Date.now();
+            const bufferTime = 10 * 60 * 1000; // 10 minutes before expiry
+            const timeToExpiry = expiryTimestamp - now;
+            
+            // Calculate delay: Time until expiry minus 10 minutes buffer
+            let delay = timeToExpiry - bufferTime;
+            
+            if (delay <= 0) {
+                // Token is already expired or within the 10 min buffer, refresh immediately
+                console.log("Token expiring soon or expired, refreshing immediately...");
+                performRefresh();
+            } else {
+                console.log(`Next token refresh scheduled in ${(delay / 1000 / 60).toFixed(2)} minutes`);
+                refreshTimeout = setTimeout(performRefresh, delay);
+            }
+        };
+
+        // Initial check on app load
+        const storedExpiry = localStorage.getItem('accessTokenExpiry');
+        const storedRefreshToken = localStorage.getItem('refreshToken');
+
+        if (storedExpiry) {
+            scheduleTokenRefresh(parseInt(storedExpiry, 10));
+        } else if (storedRefreshToken) {
+            // If we have a refresh token but no expiry time (legacy or cleared), refresh now to be safe
+            performRefresh();
+        }
 
 
         // Check for mobile/touch device to enable touch sounds
