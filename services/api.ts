@@ -683,7 +683,7 @@ export const api = {
     profile: {
         delete: async (): Promise<void> => {
             const formData = new FormData();
-            await performApiFetch('profile/delete', { method: 'POST', body: formData });
+            await performApiFetch('users/delete', { method: 'POST', body: formData });
         }
     },
     exportCenterData: async (): Promise<void> => {
