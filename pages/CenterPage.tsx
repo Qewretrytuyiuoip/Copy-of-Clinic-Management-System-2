@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
@@ -11,9 +10,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 
 const InfoCard: React.FC<{ label: string; value: string | number | null; icon?: React.ElementType }> = ({ label, value, icon: Icon }) => (
     <div className="group relative w-full p-5 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/60 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md h-full flex flex-col justify-center">
-        {/* Subtle Glow on right */}
         <div className="absolute top-1/2 -translate-y-1/2 right-0 h-10 w-1 bg-gradient-to-b from-transparent via-primary-300 to-transparent rounded-l-full opacity-50 group-hover:opacity-100 group-hover:h-12 transition-all duration-500"></div>
-
         <div className="relative z-10 flex items-start gap-4">
             {Icon && (
                 <div className="flex-shrink-0 p-3 rounded-2xl bg-gray-50 dark:bg-slate-900/50 text-primary-600 dark:text-primary-400 shadow-inner">
@@ -37,7 +34,6 @@ const EditCard: React.FC<{ label: string; children: React.ReactNode; icon?: Reac
         {children}
     </div>
 );
-
 
 const CenterPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => {
     const { user } = useAuth();
@@ -67,7 +63,6 @@ const CenterPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
     
     const handleEditToggle = () => {
         if (isEditing) {
-            // Cancel editing
             setNewLogoFile(null);
             setNewLogoPreview(null);
             if (center) setFormData(center);
@@ -88,47 +83,51 @@ const CenterPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
         }
     };
     
-    const handleSave = async () => {
-        if (!center) return;
-        setIsSaving(true);
-        try {
-            const promises = [];
-            const changedData: Partial<Omit<Center, 'id' | 'logo_url' | 'created_at'>> = {};
-            let dataHasChanged = false;
+  const handleSave = async () => {
+    if (!center) return;
+    setIsSaving(true);
 
-            (Object.keys(formData) as Array<keyof typeof formData>).forEach(key => {
-                 if (key !== 'id' && key !== 'logo_url' && key !== 'created_at' && formData[key] !== center[key]) {
-                    (changedData as any)[key] = formData[key];
-                    dataHasChanged = true;
-                }
-            });
+    try {
+        const changedData: Partial<Omit<Center, 'id' | 'logo_url' | 'created_at'>> = {};
+        let dataHasChanged = false;
 
-            if (dataHasChanged) {
-                promises.push(api.centers.update(changedData));
+        (Object.keys(formData) as Array<keyof typeof formData>).forEach(key => {
+            if (key !== 'id' && key !== 'logo_url' && key !== 'created_at' && formData[key] !== center[key]) {
+                (changedData as any)[key] = formData[key];
+                dataHasChanged = true;
             }
-            if (newLogoFile) {
-                promises.push(api.centers.uploadPhoto(newLogoFile));
-            }
-            
-            if (promises.length > 0) {
-                const results = await Promise.all(promises);
-                const updatedCenter = results[results.length - 1];
-                if(updatedCenter) {
-                    setAppName(updatedCenter.name);
-                    setAppLogo(updatedCenter.logo_url);
-                }
-            }
+        });
 
-            await queryClient.invalidateQueries({ queryKey: ['center', user?.center_id] });
-            setIsEditing(false);
-            setNewLogoFile(null);
-            setNewLogoPreview(null);
-        } catch (err) {
-            alert(`فشل حفظ التعديلات: ${err instanceof Error ? err.message : 'خطأ غير متوقع'}`);
-        } finally {
-            setIsSaving(false);
+        // أولاً تعديل البيانات العادية إذا في تغييرات
+        if (dataHasChanged) {
+            await api.centers.update(changedData);
         }
-    };
+
+        // ثانياً رفع الصورة إذا موجودة
+        if (newLogoFile) {
+            const uploadResponse = await api.centers.uploadPhoto(newLogoFile);
+            if (uploadResponse.logo_url) {
+                // نجاح رفع الصورة => خروج من وضع التعديل
+                setIsEditing(false);
+                setNewLogoFile(null);
+                setNewLogoPreview(null);
+            }
+        }
+
+        // تحديث البيانات بعد أي تعديل
+        await queryClient.invalidateQueries({ queryKey: ['center', user?.center_id] });
+
+        // إذا ما في صورة، نطلع من وضع التعديل بعد تحديث البيانات
+        if (!newLogoFile) setIsEditing(false);
+
+    } catch (err) {
+        alert(`فشل حفظ التعديلات: ${err instanceof Error ? err.message : 'خطأ غير متوقع'}`);
+    } finally {
+        setIsSaving(false);
+    }
+};
+
+
     
     const handleDeletePhoto = async () => {
         setIsDeletingPhoto(true);
@@ -151,7 +150,7 @@ const CenterPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
     const inputStyle = "w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
     return (
-        <div className="max-w-5xl mx-auto">
+       <div className="max-w-5xl mx-auto">
             <div className="flex flex-col items-center md:flex-row md:justify-between md:items-start mb-8">
                  <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-right">
                     <div className="flex-shrink-0 relative group">
