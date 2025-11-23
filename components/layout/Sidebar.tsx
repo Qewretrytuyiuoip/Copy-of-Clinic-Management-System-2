@@ -35,6 +35,8 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
     const [subscriptionLoading, setSubscriptionLoading] = React.useState(true);
     const [isSupported, setIsSupported] = React.useState(false);
     
+    const canAddPatient = user.role === UserRole.Admin || user.role === UserRole.SubManager || user.permissions?.some(p => p.name === 'add_patient');
+
     const navItems = useMemo(() => {
         let filteredNavItems = [...baseNavItems];
 
@@ -230,20 +232,22 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
             `}</style>
             
             {/* Compose Button */}
-            <div className={`mb-6 px-3 transition-all duration-300 ${isCollapsed ? 'flex justify-center' : ''}`}>
-                <button
-                    onClick={() => handleNavigation('patients')} // Or trigger a modal directly
-                    className={`
-                        flex items-center justify-center bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white 
-                        shadow-lg shadow-blue-500/30 rounded-xl transition-all duration-300 border border-white/20
-                        ${isCollapsed ? 'w-12 h-12 p-0' : 'w-full py-3 px-4'}
-                    `}
-                    title={isCollapsed ? "إضافة مريض" : undefined}
-                >
-                    <PlusIcon className="h-6 w-6" />
-                    {!isCollapsed && <span className="mx-2 font-bold tracking-wide">إضافة مريض</span>}
-                </button>
-            </div>
+            {canAddPatient && (
+                <div className={`mb-6 px-3 transition-all duration-300 ${isCollapsed ? 'flex justify-center' : ''}`}>
+                    <button
+                        onClick={() => handleNavigation('patients')} // Or trigger a modal directly
+                        className={`
+                            flex items-center justify-center bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white 
+                            shadow-lg shadow-blue-500/30 rounded-xl transition-all duration-300 border border-white/20
+                            ${isCollapsed ? 'w-12 h-12 p-0' : 'w-full py-3 px-4'}
+                        `}
+                        title={isCollapsed ? "إضافة مريض" : undefined}
+                    >
+                        <PlusIcon className="h-6 w-6" />
+                        {!isCollapsed && <span className="mx-2 font-bold tracking-wide">إضافة مريض</span>}
+                    </button>
+                </div>
+            )}
 
             {mainNavItems.map((item) => {
                 const isActive = currentPage === item.page;
