@@ -380,7 +380,7 @@ const LoginPage: React.FC = () => {
                             disabled={loading}
                             className="w-full py-4 mt-6 rounded-full bg-gradient-to-r from-primary-600 to-secondary-500 text-white font-bold text-lg tracking-widest uppercase shadow-[0_10px_20px_-10px_rgba(26,115,232,0.5)] hover:shadow-[0_15px_25px_-10px_rgba(26,115,232,0.6)] transform transition-all duration-300 hover:scale-[1.02] active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed relative overflow-hidden group"
                         >
-                            <span className="relative z-10">{loading ? 'جاري المعالجة...' : (isRegisterMode ? 'إنشاء حساب' : 'LOGIN')}</span>
+                            <span className="relative z-10">{loading ? 'جاري المعالجة...' : (isRegisterMode ? 'إنشاء حساب' : 'تسجيل الدخول')}</span>
                             <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:animate-shimmer"></div>
                         </button>
 

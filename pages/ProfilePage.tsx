@@ -494,12 +494,12 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ refreshTrigger }) => {
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden relative">
                 <div className="h-32 bg-gradient-to-r from-primary-500 to-primary-700"></div>
                 <div className="px-6 pb-6">
-                    <div className="relative flex justify-between items-end -mt-12 mb-6">
-                        <div className="flex items-end">
-                            <div className="h-24 w-24 rounded-full ring-4 ring-white dark:ring-slate-800 bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-400">
+                    <div className="relative flex flex-col md:flex-row justify-between items-center md:items-end -mt-12 mb-6">
+                        <div className="flex flex-col md:flex-row items-center md:items-end gap-4">
+                            <div className="h-24 w-24 rounded-full ring-4 ring-white dark:ring-slate-800 bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-400 z-10 shadow-sm">
                                 <UserCircleIcon className="h-20 w-20" />
                             </div>
-                            <div className="mr-4 rtl:mr-4 rtl:ml-0 mb-1">
+                            <div className="mb-1 text-center md:text-right">
                                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{user.name}</h1>
                                 <p className="text-sm text-gray-500 dark:text-gray-300">{user.email}</p>
                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-300 mt-1">

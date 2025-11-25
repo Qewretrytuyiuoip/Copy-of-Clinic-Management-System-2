@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { User, UserRole } from '../../types';
-import { MenuIcon, ResetIcon, WifiIcon, WifiOffIcon, ArrowBackIcon } from '../Icons';
+import { MenuIcon, ResetIcon } from '../Icons';
 import ThemeToggleButton from '../ThemeToggleButton';
 
 interface HeaderProps {
@@ -13,29 +14,11 @@ interface HeaderProps {
     setCurrentPage: (page: string) => void;
 }
 
-const BACK_ROUTES: Record<string, string> = {
-    'sessions': 'patients',
-    'plan': 'patients',
-    'details': 'patients',
-    'financial': 'patients',
-    'photos': 'patients',
-    'activity': 'patients',
-    'activity-archives': 'dashboard',
-};
-
 const Header: React.FC<HeaderProps> = ({ user, setSidebarOpen, onRefresh, pageName, currentPage, isOnline, setCurrentPage }) => {
     // The "Treatments" settings for admins/submanagers are part of the "Profile" page.
     // The user requested to hide the refresh button on this page.
     // We keep it for other roles on the profile page (like Doctors for their schedule).
     const showRefreshButton = !(currentPage === 'profile' && (user.role === UserRole.Admin || user.role === UserRole.SubManager));
-
-    const backRoute = BACK_ROUTES[currentPage];
-
-    const handleBack = () => {
-        if (backRoute) {
-            setCurrentPage(backRoute);
-        }
-    };
 
     return (
         <>
@@ -49,16 +32,6 @@ const Header: React.FC<HeaderProps> = ({ user, setSidebarOpen, onRefresh, pageNa
                         >
                             <MenuIcon className="h-6 w-6" />
                         </button>
-                        {backRoute && (
-                            <button
-                                onClick={handleBack}
-                                className="lg:hidden p-2 rounded-full text-white dark:text-gray-400 hover:bg-primary-600 dark:hover:bg-gray-700 focus:outline-none"
-                                aria-label="رجوع"
-                            >
-                                {/* Rotate 180 for RTL back arrow */}
-                                <ArrowBackIcon className="h-6 w-6 transform rotate-180" />
-                            </button>
-                        )}
                     </div>
                     <div className="px-2 py-1 border border-yellow-400 text-yellow-400 text-xs font-bold rounded-md bg-yellow-400/10 select-none">
                         تجريبي
@@ -71,15 +44,6 @@ const Header: React.FC<HeaderProps> = ({ user, setSidebarOpen, onRefresh, pageNa
                     </h1>
                 </div>
                 <div className="flex items-center gap-2">
-                     <div className="p-2 rounded-full" title={isOnline ? "متصل بالإنترنت" : "لا يوجد اتصال بالإنترنت"}>
-                        {isOnline ? (
-                            // Using text-green-300 for visibility on blue background
-                            <WifiIcon className="h-6 w-6 text-green-300 dark:text-green-400" />
-                        ) : (
-                            <WifiOffIcon className="h-6 w-6 text-red-300 dark:text-red-400" />
-                        )}
-                    </div>
-
                     <ThemeToggleButton className="p-2 rounded-full text-white dark:text-gray-300 hover:bg-primary-600 dark:hover:bg-gray-700" />
 
                     {showRefreshButton && (

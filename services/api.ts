@@ -1030,14 +1030,29 @@ export const api = {
                 const allSessions = await sessions_getAll();
                 const patientSessions = allSessions.filter(s => s.patientId === patientId);
         
-                const isCompleted = patientSessions.length > 0 && patientSessions.every(s => s.completed);
+                // STRICT COMPLETION LOGIC:
+                // 1. The patient MUST have at least one session.
+                // 2. EVERY session belonging to the patient MUST have at least one treatment.
+                // 3. EVERY treatment in EVERY session MUST be completed.
+                
+                const hasSessions = patientSessions.length > 0;
+                
+                const allSessionsComplete = patientSessions.every(s => {
+                    const hasTreatments = s.treatments && s.treatments.length > 0;
+                    // Note: s.completed is derived in sessions_getAll based on treatments, 
+                    // but we double-check treatment completion here for absolute safety.
+                    const allTreatmentsDone = s.treatments.every(t => t.completed);
+                    return hasTreatments && allTreatmentsDone;
+                });
+                
+                const isCompleted = hasSessions && allSessionsComplete;
         
                 const patient = await api.patients.getById(patientId);
-                if (!patient || patient.completed === isCompleted) {
-                    return; // No update needed
+                
+                // Only call API update if the status has actually changed
+                if (!patient || patient.completed !== isCompleted) {
+                    await api.patients.update(patientId, { completed: isCompleted }, userId);
                 }
-        
-                await api.patients.update(patientId, { completed: isCompleted }, userId);
             } catch (error) {
                 console.error(`Failed to update completion status for patient ${patientId}:`, error);
             }

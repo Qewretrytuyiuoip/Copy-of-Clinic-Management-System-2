@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { User, Appointment, ActivityLog, ActivityLogActionType } from '../../types';
 import { api } from '../../services/api';
-import { UserGroupIcon, CalendarIcon, UsersIcon, PlusIcon, PencilIcon, TrashIcon, SearchIcon, DocumentTextIcon, XIcon, CurrencyDollarIcon } from '../Icons';
+import { UserGroupIcon, CalendarIcon, UsersIcon, PlusIcon, PencilIcon, TrashIcon, SearchIcon, DocumentTextIcon, XIcon, CurrencyDollarIcon, ChevronLeftIcon } from '../Icons';
 import { CenteredLoadingSpinner } from '../LoadingSpinner';
 
 interface DashboardAdminProps {
@@ -11,41 +11,49 @@ interface DashboardAdminProps {
     setCurrentPage: (page: string) => void;
 }
 
-const StatCard: React.FC<{ title: string; value: string | number; icon: React.ElementType; onClick?: () => void }> = ({ title, value, icon: Icon, onClick }) => {
+const StatCard: React.FC<{ title: string; value: string | number; icon: React.ElementType; onClick?: () => void; hint?: string }> = ({ title, value, icon: Icon, onClick, hint }) => {
     const Component = onClick ? 'button' : 'div';
     const props = onClick ? { onClick, type: 'button' as const } : {};
 
     return (
         <Component
             {...props}
-            className={`group relative w-full p-5 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/60 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${onClick ? 'cursor-pointer text-right' : ''}`}
+            className={`group relative w-full p-3 sm:p-5 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/60 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${onClick ? 'cursor-pointer text-right' : ''}`}
         >
             {/* Right Glow Bar - Neon Effect */}
             <div className="absolute top-1/2 -translate-y-1/2 right-0 h-12 w-1 bg-gradient-to-b from-transparent via-primary-400 to-transparent rounded-l-full opacity-70 group-hover:opacity-100 group-hover:h-16 group-hover:w-1.5 transition-all duration-500 shadow-[0_0_15px_rgba(56,189,248,0.5)]"></div>
 
             <div className="relative z-10 flex items-center justify-between">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 sm:gap-4">
                     {/* Icon Container */}
-                    <div className="flex-shrink-0 p-3.5 rounded-2xl bg-gray-50 dark:bg-slate-900/50 text-primary-600 dark:text-primary-400 shadow-inner group-hover:scale-110 transition-transform duration-300">
-                        <Icon className="h-7 w-7" />
+                    <div className="flex-shrink-0 p-2 sm:p-3.5 rounded-2xl bg-gray-50 dark:bg-slate-900/50 text-primary-600 dark:text-primary-400 shadow-inner group-hover:scale-110 transition-transform duration-300">
+                        <Icon className="h-5 w-5 sm:h-7 sm:w-7" />
                     </div>
                     
-                    <div className="text-right">
-                        <p className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 group-hover:text-primary-600 dark:group-hover:text-primary-300 transition-colors duration-300">
+                    <div className="text-right min-w-0">
+                        <p className="text-[10px] sm:text-sm font-medium text-gray-500 dark:text-gray-400 group-hover:text-primary-600 dark:group-hover:text-primary-300 transition-colors duration-300 line-clamp-2">
                             {title}
                         </p>
-                        <div className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mt-1 tracking-tight">
+                        <div className="text-lg sm:text-3xl font-bold text-gray-800 dark:text-white mt-1 tracking-tight truncate">
                             {value}
                         </div>
                     </div>
                 </div>
 
-                {/* Left Dot Indicator */}
-                <div className="w-2 h-2 rounded-full bg-primary-400/80 dark:bg-primary-500/80 shadow-[0_0_8px_rgba(56,189,248,0.6)]"></div>
+                {/* Left Dot Indicator - Hidden on mobile to save space */}
+                <div className="hidden sm:block w-2 h-2 rounded-full bg-primary-400/80 dark:bg-primary-500/80 shadow-[0_0_8px_rgba(56,189,248,0.6)]"></div>
             </div>
 
+            {/* Hint Text */}
+            {hint && (
+                <div className="relative z-10 mt-2 sm:mt-3 flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity duration-300">
+                    <span className="text-[9px] sm:text-[10px] font-medium text-primary-600 dark:text-primary-400">{hint}</span>
+                    <ChevronLeftIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-primary-600 dark:text-primary-400" />
+                </div>
+            )}
+
             {/* Background Gradient Highlight */}
-            <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-primary-500/5 rounded-full blur-2xl group-hover:bg-primary-500/10 transition-colors duration-500"></div>
+            <div className="absolute -bottom-4 -left-4 w-16 h-16 sm:w-24 sm:h-24 bg-primary-500/5 rounded-full blur-2xl group-hover:bg-primary-500/10 transition-colors duration-500"></div>
         </Component>
     );
 };
@@ -217,11 +225,31 @@ const DashboardAdmin: React.FC<DashboardAdminProps> = ({ user, refreshTrigger, s
         <div>
             {isModalOpen && <OnDutyDoctorsModal doctors={onDutyDoctors} onClose={() => setIsModalOpen(false)} />}
              {fetchError && logs.length === 0 && <p className="text-center text-lg text-red-500 mb-4">{fetchError}</p>}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard title="الأطباء المداومون اليوم" value={stats.doctors.toLocaleString('en-US')} icon={UsersIcon} onClick={() => setIsModalOpen(true)} />
-                <StatCard title="المرضى الغير مكتملين" value={stats.patients.toLocaleString('en-US')} icon={UserGroupIcon} />
-                <StatCard title="مواعيد اليوم" value={stats.appointments.toLocaleString('en-US')} icon={CalendarIcon} />
-                <StatCard title="أرشيف الأحداث" value="عرض السجل" icon={DocumentTextIcon} onClick={() => setCurrentPage('activity-archives')} />
+            <div className="grid grid-cols-2 gap-3 sm:gap-6">
+                <StatCard 
+                    title="الأطباء المداومون اليوم" 
+                    value={stats.doctors.toLocaleString('en-US')} 
+                    icon={UsersIcon} 
+                    onClick={() => setIsModalOpen(true)} 
+                    hint="يمكنك الضغط هنا"
+                />
+                <StatCard 
+                    title="المرضى الغير مكتملين" 
+                    value={stats.patients.toLocaleString('en-US')} 
+                    icon={UserGroupIcon} 
+                />
+                <StatCard 
+                    title="مواعيد اليوم" 
+                    value={stats.appointments.toLocaleString('en-US')} 
+                    icon={CalendarIcon} 
+                />
+                <StatCard 
+                    title="أرشيف الأحداث" 
+                    value="عرض السجل" 
+                    icon={DocumentTextIcon} 
+                    onClick={() => setCurrentPage('activity-archives')} 
+                    hint="يمكنك الضغط هنا"
+                />
             </div>
             <div className="mt-8 bg-white dark:bg-slate-800 rounded-xl shadow-md">
                  <div className="p-6 border-b border-gray-200 dark:border-gray-700">
