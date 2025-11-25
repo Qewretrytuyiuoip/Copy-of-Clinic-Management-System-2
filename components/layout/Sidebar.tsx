@@ -214,7 +214,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
     `;
 
     const navLinks = (
-        <nav className="mt-2 flex-1 overflow-y-auto custom-scrollbar overflow-x-hidden">
+        <nav className="mt-2 flex-1 overflow-y-auto custom-scrollbar overflow-x-hidden pb-24">
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar {
                     width: 4px;
@@ -351,7 +351,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, si
     return (
         <>
             {/* Mobile Sidebar with Overlay */}
-            <div className={`fixed inset-0 z-40 flex pointer-events-none lg:hidden`}>
+            <div className={`fixed inset-0 z-[70] flex pointer-events-none lg:hidden`}>
                 {/* Overlay */}
                 <div 
                     className={`absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 ${sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} 

@@ -1096,17 +1096,23 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                     </h3>
                 )}
                 {loading ? <CenteredLoadingSpinner /> : selectedDateAppointments.length > 0 ? (
-                    <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {selectedDateAppointments.map(app => (
-                             <div key={app.id} className="bg-white dark:bg-slate-800 border-r-4 border-primary dark:border-primary-500 p-4 rounded-lg shadow-md flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                             <div key={app.id} className="bg-white dark:bg-slate-800 border-r-4 border-primary dark:border-primary-500 p-4 rounded-lg shadow-md flex flex-col justify-between gap-4 hover:shadow-lg transition-shadow">
                                 <div>
-                                    <p className="font-bold text-lg text-gray-800 dark:text-gray-100">{getPatientName(app.patientId)}</p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">مع الطبيب: {getDoctorName(app.doctorId)}</p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 font-semibold mt-1">{formatTo12Hour(app.time)}</p>
-                                    {app.notes && <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 bg-gray-100 dark:bg-gray-700 p-2 rounded-md">{app.notes}</p>}
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="font-bold text-lg text-gray-800 dark:text-gray-100">{getPatientName(app.patientId)}</p>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">مع الطبيب: {getDoctorName(app.doctorId)}</p>
+                                        </div>
+                                        <span className="bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 text-xs font-bold px-2 py-1 rounded-md whitespace-nowrap">
+                                            {formatTo12Hour(app.time)}
+                                        </span>
+                                    </div>
+                                    {app.notes && <p className="text-xs text-gray-600 dark:text-gray-300 mt-3 bg-gray-50 dark:bg-slate-700/50 p-2 rounded-md border dark:border-gray-700 line-clamp-2">{app.notes}</p>}
                                 </div>
-                                <div className="flex items-center justify-end gap-2 self-end sm:self-center">
-                                    <button onClick={() => setViewingAppointment(app)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="عرض التفاصيل"><EyeIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" /></button>
+                                <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-700 mt-2">
+                                    <button onClick={() => setViewingAppointment(app)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400" title="عرض التفاصيل"><EyeIcon className="h-5 w-5" /></button>
                                     {(user.role === UserRole.Admin || user.role === UserRole.Secretary) && (
                                         <>
                                             <button onClick={() => setEditingAppointment(app)} className="p-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
