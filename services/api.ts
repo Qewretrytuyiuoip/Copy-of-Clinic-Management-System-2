@@ -856,20 +856,18 @@ export const api = {
             if (!responseData.data) throw new Error(responseData.message || "Failed to update center.");
             return mapApiCenterToCenter(responseData.data);
         },
-        uploadPhoto: async (photo: File): Promise<Center> => {
+        uploadPhoto: async (photo: File): Promise<string> => {
             const formData = new FormData();
             formData.append('photo', photo);
 
             const responseData = await performApiFetch('centers/upload-photo', { method: 'POST', body: formData });
-            if (!responseData.data) throw new Error(responseData.message || "Failed to upload photo.");
-            return mapApiCenterToCenter(responseData.data);
+            // Return the logo_url string
+            return responseData.logo_url;
         },
-        deletePhoto: async (): Promise<Center> => {
+        deletePhoto: async (): Promise<void> => {
             const formData = new FormData();
-            
-            const responseData = await performApiFetch('centers/delete-photo', { method: 'POST', body: formData });
-            if (!responseData.data) throw new Error(responseData.message || "Failed to delete photo.");
-             return mapApiCenterToCenter(responseData.data);
+            // Server returns { message: "..." } on success, no data.
+            await performApiFetch('centers/delete-photo', { method: 'POST', body: formData });
         }
     },
     doctors: createUserCRUD(UserRole.Doctor),

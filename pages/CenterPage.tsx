@@ -1,12 +1,36 @@
-import React, { useState, useEffect, useRef } from 'react';
+
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useAppSettings } from '../hooks/useAppSettings';
 import { CenteredLoadingSpinner } from '../components/LoadingSpinner';
 import { Center } from '../types';
-import { OfficeBuildingIcon, UsersIcon, CalendarIcon, DocumentTextIcon, BeakerIcon, PencilIcon, CameraIcon, TrashIcon, XIcon, CheckIcon } from '../components/Icons';
+import { OfficeBuildingIcon, UsersIcon, CalendarIcon, DocumentTextIcon, BeakerIcon, PencilIcon, CameraIcon, TrashIcon, XIcon, CheckIcon, ChevronDownIcon, SearchIcon } from '../components/Icons';
 import LoadingSpinner from '../components/LoadingSpinner';
+
+const CLINIC_TYPES = [
+    "باطنة",
+    "أطفال",
+    "نساء وتوليد",
+    "جراحة عامة",
+    "تجميل",
+    "عيون",
+    "أنف وأذن وحنجرة",
+    "أسنان",
+    "جلدية",
+    "أعصاب",
+    "قلب",
+    "غدد صماء",
+    "باطنية أطفال",
+    "مسالك بولية",
+    "عظام",
+    "تخدير",
+    "نفسي",
+    "تغذية",
+    "علاج فيزيائي",
+    "علاج طبيعي"
+];
 
 const InfoCard: React.FC<{ label: string; value: string | number | null; icon?: React.ElementType }> = ({ label, value, icon: Icon }) => (
     <div className="group relative w-full p-5 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/60 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md h-full flex flex-col justify-center">
@@ -49,6 +73,11 @@ const CenterPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
     const [isDeletingPhoto, setIsDeletingPhoto] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     
+    // Dropdown States for Type
+    const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
+    const [typeSearch, setTypeSearch] = useState('');
+    const typeDropdownRef = useRef<HTMLDivElement>(null);
+    
     const { data: center, isLoading, error } = useQuery({
         queryKey: ['center', user?.center_id, refreshTrigger],
         queryFn: () => api.centers.getOne(),
@@ -60,12 +89,26 @@ const CenterPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
             setFormData(center);
         }
     }, [center]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (typeDropdownRef.current && !typeDropdownRef.current.contains(event.target as Node)) {
+                setIsTypeDropdownOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
     
     const handleEditToggle = () => {
         if (isEditing) {
+            // Cancel editing
             setNewLogoFile(null);
             setNewLogoPreview(null);
             if (center) setFormData(center);
+        } else {
+            // Start editing
+            setTypeSearch(center?.type || '');
         }
         setIsEditing(!isEditing);
     };
@@ -105,20 +148,16 @@ const CenterPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
 
         // ثانياً رفع الصورة إذا موجودة
         if (newLogoFile) {
-            const uploadResponse = await api.centers.uploadPhoto(newLogoFile);
-            if (uploadResponse.logo_url) {
-                // نجاح رفع الصورة => خروج من وضع التعديل
-                setIsEditing(false);
-                setNewLogoFile(null);
-                setNewLogoPreview(null);
-            }
+            await api.centers.uploadPhoto(newLogoFile);
+            // نجاح رفع الصورة
+            setNewLogoFile(null);
+            setNewLogoPreview(null);
         }
 
         // تحديث البيانات بعد أي تعديل
         await queryClient.invalidateQueries({ queryKey: ['center', user?.center_id] });
 
-        // إذا ما في صورة، نطلع من وضع التعديل بعد تحديث البيانات
-        if (!newLogoFile) setIsEditing(false);
+        setIsEditing(false); // Exit edit mode unconditionally on success
 
     } catch (err) {
         alert(`فشل حفظ التعديلات: ${err instanceof Error ? err.message : 'خطأ غير متوقع'}`);
@@ -132,9 +171,18 @@ const CenterPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
     const handleDeletePhoto = async () => {
         setIsDeletingPhoto(true);
         try {
-            const updatedCenter = await api.centers.deletePhoto();
-            setAppLogo(updatedCenter.logo_url);
+            await api.centers.deletePhoto();
+            
+            // Update UI context logic
             await queryClient.invalidateQueries({ queryKey: ['center', user?.center_id] });
+            
+            // Fetch latest data to update app context logo if needed
+            const updatedCenter = await api.centers.getOne();
+            if (updatedCenter) setAppLogo(updatedCenter.logo_url);
+
+            setNewLogoFile(null);
+            setNewLogoPreview(null);
+            
             setShowDeleteConfirm(false);
         } catch (err) {
              alert(`فشل حذف الصورة: ${err instanceof Error ? err.message : 'خطأ غير متوقع'}`);
@@ -143,6 +191,10 @@ const CenterPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
         }
     };
 
+    const filteredClinicTypes = useMemo(() => {
+        return CLINIC_TYPES.filter(t => t.toLowerCase().includes(typeSearch.toLowerCase()));
+    }, [typeSearch]);
+
     if (isLoading) return <CenteredLoadingSpinner />;
     if (error) return <div className="text-center p-8 text-red-500">حدث خطأ أثناء جلب بيانات المركز.</div>;
     if (!center) return <div className="text-center p-8">لم يتم العثور على بيانات المركز.</div>;
@@ -150,7 +202,7 @@ const CenterPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
     const inputStyle = "w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
 
     return (
-       <div className="max-w-5xl mx-auto">
+       <div className="max-w-5xl mx-auto pb-20">
             <div className="flex flex-col items-center md:flex-row md:justify-between md:items-start mb-8">
                  <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-right">
                     <div className="flex-shrink-0 relative group">
@@ -203,8 +255,55 @@ const CenterPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
                     <EditCard label="العنوان" icon={OfficeBuildingIcon} className="md:col-span-2">
                         <input type="text" name="address" value={formData.address || ''} onChange={handleChange} className={inputStyle} />
                     </EditCard>
-                    <EditCard label="نوع المركز" icon={BeakerIcon}>
-                        <input type="text" name="type" value={formData.type || ''} onChange={handleChange} className={inputStyle} />
+                    <EditCard label="نوع المركز" icon={BeakerIcon} className="relative z-20">
+                        <div ref={typeDropdownRef} className="relative">
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={typeSearch}
+                                    onChange={(e) => {
+                                        setTypeSearch(e.target.value);
+                                        setFormData(prev => ({ ...prev, type: e.target.value }));
+                                        setIsTypeDropdownOpen(true);
+                                    }}
+                                    onFocus={() => {
+                                        setTypeSearch('');
+                                        setIsTypeDropdownOpen(true);
+                                    }}
+                                    placeholder="ابحث واختر نوع المركز..."
+                                    className={`${inputStyle} pl-10 pr-10`}
+                                    autoComplete="off"
+                                />
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+                                </div>
+                                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <SearchIcon className="h-4 w-4 text-gray-400" />
+                                </div>
+                            </div>
+                            
+                            {isTypeDropdownOpen && (
+                                <ul className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                    {filteredClinicTypes.length > 0 ? (
+                                        filteredClinicTypes.map((type) => (
+                                            <li
+                                                key={type}
+                                                className="px-4 py-2 hover:bg-primary-50 dark:hover:bg-primary-900/30 cursor-pointer text-gray-800 dark:text-gray-200 transition-colors border-b border-gray-100 dark:border-gray-600 last:border-none"
+                                                onClick={() => {
+                                                    setFormData(prev => ({ ...prev, type: type }));
+                                                    setTypeSearch(type);
+                                                    setIsTypeDropdownOpen(false);
+                                                }}
+                                            >
+                                                {type}
+                                            </li>
+                                        ))
+                                    ) : (
+                                        <li className="px-4 py-2 text-gray-500 dark:text-gray-400 text-sm">لا توجد نتائج مطابقة</li>
+                                    )}
+                                </ul>
+                            )}
+                        </div>
                     </EditCard>
                     <InfoCard label="الحد الأقصى للمستخدمين" value={center.max_users} icon={UsersIcon} />
                     <InfoCard label="بداية الاشتراك" value={new Date(center.subscription_start).toLocaleDateString('ar-EG')} icon={CalendarIcon} />
@@ -236,8 +335,15 @@ const CenterPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">هل أنت متأكد من حذف صورة شعار المركز؟</p>
                         </div>
                         <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex justify-center gap-4">
-                            <button onClick={handleDeletePhoto} disabled={isDeletingPhoto} className="w-full rounded-md px-4 py-2 bg-red-600 text-white hover:bg-red-700 disabled:bg-red-400">
-                                {isDeletingPhoto ? 'جاري الحذف...' : 'نعم، حذف'}
+                            <button onClick={handleDeletePhoto} disabled={isDeletingPhoto} className="w-full flex items-center justify-center gap-2 rounded-md px-4 py-2 bg-red-600 text-white hover:bg-red-700 disabled:bg-red-400">
+                                {isDeletingPhoto ? (
+                                    <>
+                                        <LoadingSpinner className="h-5 w-5" />
+                                        <span>جاري الحذف...</span>
+                                    </>
+                                ) : (
+                                    'نعم، حذف'
+                                )}
                             </button>
                             <button onClick={() => setShowDeleteConfirm(false)} disabled={isDeletingPhoto} className="w-full rounded-md px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">
                                 إلغاء

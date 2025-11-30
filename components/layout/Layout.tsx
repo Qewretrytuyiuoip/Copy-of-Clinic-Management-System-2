@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { User } from '../../types';
 import Header from './Header';
@@ -55,6 +56,7 @@ const Layout: React.FC<LayoutProps> = ({ user, currentPage, setCurrentPage, onRe
     const pageTitle = useMemo(() => {
         const specialTitles: { [key: string]: string } = {
             'sessions': 'جلسات المريض',
+            'treatments': 'علاجات الجلسة',
             'plan': 'خطة العلاج',
             'details': 'تفاصيل المريض',
             'financial': 'البيان المالي للمريض',

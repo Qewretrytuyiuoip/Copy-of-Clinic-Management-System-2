@@ -1,7 +1,8 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Patient, User, UserRole } from './types';
+import { Patient, User, UserRole, Session } from './types';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { ThemeProvider } from './hooks/useTheme';
 import { AppSettingsProvider } from './hooks/useAppSettings';
@@ -16,6 +17,7 @@ import DoctorSchedulePage from './pages/DoctorSchedulePage';
 import StatisticsPage from './pages/StatisticsPage';
 import ProfilePage from './pages/ProfilePage';
 import PatientSessionsPage from './pages/PatientSessionsPage';
+import SessionTreatmentsPage from './pages/SessionTreatmentsPage';
 import PatientPlanPage from './pages/PatientPlanPage';
 import PatientDetailsPage from './pages/PatientDetailsPage';
 import PatientFinancialPage from './pages/PatientFinancialPage';
@@ -37,7 +39,13 @@ const AppContent: React.FC = () => {
     const [currentPage, setCurrentPage] = useState('dashboard');
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [activePatient, setActivePatient] = useState<Patient | null>(null);
+    const [activeSession, setActiveSession] = useState<Session | null>(null);
     const [doctors, setDoctors] = useState<User[]>([]);
+    
+    // Back Button Handling States
+    const [showExitToast, setShowExitToast] = useState(false);
+    const lastBackPressTime = useRef<number>(0);
+    const isHandlingBack = useRef(false); // Flag to prevent pushState on back navigation
 
     useEffect(() => {
         const fetchDoctors = async () => {
@@ -49,6 +57,81 @@ const AppContent: React.FC = () => {
         fetchDoctors();
     }, [user, refreshTrigger]);
 
+    // Initial History State Setup
+    useEffect(() => {
+        // Replace the initial state to ensure we have a valid state object
+        window.history.replaceState({ page: 'dashboard', patient: null, session: null }, '', '');
+    }, []);
+
+    // Sync Browser History with App State
+    useEffect(() => {
+        if (isHandlingBack.current) {
+            isHandlingBack.current = false;
+            return;
+        }
+
+        const state = { page: currentPage, patient: activePatient, session: activeSession };
+        // Only push if it's different from current history state to avoid duplicates
+        if (JSON.stringify(window.history.state) !== JSON.stringify(state)) {
+            window.history.pushState(state, '', '');
+        }
+    }, [currentPage, activePatient, activeSession]);
+
+    // Handle Hardware Back Button (popstate)
+    useEffect(() => {
+        const handlePopState = (event: PopStateEvent) => {
+            const now = Date.now();
+            
+            // If we are at the dashboard and trying to go back (which means exiting)
+            if (currentPage === 'dashboard' && (!event.state || event.state.page === 'dashboard')) {
+                if (now - lastBackPressTime.current < 2000) {
+                    // Double press detected: Allow exit (browser default behavior)
+                    // We don't prevent default here, so the browser will close the PWA or go back to previous site
+                    return;
+                } else {
+                    // First press: Prevent exit
+                    lastBackPressTime.current = now;
+                    setShowExitToast(true);
+                    
+                    // Push state back to dashboard to cancel the "back" action visually/logically
+                    // keeping the user in the app
+                    window.history.pushState({ page: 'dashboard', patient: null, session: null }, '', '');
+                    
+                    setTimeout(() => setShowExitToast(false), 2000);
+                    return;
+                }
+            }
+
+            // Internal Navigation
+            if (event.state) {
+                isHandlingBack.current = true; // Prevent pushing state again inside useEffect
+                
+                if (event.state.page) {
+                    setCurrentPage(event.state.page);
+                }
+                if (event.state.patient !== undefined) {
+                    setActivePatient(event.state.patient);
+                } else {
+                    setActivePatient(null);
+                }
+                if (event.state.session !== undefined) {
+                    setActiveSession(event.state.session);
+                } else {
+                    setActiveSession(null);
+                }
+            } else {
+                // Fallback if state is null (e.g. external link back)
+                isHandlingBack.current = true;
+                setCurrentPage('dashboard');
+                setActivePatient(null);
+                setActiveSession(null);
+            }
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [currentPage]);
+
 
     const handleRefresh = () => {
         queryClient.invalidateQueries();
@@ -58,6 +141,7 @@ const AppContent: React.FC = () => {
 
     const handleNavigation = (page: string) => {
         setActivePatient(null); // Reset active patient when changing main pages
+        setActiveSession(null);
         setCurrentPage(page);
     };
 
@@ -66,6 +150,11 @@ const AppContent: React.FC = () => {
         setCurrentPage('sessions');
     };
     
+    const handleViewSessionTreatments = (session: Session) => {
+        setActiveSession(session);
+        setCurrentPage('treatments');
+    };
+
     const handleViewPatientPlan = (patient: Patient) => {
         setActivePatient(patient);
         setCurrentPage('plan');
@@ -119,7 +208,20 @@ const AppContent: React.FC = () => {
                 return <PatientsPage {...patientsPageProps} />;
             case 'sessions':
                 return activePatient 
-                    ? <PatientSessionsPage patient={activePatient} user={user} onBack={() => handleNavigation('patients')} refreshTrigger={refreshTrigger} />
+                    ? <PatientSessionsPage patient={activePatient} user={user} onBack={() => handleNavigation('patients')} refreshTrigger={refreshTrigger} onViewTreatments={handleViewSessionTreatments} />
+                    : fallback;
+            case 'treatments':
+                return activePatient && activeSession
+                    ? <SessionTreatmentsPage 
+                        patient={activePatient}
+                        session={activeSession}
+                        user={user}
+                        onBack={() => {
+                            setActiveSession(null);
+                            setCurrentPage('sessions');
+                        }}
+                        refreshTrigger={refreshTrigger}
+                      />
                     : fallback;
             case 'plan':
                 return activePatient 
@@ -169,6 +271,15 @@ const AppContent: React.FC = () => {
     return (
         <Layout user={user} currentPage={currentPage} setCurrentPage={handleNavigation} onRefresh={handleRefresh}>
             {renderPage()}
+            
+            {/* Exit Toast Notification */}
+            {showExitToast && (
+                <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-[100] animate-fade-in-up">
+                    <div className="bg-slate-800/90 backdrop-blur text-white px-6 py-3 rounded-full shadow-xl text-sm font-medium border border-slate-700">
+                        اضغط مرة أخرى للخروج
+                    </div>
+                </div>
+            )}
         </Layout>
     );
 };
@@ -210,17 +321,28 @@ const App: React.FC = () => {
             }
         };
 
-        // Initial check on app load
-        const storedExpiry = localStorage.getItem('accessTokenExpiry');
+        // Initial check on app load / reload / PWA start
         const storedRefreshToken = localStorage.getItem('refreshToken');
 
-        if (storedExpiry) {
-            scheduleTokenRefresh(parseInt(storedExpiry, 10));
-        } else if (storedRefreshToken) {
-            // If we have a refresh token but no expiry time (legacy or cleared), refresh now to be safe
+        if (storedRefreshToken) {
+            console.log("App mounted, performing immediate token refresh...");
             performRefresh();
         }
 
+        // Add listener for when the app comes back to foreground (PWA resume)
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                const currentRefreshToken = localStorage.getItem('refreshToken');
+                if (currentRefreshToken) {
+                    console.log("App resumed (visible), performing immediate token refresh...");
+                    // Clear any pending scheduled refresh to avoid double calling
+                    clearTimeout(refreshTimeout);
+                    performRefresh();
+                }
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
 
         // Check for mobile/touch device to enable touch sounds
         const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -254,6 +376,7 @@ const App: React.FC = () => {
         }
         
         return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
             if (interactionHandlerAttached) {
                 document.removeEventListener('click', handleInteraction, { capture: true });
             }

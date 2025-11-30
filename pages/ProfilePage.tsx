@@ -87,62 +87,85 @@ const DoctorAvailabilitySettings: React.FC<DoctorAvailabilitySettingsProps> = ({
         }
     };
 
-    const inputStyle = "mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm text-black dark:text-white";
+    const inputStyle = "block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm text-black dark:text-white transition-colors";
 
     return (
         <div className="mt-8">
-            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4 border-b pb-2 dark:border-gray-700">أوقات الدوام</h2>
+            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-6 border-b pb-2 dark:border-gray-700">أوقات الدوام</h2>
              {fetchError ? (
                  <div className="text-center py-8 text-red-500 dark:text-red-400"><p>{fetchError}</p></div>
             ) : loading ? <CenteredLoadingSpinner /> : (
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    {schedule.map((day, index) => (
-                        <div key={index} className="flex items-center space-x-4 rtl:space-x-reverse bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                            <div className="flex items-center h-5">
-                                <input
-                                    id={`day-${index}`}
-                                    type="checkbox"
-                                    checked={day.isWorkDay}
-                                    onChange={() => handleDayToggle(index)}
-                                    className="focus:ring-primary h-5 w-5 text-primary border-gray-300 rounded"
-                                />
-                            </div>
-                            <label htmlFor={`day-${index}`} className="w-24 font-medium text-gray-700 dark:text-gray-300 select-none">
-                                {DAY_NAMES[index]}
-                            </label>
-                            {day.isWorkDay && (
-                                <div className="flex items-center gap-2 flex-grow">
-                                    <input
-                                        type="time"
-                                        name="startTime"
-                                        value={day.startTime}
-                                        onChange={(e) => handleTimeChange(e, index)}
-                                        className={`${inputStyle} w-auto`}
-                                    />
-                                    <span className="text-gray-500 dark:text-gray-400">إلى</span>
-                                    <input
-                                        type="time"
-                                        name="endTime"
-                                        value={day.endTime}
-                                        onChange={(e) => handleTimeChange(e, index)}
-                                        className={`${inputStyle} w-auto`}
-                                    />
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {schedule.map((day, index) => (
+                            <div 
+                                key={index} 
+                                className={`p-4 rounded-xl border transition-all duration-200 flex flex-col justify-between ${
+                                    day.isWorkDay 
+                                    ? 'bg-white dark:bg-slate-800 border-primary-200 dark:border-primary-900 shadow-sm' 
+                                    : 'bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-gray-700 opacity-80'
+                                }`}
+                            >
+                                <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100 dark:border-gray-700">
+                                    <label htmlFor={`day-${index}`} className={`font-bold text-lg cursor-pointer select-none ${day.isWorkDay ? 'text-primary-700 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                                        {DAY_NAMES[index]}
+                                    </label>
+                                    <div className="flex items-center h-5">
+                                        <input
+                                            id={`day-${index}`}
+                                            type="checkbox"
+                                            checked={day.isWorkDay}
+                                            onChange={() => handleDayToggle(index)}
+                                            className="focus:ring-primary h-5 w-5 text-primary border-gray-300 rounded cursor-pointer"
+                                        />
+                                    </div>
                                 </div>
-                            )}
-                        </div>
-                    ))}
+                                
+                                {day.isWorkDay ? (
+                                    <div className="flex flex-col gap-3">
+                                        <div className="flex flex-col">
+                                            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">وقت البدء</label>
+                                            <input
+                                                type="time"
+                                                name="startTime"
+                                                value={day.startTime}
+                                                onChange={(e) => handleTimeChange(e, index)}
+                                                className={inputStyle}
+                                            />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">وقت الانتهاء</label>
+                                            <input
+                                                type="time"
+                                                name="endTime"
+                                                value={day.endTime}
+                                                onChange={(e) => handleTimeChange(e, index)}
+                                                className={inputStyle}
+                                            />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex-grow flex items-center justify-center py-4 mt-2">
+                                        <span className="px-3 py-1 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-sm font-medium">
+                                            عطلة
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
                     
                     {feedback && (
-                        <div className={`p-3 rounded-md ${feedback.includes('فشل') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                        <div className={`p-3 rounded-md text-center font-medium ${feedback.includes('فشل') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                             {feedback}
                         </div>
                     )}
                     
-                    <div className="flex justify-end pt-4">
+                    <div className="flex justify-end pt-4 border-t dark:border-gray-700">
                         <button
                             type="submit"
                             disabled={saving}
-                            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-primary-300"
+                            className="inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-bold rounded-lg text-white bg-primary hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-primary-300 transition-colors w-full sm:w-auto"
                         >
                             {saving ? 'جاري الحفظ...' : 'حفظ التغييرات'}
                         </button>
@@ -531,13 +554,15 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ refreshTrigger }) => {
                             </button>
                         )}
                         
-                        <button
-                            onClick={handleDeleteAccountClick}
-                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-red-100 text-red-600 rounded-xl shadow hover:bg-red-200 transition-transform active:scale-95"
-                        >
-                            <TrashIcon className="h-5 w-5" />
-                            <span className="font-semibold">حذف الحساب</span>
-                        </button>
+                        {user.role === UserRole.Admin && (
+                            <button
+                                onClick={handleDeleteAccountClick}
+                                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-red-100 text-red-600 rounded-xl shadow hover:bg-red-200 transition-transform active:scale-95"
+                            >
+                                <TrashIcon className="h-5 w-5" />
+                                <span className="font-semibold">حذف الحساب</span>
+                            </button>
+                        )}
                         
                         <button
                             onClick={handleLogoutClick}
