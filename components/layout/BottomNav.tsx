@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { User, UserRole } from '../../types';
 import { NAV_ITEMS } from '../../constants';
@@ -10,10 +11,12 @@ interface BottomNavProps {
 
 const BottomNav: React.FC<BottomNavProps> = ({ user, currentPage, setCurrentPage }) => {
     const navItems = useMemo(() => {
-        let items = NAV_ITEMS[user.role];
+        let items = NAV_ITEMS[user.role] || [];
 
-        // Default filter: remove profile page
-        items = items.filter(item => item.page !== 'profile');
+        // Default filter: remove profile page, unless it is an Application Manager who has very few items.
+        if (user.role !== UserRole.ApplicationManager) {
+            items = items.filter(item => item.page !== 'profile');
+        }
 
         // Filter center page for Admin role from bottom bar
         if (user.role === UserRole.Admin) {

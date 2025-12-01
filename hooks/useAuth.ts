@@ -1,3 +1,5 @@
+
+
 import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect } from 'react';
 import { User, UserRole, Permission } from '../types';
 import { login as apiLogin, logout as apiLogout, getMe as apiGetMe, register as apiRegister, ApiError } from '../services/api';
@@ -143,8 +145,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 
     const logout = async () => {
-        await apiLogout();
-        setUser(null);
+        // If Application Manager, skip server call and just clear local data
+        if (user?.role === UserRole.ApplicationManager) {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('refreshTokenExpiry');
+            localStorage.removeItem('currentUser');
+            setUser(null);
+            // The App component will detect user is null and redirect to LoginPage
+            return;
+        }
+
+        // For other users, attempt server logout but ensure local cleanup
+        try {
+            await apiLogout();
+        } catch (e) {
+            console.error("Logout failed, but logging out client-side anyway.", e);
+        } finally {
+            // This block ensures client-side logout happens even if server call fails
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('refreshTokenExpiry');
+            localStorage.removeItem('currentUser');
+            setUser(null);
+        }
     };
 
     const value = useMemo(() => ({ user, isLoading, login, register, logout, loginSuccessMessage, setLoginSuccessMessage, setUser }), [user, isLoading, loginSuccessMessage]);

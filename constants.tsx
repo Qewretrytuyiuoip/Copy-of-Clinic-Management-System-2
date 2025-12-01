@@ -39,6 +39,10 @@ export const NAV_ITEMS = {
     { name: 'المدفوعات', icon: CurrencyDollarIcon, page: 'payments' },
     { name: 'الدعم', icon: ChatBubbleIcon, page: 'contact' },
   ],
+  [UserRole.ApplicationManager]: [
+    { name: 'لوحة التحكم', icon: HomeIcon, page: 'dashboard' },
+    { name: 'الملف الشخصي', icon: UserCircleIcon, page: 'profile' },
+  ],
 };
 
 export const DAY_NAMES = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
@@ -48,4 +52,5 @@ export const ROLE_NAMES = {
   [UserRole.Doctor]: 'طبيب',
   [UserRole.Secretary]: 'سكرتير',
   [UserRole.SubManager]: 'مدير فرعي',
+  [UserRole.ApplicationManager]: 'مدير التطبيق',
 };

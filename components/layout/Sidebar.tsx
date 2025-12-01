@@ -1,4 +1,5 @@
 
+
 import React, { useMemo, useState } from 'react';
 import { User, UserRole } from '../../types';
 import { NAV_ITEMS } from '../../constants';
@@ -26,7 +27,7 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ user, currentPage, setCurrentPage, sidebarOpen, setSidebarOpen }) => {
-    const baseNavItems = NAV_ITEMS[user.role];
+    const baseNavItems = NAV_ITEMS[user.role] || [];
     const { settings } = useAppSettings();
     const [isCollapsed, setIsCollapsed] = useState(false);
 

@@ -1,4 +1,5 @@
 
+
 // FIX: Removed 'SubManager' from import as it is not an exported member of '../types'.
 import { User, UserRole, Patient, Treatment, Session, Appointment, Payment, DoctorAvailability, SessionTreatment, Gender, DaySchedule, PatientPhoto, ActivityLog, ActivityLogActionType, CreatePatientPhotosPayload, Center, Permission } from '../types';
 import { API_BASE_URL } from '../appSettings';
@@ -824,6 +825,24 @@ export const api = {
         },
     },
     centers: {
+        getAll: async (): Promise<Center[]> => {
+            try {
+                const formData = new FormData();
+                const responseData = await performApiFetch('centers/all', { method: 'POST', body: formData });
+                const centers = responseData;
+                if (!Array.isArray(centers)) {
+                    console.error('Expected an array of centers from API, but got:', centers);
+                    return [];
+                }
+                return centers.map(mapApiCenterToCenter);
+            } catch (error) {
+                if (error instanceof Error && error.message === 'Session expired. Please login again.') {
+                    return [];
+                }
+                console.error(`Fetching all centers online failed.`, error);
+                throw error;
+            }
+        },
         getOne: async (): Promise<Center | null> => {
             try {
                 const formData = new FormData();
@@ -840,8 +859,12 @@ export const api = {
                 return null;
             }
         },
-        update: async (updates: Partial<Omit<Center, 'id' | 'logo_url' | 'created_at'>>): Promise<Center> => {
+        update: async (updates: Partial<Center>): Promise<Center> => {
             const formData = new FormData();
+
+            if (!updates.id) {
+                throw new Error("Center ID is required to update.");
+            }
 
             for (const key in updates) {
                 if (Object.prototype.hasOwnProperty.call(updates, key)) {

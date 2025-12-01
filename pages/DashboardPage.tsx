@@ -3,6 +3,7 @@ import { User, UserRole } from '../types';
 import DashboardAdmin from '../components/dashboards/DashboardAdmin';
 import DashboardDoctor from '../components/dashboards/DashboardDoctor';
 import DashboardSecretary from '../components/dashboards/DashboardSecretary';
+import DashboardApplicationManager from '../components/dashboards/DashboardApplicationManager';
 
 interface DashboardPageProps {
     user: User;
@@ -20,6 +21,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, refreshTrigger, set
                 return <DashboardDoctor user={user} refreshTrigger={refreshTrigger} />;
             case UserRole.Secretary:
                 return <DashboardSecretary user={user} refreshTrigger={refreshTrigger} />;
+            case UserRole.ApplicationManager:
+                return <DashboardApplicationManager user={user} refreshTrigger={refreshTrigger} />;
             default:
                 return <div>مرحباً!</div>;
         }

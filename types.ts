@@ -1,3 +1,4 @@
+
 // FIX: Replaced the entire file content which contained logic and a circular import
 // with proper type definitions to be used across the application.
 // This resolves numerous 'not exported' and 'circular definition' errors.
@@ -7,6 +8,7 @@ export enum UserRole {
     Doctor = 'doctor',
     Secretary = 'secretary',
     SubManager = 'sub_manager',
+    ApplicationManager = 'Application_manager',
 }
 
 export enum Gender {

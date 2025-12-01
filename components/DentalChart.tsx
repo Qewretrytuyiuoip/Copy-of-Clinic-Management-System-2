@@ -1,6 +1,12 @@
 import React from 'react';
 import { SessionTreatment } from '../types';
 
+// FIX: Added DentalChartProps interface definition to resolve 'Cannot find name' error.
+interface DentalChartProps {
+    treatments: SessionTreatment[];
+    onToothClick: (toothNumber: number) => void;
+}
+
 // ... (بقية مكون ToothPath تبقى كما هي)
 const ToothPath: React.FC<{ 
     id: number; 

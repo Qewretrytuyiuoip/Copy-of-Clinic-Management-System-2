@@ -19,7 +19,7 @@ const getInitialSettings = (): AppSettings => {
     // FIX: Added appLogo to the default settings and load it from localStorage.
     const defaultSettings: AppSettings = {
         appName: 'Clinic Key',
-        appLogo: '/assets/logo.svg',
+        appLogo: 'https://lok.alwaysdata.net/clinickeyapi/public/uploads/app_photos/logo.jpg',
     };
     try {
         const savedSettings = localStorage.getItem('appSettings');
