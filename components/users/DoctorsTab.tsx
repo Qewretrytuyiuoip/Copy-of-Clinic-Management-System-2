@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { User, UserRole, Permission } from '../../types';
 import { api, ApiError } from '../../services/api';
-import { PlusIcon, PencilIcon, TrashIcon, XIcon, UserGroupIcon } from '../../components/Icons';
+import { PlusIcon, PencilIcon, TrashIcon, XIcon, UserGroupIcon, UserCircleIcon } from '../../components/Icons';
 import { CenteredLoadingSpinner } from '../../components/LoadingSpinner';
 import { useQuery } from '@tanstack/react-query';
 
@@ -489,28 +489,56 @@ const DoctorsTab: React.FC<DoctorsTabProps> = ({ refreshTrigger, canAddUser }) =
                      doctors.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {doctors.map(doc => (
-                                <div key={doc.id} className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-none rounded-2xl p-5 border border-gray-200 dark:border-white flex flex-col justify-between transition-all hover:scale-[1.01]">
-                                    <div>
-                                        <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{doc.name}</h3>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <p className="text-primary dark:text-primary-300 font-semibold">{doc.specialty}</p>
+                                <div key={doc.id} className="relative group overflow-hidden rounded-3xl bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+                                    {/* Decorative Gradients */}
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-400 to-secondary-400 opacity-80" />
+                                    <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary-500/10 rounded-full blur-3xl group-hover:bg-primary-500/20 transition-colors pointer-events-none" />
+                                    <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-secondary-500/10 rounded-full blur-3xl group-hover:bg-secondary-500/20 transition-colors pointer-events-none" />
+
+                                    <div className="relative z-10 p-5 flex flex-col h-full justify-between">
+                                        {/* Header */}
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+                                                    <UserCircleIcon className="h-8 w-8" />
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-1" title={doc.name}>{doc.name}</h3>
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1" title={doc.email}>{doc.email}</p>
+                                                </div>
+                                            </div>
                                             {doc.is_diagnosis_doctor && (
-                                                <span className="px-2 py-0.5 bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300 text-xs font-bold rounded-full">
-                                                    طبيب تشخيص
+                                                <span className="px-2 py-0.5 bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300 text-[10px] font-bold rounded-full">
+                                                    تشخيص
                                                 </span>
                                             )}
                                         </div>
-                                        <p className="text-gray-600 dark:text-gray-300 mt-2 text-sm">{doc.email}</p>
-                                    </div>
-                                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
-                                        <button onClick={() => setEditingDoctor(doc)} className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 text-sm">
-                                            <PencilIcon className="h-4 w-4" />
-                                            <span className="mr-1">تعديل</span>
-                                        </button>
-                                        <button onClick={() => handleDeleteClick(doc)} className="flex items-center text-red-600 dark:text-red-400 hover:text-red-800 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-sm">
-                                            <TrashIcon className="h-4 w-4" />
-                                            <span className="mr-1">حذف</span>
-                                        </button>
+
+                                        {/* Details */}
+                                        <div className="mb-4">
+                                            <p className="text-sm text-gray-600 dark:text-gray-300">
+                                                <span className="font-semibold text-primary dark:text-primary-400">التخصص: </span>
+                                                {doc.specialty || 'غير محدد'}
+                                            </p>
+                                        </div>
+
+                                        {/* Footer Actions */}
+                                        <div className="pt-4 border-t border-gray-100 dark:border-white/10 flex justify-end gap-2">
+                                            <button 
+                                                onClick={() => setEditingDoctor(doc)} 
+                                                className="flex items-center justify-center p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-slate-700 dark:text-blue-400 dark:hover:bg-slate-600 transition-colors shadow-sm"
+                                                title="تعديل"
+                                            >
+                                                <PencilIcon className="h-4 w-4" />
+                                            </button>
+                                            <button 
+                                                onClick={() => handleDeleteClick(doc)} 
+                                                className="flex items-center justify-center p-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 dark:bg-slate-700 dark:text-red-400 dark:hover:bg-slate-600 transition-colors shadow-sm"
+                                                title="حذف"
+                                            >
+                                                <TrashIcon className="h-4 w-4" />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             ))}

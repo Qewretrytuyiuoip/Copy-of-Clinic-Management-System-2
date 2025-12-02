@@ -49,22 +49,22 @@ interface ConfirmDeleteModalProps {
 }
 
 const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ onConfirm, onCancel, title, message, isDeleting }) => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 transition-opacity" onClick={onCancel}>
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex justify-center items-center p-4 transition-opacity" onClick={onCancel}>
+        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-white/20 dark:border-gray-700 rounded-2xl shadow-2xl w-full max-w-sm transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
             <div className="p-6">
                 <div className="text-center">
-                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30">
+                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100/50 dark:bg-red-900/30 backdrop-blur-md">
                         <TrashIcon className="h-6 w-6 text-red-600 dark:text-red-400" aria-hidden="true" />
                     </div>
                     <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-4">{title}</h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 px-4">{message}</p>
                 </div>
             </div>
-            <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex justify-center gap-4">
-                <button type="button" onClick={onConfirm} disabled={isDeleting} className="w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-red-400 disabled:cursor-not-allowed">
+            <div className="bg-gray-50/50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex justify-center gap-4 border-t border-gray-200/50 dark:border-gray-700/50">
+                <button type="button" onClick={onConfirm} disabled={isDeleting} className="w-full rounded-xl border border-transparent shadow-lg px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-base font-medium text-white hover:from-red-600 hover:to-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-70 disabled:cursor-not-allowed transform transition hover:scale-[1.02]">
                     {isDeleting ? 'جاري الحذف...' : 'نعم، قم بالحذف'}
                 </button>
-                <button type="button" onClick={onCancel} disabled={isDeleting} className="w-full rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                <button type="button" onClick={onCancel} disabled={isDeleting} className="w-full rounded-xl border border-gray-300/50 dark:border-gray-600 shadow-sm px-4 py-2 bg-white/50 dark:bg-gray-700/50 backdrop-blur-sm text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-white/80 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed">
                     إلغاء
                 </button>
             </div>
@@ -87,20 +87,20 @@ const ViewAppointmentModal: React.FC<ViewAppointmentModalProps> = ({ appointment
     appointmentDate.setMinutes(appointmentDate.getMinutes() + appointmentDate.getTimezoneOffset());
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-2xl border border-white/20 dark:border-gray-700 rounded-2xl shadow-2xl w-full max-w-md" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b border-gray-200/50 dark:border-gray-700/50">
                     <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">تفاصيل الموعد</h2>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
                 </div>
                 <div className="p-6 space-y-4">
-                    <div><p className="text-sm font-medium text-gray-500 dark:text-gray-400">المريض</p><p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{patientName}</p></div>
-                    <div><p className="text-sm font-medium text-gray-500 dark:text-gray-400">الطبيب</p><p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{doctorName}</p></div>
-                    <div><p className="text-sm font-medium text-gray-500 dark:text-gray-400">التاريخ</p><p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{`${appointmentDate.getFullYear()}/${appointmentDate.getMonth() + 1}/${appointmentDate.getDate()}`}</p></div>
-                    <div><p className="text-sm font-medium text-gray-500 dark:text-gray-400">الوقت</p><p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{formatTo12Hour(appointment.time)}</p></div>
-                    {appointment.notes && (<div><p className="text-sm font-medium text-gray-500 dark:text-gray-400">ملاحظات</p><p className="text-md text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 p-2 rounded-md">{appointment.notes}</p></div>)}
+                    <div><p className="text-sm font-medium text-primary-600 dark:text-primary-400">المريض</p><p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{patientName}</p></div>
+                    <div><p className="text-sm font-medium text-primary-600 dark:text-primary-400">الطبيب</p><p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{doctorName}</p></div>
+                    <div><p className="text-sm font-medium text-primary-600 dark:text-primary-400">التاريخ</p><p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{`${appointmentDate.getFullYear()}/${appointmentDate.getMonth() + 1}/${appointmentDate.getDate()}`}</p></div>
+                    <div><p className="text-sm font-medium text-primary-600 dark:text-primary-400">الوقت</p><p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{formatTo12Hour(appointment.time)}</p></div>
+                    {appointment.notes && (<div><p className="text-sm font-medium text-primary-600 dark:text-primary-400">ملاحظات</p><p className="text-md text-gray-700 dark:text-gray-300 bg-gray-50/50 dark:bg-slate-700/50 p-3 rounded-xl border border-gray-100 dark:border-gray-600">{appointment.notes}</p></div>)}
                 </div>
-                <div className="flex justify-end p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700"><button onClick={onClose} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-700">إغلاق</button></div>
+                <div className="flex justify-end p-4 bg-gray-50/50 dark:bg-slate-700/50 border-t border-gray-200/50 dark:border-gray-700/50 rounded-b-2xl"><button onClick={onClose} className="px-6 py-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl shadow-lg hover:shadow-primary/30 hover:scale-[1.02] transition-all">إغلاق</button></div>
             </div>
         </div>
     );
@@ -397,60 +397,61 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
     };
 
     const isEditMode = !!appointment;
-    const inputStyle = "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-800 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
+    // Glassmorphism Input Style
+    const inputStyle = "w-full px-4 py-2.5 bg-white/50 dark:bg-slate-700/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-600/50 rounded-xl shadow-inner focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent text-gray-800 dark:text-gray-100 placeholder-gray-400 transition-all";
 
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-lg" role="dialog" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
-                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{isEditMode ? 'تعديل الموعد' : 'إضافة موعد جديد'}</h2>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-2xl border border-white/20 dark:border-gray-700 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-5 border-b border-gray-200/50 dark:border-gray-700/50">
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 tracking-wide">{isEditMode ? 'تعديل الموعد' : 'إضافة موعد جديد'}</h2>
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
                 </div>
                 <form onSubmit={handleSubmit}>
-                    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[70vh] overflow-y-auto">
+                    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5 max-h-[70vh] overflow-y-auto custom-scrollbar">
                         <div className="md:col-span-2">
                            {showNewPatientForm ? (
-                                <div className="p-4 border dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-800">
-                                    <div className="flex justify-between items-center mb-3">
-                                        <h3 className="text-md font-semibold text-gray-800 dark:text-gray-100">إضافة مريض جديد</h3>
+                                <div className="p-5 border border-primary-200/50 dark:border-primary-700/30 rounded-2xl bg-primary-50/30 dark:bg-primary-900/10 backdrop-blur-sm">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="text-lg font-bold text-primary-700 dark:text-primary-300">إضافة مريض جديد</h3>
                                         <button 
                                             type="button" 
                                             onClick={() => setShowNewPatientForm(false)} 
-                                            className="text-sm text-primary hover:underline font-medium"
+                                            className="text-sm text-primary-600 hover:text-primary-800 dark:hover:text-primary-300 underline font-medium transition-colors"
                                         >
                                             العودة لاختيار مريض
                                         </button>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <label htmlFor="newPatientName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">اسم المريض</label>
+                                            <label htmlFor="newPatientName" className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">اسم المريض</label>
                                             <input type="text" id="newPatientName" name="name" value={newPatientData.name} onChange={handleNewPatientChange} required className={inputStyle} placeholder="الاسم الكامل" />
                                         </div>
                                         <div>
-                                            <label htmlFor="newPatientPhone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">هاتف المريض</label>
+                                            <label htmlFor="newPatientPhone" className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">هاتف المريض</label>
                                             <input type="tel" id="newPatientPhone" name="phone" value={newPatientData.phone} onChange={handleNewPatientChange} required className={inputStyle} placeholder="رقم الهاتف" />
                                         </div>
                                         <div>
-                                            <label htmlFor="newPatientAge" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">العمر</label>
+                                            <label htmlFor="newPatientAge" className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">العمر</label>
                                             <input type="number" id="newPatientAge" name="age" value={newPatientData.age} onChange={handleNewPatientChange} required className={inputStyle} placeholder="العمر" />
                                         </div>
                                         <div>
-                                            <label htmlFor="newPatientGender" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الجنس</label>
+                                            <label htmlFor="newPatientGender" className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">الجنس</label>
                                             <select id="newPatientGender" name="gender" value={newPatientData.gender} onChange={handleNewPatientChange} className={inputStyle}>
                                                 <option value={Gender.Male}>ذكر</option>
                                                 <option value={Gender.Female}>أنثى</option>
                                             </select>
                                         </div>
-                                        <div className="md:col-span-2 flex items-center space-x-4 pt-2">
-                                            <label className="flex items-center cursor-pointer">
-                                                <input type="checkbox" name="isSmoker" checked={newPatientData.isSmoker} onChange={handleNewPatientChange} className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary" />
-                                                <span className="mr-2 text-sm text-gray-700 dark:text-gray-300">مدخن</span>
+                                        <div className="md:col-span-2 flex items-center space-x-4 pt-2 rtl:space-x-reverse">
+                                            <label className="flex items-center cursor-pointer p-2 rounded-lg hover:bg-white/30 dark:hover:bg-black/20 transition-colors">
+                                                <input type="checkbox" name="isSmoker" checked={newPatientData.isSmoker} onChange={handleNewPatientChange} className="h-5 w-5 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary" />
+                                                <span className="mr-2 text-sm font-medium text-gray-700 dark:text-gray-300">مدخن</span>
                                             </label>
                                             {newPatientData.gender === Gender.Female && (
-                                                <label className="flex items-center cursor-pointer">
-                                                    <input type="checkbox" name="isPregnant" checked={newPatientData.isPregnant} onChange={handleNewPatientChange} className="h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary" />
-                                                    <span className="mr-2 text-sm text-gray-700 dark:text-gray-300">حامل</span>
+                                                <label className="flex items-center cursor-pointer p-2 rounded-lg hover:bg-white/30 dark:hover:bg-black/20 transition-colors">
+                                                    <input type="checkbox" name="isPregnant" checked={newPatientData.isPregnant} onChange={handleNewPatientChange} className="h-5 w-5 text-primary rounded border-gray-300 dark:border-gray-500 focus:ring-primary" />
+                                                    <span className="mr-2 text-sm font-medium text-gray-700 dark:text-gray-300">حامل</span>
                                                 </label>
                                             )}
                                         </div>
@@ -459,18 +460,18 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                             ) : (
                                 <div ref={dropdownRef} className="relative">
                                     <div className="flex justify-between items-center mb-1">
-                                        <label htmlFor="patientSearch" className="block text-sm font-medium text-gray-700 dark:text-gray-300">المريض</label>
+                                        <label htmlFor="patientSearch" className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">المريض</label>
                                         <button 
                                             type="button"
                                             onClick={() => setShowNewPatientForm(true)}
-                                            className="flex items-center text-sm font-medium text-primary hover:text-primary-700 transition-colors"
+                                            className="flex items-center text-sm font-bold text-primary hover:text-primary-700 transition-colors bg-primary-50 dark:bg-primary-900/30 px-2 py-1 rounded-md"
                                         >
                                             <PlusIcon className="h-4 w-4 ml-1" />
                                             مريض جديد
                                         </button>
                                     </div>
-                                    <div className="relative">
-                                        <SearchIcon className="absolute top-1/2 right-3 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                    <div className="relative group">
+                                        <SearchIcon className="absolute top-1/2 right-3 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors" />
                                         <input
                                             id="patientSearch"
                                             type="text"
@@ -491,19 +492,19 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                                     </div>
                                     
                                     {isDropdownOpen && (
-                                        <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                        <div className="absolute z-10 mt-2 w-full bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar">
                                             {filteredPatients.length > 0 ? (
                                                 filteredPatients.map(p => (
                                                     <div
                                                         key={p.id}
                                                         onClick={() => handlePatientSelect(p)}
-                                                        className="px-4 py-2 cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-900/40 text-gray-900 dark:text-gray-200"
+                                                        className="px-4 py-3 cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/30 text-gray-900 dark:text-gray-200 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-none"
                                                     >
                                                         {p.name}
                                                     </div>
                                                 ))
                                             ) : (
-                                                <div className="px-4 py-2 text-gray-500">لا يوجد مرضى مطابقون</div>
+                                                <div className="px-4 py-3 text-gray-500 text-center">لا يوجد مرضى مطابقون</div>
                                             )}
                                         </div>
                                     )}
@@ -511,34 +512,39 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                             )}
                         </div>
                         <div className="md:col-span-2">
-                            <label htmlFor="doctorId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الطبيب</label>
+                            <label htmlFor="doctorId" className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">الطبيب</label>
                             {showNewPatientForm && isSecretary && patientDoctors.length === 0 ? (
-                                <div className="p-3 border border-red-400 dark:border-red-600 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-center text-sm font-medium">
+                                <div className="p-3 border border-red-400 dark:border-red-600 rounded-xl bg-red-50/50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-center text-sm font-medium">
                                     لا يوجد اطباء تشخيص يرجى الطلب من المدير اضافة طبيب تشخيص
                                 </div>
                             ) : (
-                                <select id="doctorId" name="doctorId" value={formData.doctorId} onChange={handleChange} required className={inputStyle} disabled={!!initialData?.doctorId && !formData.patientId}>
-                                    <option value="">اختر طبيب...</option>
-                                    {patientDoctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                </select>
+                                <div className="relative">
+                                    <select id="doctorId" name="doctorId" value={formData.doctorId} onChange={handleChange} required className={`${inputStyle} appearance-none cursor-pointer`} disabled={!!initialData?.doctorId && !formData.patientId}>
+                                        <option value="">اختر طبيب...</option>
+                                        {patientDoctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                    </select>
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <ChevronDownIcon className="w-4 h-4 text-gray-500" />
+                                    </div>
+                                </div>
                             )}
                         </div>
                         <div>
-                            <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">التاريخ</label>
+                            <label htmlFor="date" className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">التاريخ</label>
                             <div className="relative">
-                                <input type="date" id="date" name="date" value={formData.date} onChange={handleChange} required className={`${inputStyle} pr-10`} />
+                                <input type="date" id="date" name="date" value={formData.date} onChange={handleChange} required className={`${inputStyle} pr-10 appearance-none`} />
                                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                    <CalendarIcon className="h-5 w-5 text-black dark:text-white" />
+                                    <CalendarIcon className="h-5 w-5 text-gray-400" />
                                 </div>
                             </div>
                         </div>
                         <div>
-                            <label htmlFor="time" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الوقت</label>
+                            <label htmlFor="time" className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">الوقت</label>
                             {slotsLoading ? (
-                                <div className="h-10 flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">جاري تحميل الأوقات...</div>
+                                <div className="h-11 flex items-center justify-center text-sm text-primary animate-pulse font-medium bg-white/30 rounded-xl">جاري تحميل الأوقات...</div>
                             ) : (
                                 <div className="relative">
-                                    <select id="time" name="time" value={formData.time} onChange={handleChange} required className={`${inputStyle} pr-10`} disabled={!formData.doctorId || !formData.date}>
+                                    <select id="time" name="time" value={formData.time} onChange={handleChange} required className={`${inputStyle} pr-10 appearance-none cursor-pointer`} disabled={!formData.doctorId || !formData.date}>
                                         <option value="">اختر وقت...</option>
                                         {availableSlots.length > 0 ? (
                                             availableSlots.map(slot => <option key={slot.value} value={slot.value}>{slot.label}</option>)
@@ -547,17 +553,20 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ appointment
                                         )}
                                     </select>
                                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                        <ClockIcon className="h-5 w-5 text-black dark:text-white" />
+                                        <ClockIcon className="h-5 w-5 text-gray-400" />
+                                    </div>
+                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <ChevronDownIcon className="w-4 h-4 text-gray-500" />
                                     </div>
                                 </div>
                             )}
                         </div>
-                        <div className="md:col-span-2"><label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={3} className={inputStyle}></textarea></div>
+                        <div className="md:col-span-2"><label htmlFor="notes" className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">ملاحظات</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={3} className={inputStyle} placeholder="أي ملاحظات إضافية..."></textarea></div>
                         
                     </div>
-                    <div className="flex justify-end items-center p-4 bg-gray-50 dark:bg-slate-700/50 border-t dark:border-gray-700">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">إلغاء</button>
-                        <button type="submit" disabled={isSaving || (showNewPatientForm && isSecretary && patientDoctors.length === 0)} className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-white hover:bg-primary-700 disabled:bg-primary-300 mr-2">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
+                    <div className="flex justify-end items-center p-5 bg-gray-50/50 dark:bg-slate-700/50 border-t border-gray-200/50 dark:border-gray-700/50 rounded-b-2xl">
+                        <button type="button" onClick={onClose} className="px-5 py-2.5 ml-3 bg-white/50 dark:bg-gray-600/50 border border-gray-200 dark:border-gray-500 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-500 transition-all shadow-sm">إلغاء</button>
+                        <button type="submit" disabled={isSaving || (showNewPatientForm && isSecretary && patientDoctors.length === 0)} className="px-6 py-2.5 bg-gradient-to-r from-primary-500 to-primary-600 border border-transparent rounded-xl text-sm font-bold text-white hover:shadow-lg hover:shadow-primary/30 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">{isSaving ? 'جاري الحفظ...' : 'حفظ'}</button>
                     </div>
                 </form>
             </div>
@@ -610,9 +619,12 @@ const AvailableSlotsModal: React.FC<AvailableSlotsModalProps> = ({ doctors, allA
         const daySchedule = schedule.find(s => s.day === dayOfWeek);
         if (!daySchedule || !daySchedule.isWorkDay) {
             return (
-                <div key={doctor.id} className="p-4 border-b dark:border-gray-700">
+                <div key={doctor.id} className="p-4 border-b border-gray-100 dark:border-gray-700/50 last:border-none">
                     <h3 className="font-bold text-lg dark:text-gray-200">{doctor.name}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">غير متاح اليوم.</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-red-400"></span>
+                        غير متاح اليوم
+                    </p>
                 </div>
             );
         }
@@ -625,37 +637,47 @@ const AvailableSlotsModal: React.FC<AvailableSlotsModalProps> = ({ doctors, allA
         const availableSlots = allSlots.filter(slot => !bookedSlots.includes(slot));
         
         return (
-            <div key={doctor.id} className="p-4 border-b dark:border-gray-700">
-                <h3 className="font-bold text-lg dark:text-gray-200 mb-2">{doctor.name}</h3>
+            <div key={doctor.id} className="p-5 border-b border-gray-100 dark:border-gray-700/50 last:border-none">
+                <div className="flex items-center gap-2 mb-3">
+                    <h3 className="font-bold text-lg text-gray-800 dark:text-gray-100">{doctor.name}</h3>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 font-medium">
+                        {availableSlots.length} وقت متاح
+                    </span>
+                </div>
                 {availableSlots.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
                         {availableSlots.map(slot => (
                             <button
                                 key={slot}
                                 onClick={() => onSlotSelect(doctor.id, slot)}
-                                className="px-3 py-1.5 bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 font-semibold rounded-md hover:bg-primary-200 dark:hover:bg-primary-900/60 transition-colors text-sm"
+                                className="px-4 py-2 bg-white dark:bg-slate-700 text-primary-700 dark:text-primary-300 font-semibold rounded-xl border border-primary-100 dark:border-slate-600 hover:bg-primary-50 dark:hover:bg-slate-600 hover:border-primary-300 dark:hover:border-primary-500 transition-all text-sm shadow-sm"
                             >
                                 {formatTo12Hour(slot)}
                             </button>
                         ))}
                     </div>
                 ) : (
-                     <p className="text-sm text-gray-500 dark:text-gray-400">لا توجد مواعيد متاحة.</p>
+                     <p className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-slate-700/30 p-2 rounded-lg inline-block">لا توجد مواعيد متاحة.</p>
                 )}
             </div>
         );
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-3xl" role="dialog" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
-                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">المواعيد المتاحة ليوم ({new Intl.DateTimeFormat('ar-EG', { calendar: 'gregory', year: 'numeric', month: 'long', day: 'numeric' }).format(date)})</h2>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-2xl border border-white/20 dark:border-gray-700 rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden" role="dialog" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-5 border-b border-gray-200/50 dark:border-gray-700/50 bg-white/50 dark:bg-slate-700/20">
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">المواعيد المتاحة</h2>
+                        <p className="text-sm text-primary-600 dark:text-primary-400 font-medium mt-0.5">
+                            ليوم ({new Intl.DateTimeFormat('ar-EG', { calendar: 'gregory', year: 'numeric', month: 'long', day: 'numeric' }).format(date)})
+                        </p>
+                    </div>
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors" aria-label="إغلاق"><XIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" /></button>
                 </div>
-                <div className="p-2 max-h-[70vh] overflow-y-auto">
+                <div className="p-0 max-h-[70vh] overflow-y-auto custom-scrollbar">
                     {loadingSchedules ? (
-                        <CenteredLoadingSpinner />
+                        <div className="p-10"><CenteredLoadingSpinner /></div>
                     ) : (
                         doctors.map(renderDoctorSlots)
                     )}
@@ -901,7 +923,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
             {/* Top Search Bar */}
             <div className="mb-6">
                 <div className="relative w-full">
-                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                   <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
                        <SearchIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
                    </div>
                    <input
@@ -909,13 +931,20 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                        value={searchTerm}
                        onChange={(e) => setSearchTerm(e.target.value)}
                        placeholder="ابحث في مواعيد اليوم المحدد..."
-                       className="w-full pl-3 pr-10 py-3 bg-white dark:bg-gray-700 text-black dark:text-white border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                       className="w-full pl-4 pr-12 py-3.5 bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-white/50 dark:border-gray-600 rounded-2xl shadow-inner focus:outline-none focus:ring-2 focus:ring-primary-400 focus:bg-white/60 dark:focus:bg-slate-800/60 transition-all text-gray-800 dark:text-gray-100 placeholder-gray-500"
                    />
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
-                <div className="flex flex-col lg:flex-row justify-between items-center mb-6 gap-4">
+            {/* Glass Calendar Container */}
+            <div className="bg-white/30 dark:bg-slate-900/30 backdrop-blur-2xl border border-white/40 dark:border-white/10 rounded-3xl shadow-xl overflow-hidden p-4 sm:p-6 relative">
+                
+                {/* Decorative Elements */}
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
+                <div className="absolute -top-20 -right-20 w-64 h-64 bg-primary-400/20 rounded-full blur-3xl pointer-events-none"></div>
+                <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-teal-400/20 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div className="relative z-10 flex flex-col lg:flex-row justify-between items-center mb-6 gap-4">
                     
                     {/* Right Side: Navigation & Title (RTL Start) */}
                     <div className="flex items-center gap-4 order-1 lg:order-1 w-full lg:w-auto justify-between lg:justify-start relative z-20">
@@ -926,20 +955,20 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                                 <div className="relative">
                                     <button
                                         onClick={() => { setIsMonthPickerOpen(!isMonthPickerOpen); setIsYearPickerOpen(false); }}
-                                        className="flex items-center gap-1 text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-slate-700 px-2 py-1 rounded transition-colors"
+                                        className="flex items-center gap-1 text-lg sm:text-2xl font-bold text-gray-800 dark:text-gray-100 hover:text-primary-600 dark:hover:text-primary-400 px-2 py-1 rounded-lg transition-all"
                                     >
                                         {LEVANTINE_MONTHS[currentDate.getMonth()]} ({currentDate.getMonth() + 1})
-                                        <ChevronDownIcon className={`w-4 h-4 transition-transform ${isMonthPickerOpen ? 'rotate-180' : ''}`} />
+                                        <ChevronDownIcon className={`w-5 h-5 transition-transform ${isMonthPickerOpen ? 'rotate-180' : ''}`} />
                                     </button>
                                     {isMonthPickerOpen && (
                                         <>
                                             <div className="fixed inset-0 z-40" onClick={() => setIsMonthPickerOpen(false)}></div>
-                                            <div className="absolute top-full right-0 mt-2 w-64 bg-white dark:bg-slate-700 shadow-xl rounded-lg p-2 z-50 grid grid-cols-3 gap-2 border dark:border-gray-600">
+                                            <div className="absolute top-full right-0 mt-2 w-64 bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl shadow-2xl rounded-2xl p-3 z-50 grid grid-cols-3 gap-2 border border-white/20 dark:border-gray-600 animate-fade-in-down">
                                                 {LEVANTINE_MONTHS.map((month, index) => (
                                                     <button
                                                         key={month}
                                                         onClick={() => handleMonthSelect(index)}
-                                                        className={`p-2 text-sm font-medium rounded hover:bg-primary-50 dark:hover:bg-slate-600 ${currentDate.getMonth() === index ? 'bg-primary text-white hover:bg-primary-700' : 'text-gray-700 dark:text-gray-200'}`}
+                                                        className={`p-2 text-sm font-medium rounded-xl transition-all ${currentDate.getMonth() === index ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700'}`}
                                                     >
                                                         {month}
                                                     </button>
@@ -953,20 +982,20 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                                 <div className="relative">
                                     <button
                                         onClick={() => { setIsYearPickerOpen(!isYearPickerOpen); setIsMonthPickerOpen(false); }}
-                                        className="flex items-center gap-1 text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-slate-700 px-2 py-1 rounded transition-colors"
+                                        className="flex items-center gap-1 text-lg sm:text-2xl font-bold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-2 py-1 rounded-lg transition-all"
                                     >
                                         {currentDate.getFullYear()}
-                                        <ChevronDownIcon className={`w-4 h-4 transition-transform ${isYearPickerOpen ? 'rotate-180' : ''}`} />
+                                        <ChevronDownIcon className={`w-5 h-5 transition-transform ${isYearPickerOpen ? 'rotate-180' : ''}`} />
                                     </button>
                                     {isYearPickerOpen && (
                                         <>
                                             <div className="fixed inset-0 z-40" onClick={() => setIsYearPickerOpen(false)}></div>
-                                            <div className="absolute top-full right-0 mt-2 w-24 max-h-64 overflow-y-auto bg-white dark:bg-slate-700 shadow-xl rounded-lg p-1 z-50 border dark:border-gray-600">
+                                            <div className="absolute top-full right-0 mt-2 w-28 max-h-64 overflow-y-auto custom-scrollbar bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl shadow-2xl rounded-2xl p-2 z-50 border border-white/20 dark:border-gray-600 animate-fade-in-down">
                                                 {yearsList.map((year) => (
                                                     <button
                                                         key={year}
                                                         onClick={() => handleYearSelect(year)}
-                                                        className={`w-full p-2 text-sm font-medium rounded hover:bg-primary-50 dark:hover:bg-slate-600 ${currentDate.getFullYear() === year ? 'bg-primary text-white hover:bg-primary-700' : 'text-gray-700 dark:text-gray-200'}`}
+                                                        className={`w-full p-2 text-sm font-medium rounded-xl transition-all mb-1 ${currentDate.getFullYear() === year ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700'}`}
                                                     >
                                                         {year}
                                                     </button>
@@ -980,17 +1009,17 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                             <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 whitespace-nowrap min-w-[140px]">{headerTitle}</h2>
                         )}
 
-                        <div className="flex items-center gap-2 bg-gray-50 dark:bg-slate-700/50 p-1 rounded-lg">
-                            <button onClick={() => changeDate(-1)} className="p-1.5 rounded-md hover:bg-white dark:hover:bg-slate-600 text-gray-600 dark:text-gray-300 shadow-sm transition-all">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                        <div className="flex items-center gap-1 bg-white/40 dark:bg-slate-800/40 backdrop-blur-md p-1.5 rounded-xl border border-white/20 shadow-sm">
+                            <button onClick={() => changeDate(-1)} className="p-2 rounded-lg hover:bg-white/60 dark:hover:bg-slate-600 text-gray-600 dark:text-gray-300 transition-all">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                                 </svg>
                             </button>
-                            <button onClick={goToToday} className="px-3 py-1 text-xs font-semibold rounded-md bg-white dark:bg-slate-600 text-primary dark:text-primary-300 shadow-sm border border-gray-200 dark:border-gray-500 hover:bg-gray-50 dark:hover:bg-slate-500 transition-colors">
+                            <button onClick={goToToday} className="px-3 py-1 text-xs font-bold rounded-lg bg-white dark:bg-slate-600 text-primary-600 dark:text-primary-300 shadow-sm transition-transform hover:scale-105">
                                 اليوم
                             </button>
-                            <button onClick={() => changeDate(1)} className="p-1.5 rounded-md hover:bg-white dark:hover:bg-slate-600 text-gray-600 dark:text-gray-300 shadow-sm transition-all">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                            <button onClick={() => changeDate(1)} className="p-2 rounded-lg hover:bg-white/60 dark:hover:bg-slate-600 text-gray-600 dark:text-gray-300 transition-all">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                                 </svg>
                             </button>
@@ -1000,26 +1029,26 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                     {/* Left Side: Controls Toolbar (RTL End) */}
                     <div className="flex items-center gap-3 order-2 lg:order-2 w-full lg:w-auto justify-center lg:justify-end overflow-x-auto py-1">
                         {/* View Toggles */}
-                        <div className="flex bg-gray-100 dark:bg-slate-700 rounded-lg p-1 shrink-0">
+                        <div className="flex bg-gray-100/50 dark:bg-slate-700/50 backdrop-blur-sm rounded-xl p-1 shrink-0 border border-white/10">
                             <button 
                                 onClick={() => setViewMode('month')}
-                                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'month' ? 'bg-white dark:bg-slate-600 text-primary shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                                className={`px-4 py-1.5 text-sm font-bold rounded-lg transition-all ${viewMode === 'month' ? 'bg-white dark:bg-slate-600 text-primary shadow-sm scale-105' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
                             >
                                 شهر
                             </button>
                             <button 
                                 onClick={() => setViewMode('week')}
-                                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'week' ? 'bg-white dark:bg-slate-600 text-primary shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                                className={`px-4 py-1.5 text-sm font-bold rounded-lg transition-all ${viewMode === 'week' ? 'bg-white dark:bg-slate-600 text-primary shadow-sm scale-105' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
                             >
                                 أسبوع
                             </button>
                         </div>
 
                         {/* Desktop Action Buttons (Hidden on Mobile) */}
-                        <div className="hidden md:flex items-center gap-2 shrink-0 border-r dark:border-gray-600 pr-3 mr-1">
+                        <div className="hidden md:flex items-center gap-2 shrink-0 pr-3 mr-1 border-r border-gray-200/50 dark:border-gray-600/50">
                              <button 
                                 onClick={() => setIsViewingAvailableSlots(true)} 
-                                className="flex items-center gap-2 bg-teal-600 text-white px-3 py-1.5 rounded-lg shadow-sm hover:bg-teal-700 transition-colors text-sm font-medium"
+                                className="flex items-center gap-2 bg-gradient-to-r from-teal-500 to-teal-600 text-white px-4 py-2 rounded-xl shadow-lg hover:shadow-teal-500/30 hover:scale-105 transition-all text-sm font-bold"
                             >
                                 <CalendarIcon className="h-4 w-4" />
                                 المواعيد المتاحة
@@ -1030,7 +1059,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                                         setInitialAppointmentData({ date: getLocalDateString(selectedDate) });
                                         setIsAddingAppointment(true);
                                     }}
-                                    className="flex items-center gap-2 bg-primary text-white px-3 py-1.5 rounded-lg shadow-sm hover:bg-primary-700 transition-colors text-sm font-medium"
+                                    className="flex items-center gap-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-4 py-2 rounded-xl shadow-lg hover:shadow-primary/30 hover:scale-105 transition-all text-sm font-bold"
                                 >
                                     <PlusIcon className="h-4 w-4" />
                                     موعد جديد
@@ -1041,10 +1070,10 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                 </div>
 
                 {/* Calendar Grid */}
-                <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center">
+                <div className="grid grid-cols-7 gap-2 sm:gap-4 text-center relative z-10">
                     {/* Weekday Headers */}
                     {DAY_NAMES.map(day => (
-                        <div key={day} className="text-xs font-medium text-gray-400 dark:text-gray-500 py-2">
+                        <div key={day} className="text-xs font-bold text-gray-400 dark:text-gray-500 py-2 uppercase tracking-widest">
                             {day}
                         </div>
                     ))}
@@ -1058,29 +1087,31 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                         const isSelected = selectedDate?.toDateString() === day.toDateString();
                         const hasAppointments = dailyAppointments.length > 0;
                         
-                        let cellClasses = "relative flex flex-col items-center justify-center h-10 w-10 sm:h-12 sm:w-12 mx-auto rounded-full cursor-pointer transition-all duration-200 select-none";
-                        let textClasses = "text-sm font-medium z-10";
+                        // Glassy Cell Styling
+                        let cellClasses = "relative flex flex-col items-center justify-center h-10 w-10 sm:h-14 sm:w-14 mx-auto rounded-2xl cursor-pointer transition-all duration-300 select-none group";
+                        let textClasses = "text-sm sm:text-base font-bold z-10 relative";
                         
                         if (isSelected) {
-                            cellClasses += " bg-primary shadow-md scale-105";
+                            // Liquid selected state
+                            cellClasses += " bg-gradient-to-br from-primary-400 to-primary-600 shadow-lg shadow-primary/40 scale-110 ring-2 ring-white/50 dark:ring-white/20";
                             textClasses += " text-white";
                         } else if (isToday) {
-                            cellClasses += " bg-primary-50 dark:bg-primary-900/20 ring-1 ring-primary text-primary dark:text-primary-300";
+                            cellClasses += " bg-primary-50/50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 text-primary-600 dark:text-primary-300";
                         } else if (viewMode === 'month' && !isCurrentMonth) {
                             textClasses += " text-gray-300 dark:text-gray-600";
                         } else {
-                            cellClasses += " hover:bg-gray-100 dark:hover:bg-slate-700";
-                            // Explicitly setting text color for normal days in Light Mode to be dark (visible)
-                            textClasses += " text-gray-900 dark:text-gray-100";
+                            cellClasses += " hover:bg-white/50 dark:hover:bg-slate-700/50 hover:shadow-sm";
+                            textClasses += " text-gray-700 dark:text-gray-300";
                         }
                         
                         return (
                             <div key={index} className="py-1">
                                 <div className={cellClasses} onClick={() => setSelectedDate(day)}>
                                     <span className={textClasses}>{day.getDate()}</span>
-                                    {/* Compact Appointment Indicator */}
+                                    
+                                    {/* Appointment Indicator (Dot/Badge) */}
                                     {hasAppointments && (
-                                        <span className={`absolute bottom-1.5 block h-1 w-1 rounded-full ${isSelected ? 'bg-white' : 'bg-primary'}`}></span>
+                                        <span className={`absolute bottom-1.5 w-1.5 h-1.5 rounded-full shadow-sm transition-colors ${isSelected ? 'bg-white' : 'bg-gradient-to-r from-orange-400 to-pink-500'}`}></span>
                                     )}
                                 </div>
                             </div>
@@ -1091,49 +1122,57 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
 
             <div className="mt-8">
                  {selectedDate && (
-                    <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100 px-1">
+                    <h3 className="text-xl font-bold mb-6 text-gray-800 dark:text-gray-100 px-2 flex items-center gap-2">
+                        <span className="w-1.5 h-6 bg-primary rounded-full"></span>
                         مواعيد يوم: {new Intl.DateTimeFormat('ar-EG', { calendar: 'gregory', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).format(selectedDate)}
                     </h3>
                 )}
                 {loading ? <CenteredLoadingSpinner /> : selectedDateAppointments.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {selectedDateAppointments.map(app => (
-                             <div key={app.id} className="bg-white dark:bg-slate-800 border-r-4 border-primary dark:border-primary-500 p-4 rounded-lg shadow-md flex flex-col justify-between gap-4 hover:shadow-lg transition-shadow">
-                                <div>
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="font-bold text-lg text-gray-800 dark:text-gray-100">{getPatientName(app.patientId)}</p>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">مع الطبيب: {getDoctorName(app.doctorId)}</p>
+                             <div key={app.id} className="group relative bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-white/30 dark:border-gray-700 p-5 rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+                                {/* Glass Shine Effect */}
+                                <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                                
+                                <div className="relative z-10 flex flex-col h-full justify-between gap-4">
+                                    <div>
+                                        <div className="flex justify-between items-start">
+                                            <div className="border-l-4 border-primary pl-3 ml-3 rounded-sm">
+                                                <p className="font-bold text-lg text-gray-900 dark:text-white line-clamp-1" title={getPatientName(app.patientId)}>{getPatientName(app.patientId)}</p>
+                                                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">د. {getDoctorName(app.doctorId)}</p>
+                                            </div>
+                                            <span className="bg-white/60 dark:bg-slate-700/60 backdrop-blur-md text-primary-700 dark:text-primary-300 text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-sm border border-white/20">
+                                                {formatTo12Hour(app.time)}
+                                            </span>
                                         </div>
-                                        <span className="bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 text-xs font-bold px-2 py-1 rounded-md whitespace-nowrap">
-                                            {formatTo12Hour(app.time)}
-                                        </span>
+                                        {app.notes && <p className="text-xs text-gray-600 dark:text-gray-300 mt-4 bg-gray-50/50 dark:bg-slate-700/50 p-3 rounded-xl border border-gray-100/50 dark:border-gray-600/50 line-clamp-2">{app.notes}</p>}
                                     </div>
-                                    {app.notes && <p className="text-xs text-gray-600 dark:text-gray-300 mt-3 bg-gray-50 dark:bg-slate-700/50 p-2 rounded-md border dark:border-gray-700 line-clamp-2">{app.notes}</p>}
-                                </div>
-                                <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-700 mt-2">
-                                    <button onClick={() => setViewingAppointment(app)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400" title="عرض التفاصيل"><EyeIcon className="h-5 w-5" /></button>
-                                    {(user.role === UserRole.Admin || user.role === UserRole.Secretary) && (
-                                        <>
-                                            <button onClick={() => setEditingAppointment(app)} className="p-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
-                                            <button onClick={() => setDeletingAppointment(app)} className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف"><TrashIcon className="h-5 w-5" /></button>
-                                        </>
-                                    )}
+                                    <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200/30 dark:border-gray-700/30">
+                                        <button onClick={() => setViewingAppointment(app)} className="p-2 rounded-full hover:bg-white/50 dark:hover:bg-gray-600/50 text-gray-500 dark:text-gray-400 hover:text-primary transition-colors" title="عرض التفاصيل"><EyeIcon className="h-5 w-5" /></button>
+                                        {(user.role === UserRole.Admin || user.role === UserRole.Secretary) && (
+                                            <>
+                                                <button onClick={() => setEditingAppointment(app)} className="p-2 rounded-full text-blue-500/80 hover:text-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-colors" title="تعديل"><PencilIcon className="h-5 w-5" /></button>
+                                                <button onClick={() => setDeletingAppointment(app)} className="p-2 rounded-full text-red-500/80 hover:text-red-600 hover:bg-red-50/50 dark:hover:bg-red-900/20 transition-colors" title="حذف"><TrashIcon className="h-5 w-5" /></button>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         ))}
                     </div>
                 ) : (
-                    <div className="text-center py-10 text-gray-500 dark:text-gray-400 bg-white dark:bg-slate-800 rounded-xl shadow-md border border-dashed border-gray-300 dark:border-gray-700">
-                        <p>{searchTerm ? 'لا توجد مواعيد تطابق بحثك في هذا اليوم.' : 'لا توجد مواعيد لهذا اليوم.'}</p>
+                    <div className="text-center py-16 text-gray-500 dark:text-gray-400 bg-white/20 dark:bg-slate-800/20 backdrop-blur-lg rounded-3xl border border-white/10 dark:border-white/5">
+                        <CalendarIcon className="h-16 w-16 mx-auto text-gray-300 dark:text-gray-600 mb-4 opacity-50" />
+                        <p className="font-medium text-lg">{searchTerm ? 'لا توجد مواعيد تطابق بحثك.' : 'لا توجد مواعيد لهذا اليوم.'}</p>
+                        <p className="text-sm opacity-70 mt-1">استرح قليلاً أو أضف موعداً جديداً.</p>
                     </div>
                 )}
             </div>
 
-             <div className="lg:hidden fixed bottom-20 right-4 flex flex-col gap-3 z-20">
+             <div className="lg:hidden fixed bottom-20 right-4 flex flex-col gap-3 z-30">
                 <button 
                     onClick={() => setIsViewingAvailableSlots(true)} 
-                    className="bg-teal-600 text-white p-4 rounded-full shadow-lg hover:bg-teal-700 transition-colors"
+                    className="bg-gradient-to-r from-teal-500 to-teal-600 text-white p-4 rounded-full shadow-lg shadow-teal-500/30 hover:scale-110 transition-transform"
                     aria-label="المواعيد المتاحة"
                 >
                     <CalendarIcon className="h-6 w-6" />
@@ -1144,7 +1183,7 @@ const AppointmentsPage: React.FC<AppointmentsPageProps> = ({ user, refreshTrigge
                             setInitialAppointmentData({ date: getLocalDateString(selectedDate) });
                             setIsAddingAppointment(true);
                         }}
-                        className="bg-primary text-white p-4 rounded-full shadow-lg hover:bg-primary-700 transition-colors"
+                        className="bg-gradient-to-r from-primary-500 to-primary-600 text-white p-4 rounded-full shadow-lg shadow-primary/30 hover:scale-110 transition-transform"
                         aria-label="موعد جديد"
                     >
                         <PlusIcon className="h-6 w-6" />

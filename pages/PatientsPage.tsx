@@ -3,7 +3,7 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query';
 import { User, Patient, UserRole, Session, Gender } from '../types';
 import { api } from '../services/api';
-import { PlusIcon, PencilIcon, TrashIcon, XIcon, BeakerIcon, EyeIcon, CurrencyDollarIcon, SearchIcon, PhotographIcon, ListBulletIcon, DocumentTextIcon, CheckIcon, ChevronDownIcon } from '../components/Icons';
+import { PlusIcon, PencilIcon, TrashIcon, XIcon, BeakerIcon, EyeIcon, CurrencyDollarIcon, SearchIcon, PhotographIcon, ListBulletIcon, DocumentTextIcon, CheckIcon, ChevronDownIcon, UserCircleIcon, UsersIcon } from '../components/Icons';
 import LoadingSpinner, { CenteredLoadingSpinner } from '../components/LoadingSpinner';
 import { useAppSettings } from '../hooks/useAppSettings';
 
@@ -911,65 +911,124 @@ const PatientsPage: React.FC<PatientsPageProps> = ({
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[200px]">
+            <div className="min-h-[200px]">
                 {showLoadingSpinner ? <CenteredLoadingSpinner /> : (
                      patients.length > 0 ? (
                         <>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 {patients.map(p => (
-                                    <div key={p.id} className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 flex flex-col justify-between shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 dark:shadow-slate-900/50">
-                                        <div>
-                                            <div className="flex justify-between items-start">
-                                                <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{p.name}</h3>
-                                                <div className="flex items-center gap-2">
-                                                    {p.completed && (
-                                                        <div className="p-1 bg-green-100 dark:bg-green-900/40 rounded-full" title="جميع الجلسات مكتملة">
-                                                            <CheckIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
-                                                        </div>
-                                                    )}
-                                                    {p.payment_completed === true && (
-                                                        <div className="p-1 bg-blue-100 dark:bg-blue-900/40 rounded-full" title="مدفوع بالكامل">
-                                                            <CurrencyDollarIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                                        </div>
-                                                    )}
-                                                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full">{p.code}</span>
+                                    <div 
+                                        key={p.id} 
+                                        className="relative group overflow-hidden rounded-3xl bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1"
+                                    >
+                                        {/* Decorative Gradients */}
+                                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-400 to-secondary-400 opacity-80" />
+                                        <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary-500/10 rounded-full blur-3xl group-hover:bg-primary-500/20 transition-colors pointer-events-none" />
+                                        <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-secondary-500/10 rounded-full blur-3xl group-hover:bg-secondary-500/20 transition-colors pointer-events-none" />
+
+                                        {/* Card Content */}
+                                        <div className="relative z-10 p-5 flex flex-col h-full">
+                                            
+                                            {/* Header: Name & Code */}
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`p-2 rounded-xl ${p.gender === Gender.Female ? 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-300' : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300'}`}>
+                                                        <UserCircleIcon className="h-8 w-8" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-1" title={p.name}>{p.name}</h3>
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
+                                                            {p.code}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-300">
-                                                <p><span className="font-semibold">العمر:</span> {p.age}</p>
-                                                <p><span className="font-semibold">الهاتف:</span> {p.phone}</p>
-                                                {p.discount && p.discount > 0 && (
-                                                    <p className="font-semibold text-yellow-600 dark:text-yellow-400">
-                                                        <span className="font-semibold">خصم:</span> {p.discount.toLocaleString()} SYP
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-                                            <div className="flex flex-col gap-3">
-                                                <div className="flex items-center justify-start gap-2">
-                                                    {canEditPatient && <button onClick={() => setEditingPatient(p)} className="p-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40" title="تعديل"><PencilIcon className="h-5 w-5" /></button>}
+                                                
+                                                {/* Top Actions (Edit/Delete) */}
+                                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 absolute top-4 left-4 rtl:right-auto rtl:left-4">
+                                                    {canEditPatient && (
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); setEditingPatient(p); }} 
+                                                            className="p-1.5 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-slate-700 dark:text-blue-400 dark:hover:bg-slate-600 shadow-sm"
+                                                            title="تعديل"
+                                                        >
+                                                            <PencilIcon className="h-4 w-4" />
+                                                        </button>
+                                                    )}
                                                     {canDeletePatient && (
-                                                        <button onClick={() => setDeletingPatient(p)} className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40" title="حذف"><TrashIcon className="h-5 w-5" /></button>
-                                                    )}
-                                                     {!isSecretary && (
-                                                        <button onClick={() => onViewDetails(p)} className="p-2 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600" title="تفاصيل"><EyeIcon className="h-5 w-5" /></button>
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); setDeletingPatient(p); }} 
+                                                            className="p-1.5 rounded-full bg-red-50 text-red-600 hover:bg-red-100 dark:bg-slate-700 dark:text-red-400 dark:hover:bg-slate-600 shadow-sm"
+                                                            title="حذف"
+                                                        >
+                                                            <TrashIcon className="h-4 w-4" />
+                                                        </button>
                                                     )}
                                                 </div>
-                                                <div className="flex items-center flex-wrap justify-start gap-2">
-                                                    {!isSecretary && (
-                                                        <button onClick={() => onViewSessions(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-teal-100 dark:bg-teal-900/40 text-teal-800 dark:text-teal-300 rounded-md hover:bg-teal-200 dark:hover:bg-teal-900/60"><BeakerIcon className="h-4 w-4" /><span>الجلسات</span></button>
+                                            </div>
+
+                                            {/* Details Grid */}
+                                            <div className="grid grid-cols-2 gap-y-2 text-sm text-gray-600 dark:text-gray-300 mb-4 flex-grow">
+                                                <div className="col-span-2 flex items-center gap-2">
+                                                    <span className="text-gray-400"><UsersIcon className="h-4 w-4" /></span>
+                                                    <span className="truncate font-medium">{p.phone}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-gray-400 text-xs">العمر:</span>
+                                                    <span className="font-semibold">{p.age}</span>
+                                                </div>
+                                                <div className="flex justify-end gap-2">
+                                                    {p.completed && (
+                                                        <span className="flex items-center gap-1 text-xs font-bold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full border border-green-100 dark:border-green-800">
+                                                            <CheckIcon className="h-3 w-3" /> مكتمل
+                                                        </span>
                                                     )}
-                                                    {canViewFinancial && (
-                                                        <button onClick={() => onViewFinancial(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 rounded-md hover:bg-green-200 dark:hover:bg-green-900/60"><CurrencyDollarIcon className="h-4 w-4" /><span>المالية</span></button>
+                                                    {p.payment_completed && (
+                                                        <span className="flex items-center gap-1 text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full border border-blue-100 dark:border-blue-800">
+                                                            <CurrencyDollarIcon className="h-3 w-3" /> مدفوع
+                                                        </span>
                                                     )}
-                                                    <button onClick={() => onViewPhotos(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 rounded-md hover:bg-purple-200 dark:hover:bg-purple-900/60"><PhotographIcon className="h-4 w-4" /><span>الصور</span></button>
+                                                </div>
+                                                {p.discount && p.discount > 0 ? (
+                                                    <div className="col-span-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded border border-amber-100 dark:border-amber-800 mt-1">
+                                                        خصم: {p.discount.toLocaleString()} SYP
+                                                    </div>
+                                                ) : null}
+                                            </div>
+
+                                            {/* Footer Actions */}
+                                            <div className="pt-4 border-t border-gray-100 dark:border-white/10 flex flex-wrap gap-2 justify-center">
+                                                {!isSecretary && (
+                                                    <button onClick={() => onViewSessions(p)} className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-xs font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/30 dark:text-teal-300 dark:hover:bg-teal-900/50 rounded-xl transition-colors" title="الجلسات">
+                                                        <BeakerIcon className="h-4 w-4" />
+                                                        <span>الجلسات</span>
+                                                    </button>
+                                                )}
+                                                
+                                                <button onClick={() => onViewPhotos(p)} className="flex items-center justify-center gap-1 px-3 py-2 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 rounded-xl transition-colors" title="الصور">
+                                                    <PhotographIcon className="h-4 w-4" />
+                                                </button>
+
+                                                {canViewFinancial && (
+                                                    <button onClick={() => onViewFinancial(p)} className="flex items-center justify-center gap-1 px-3 py-2 text-xs font-bold text-green-700 bg-green-50 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50 rounded-xl transition-colors" title="المالية">
+                                                        <CurrencyDollarIcon className="h-4 w-4" />
+                                                    </button>
+                                                )}
+
+                                                {!isSecretary && (
+                                                    <button onClick={() => onViewPlan(p)} className="flex items-center justify-center gap-1 px-3 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 rounded-xl transition-colors" title="الخطة">
+                                                        <ListBulletIcon className="h-4 w-4" />
+                                                    </button>
+                                                )}
+                                                
+                                                <div className="flex gap-1">
                                                     {!isSecretary && (
-                                                        <button onClick={() => onViewPlan(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-blue-900/60"><ListBulletIcon className="h-4 w-4" /><span>الخطة</span></button>
+                                                        <button onClick={() => onViewDetails(p)} className="p-2 text-gray-500 hover:text-primary hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors" title="التفاصيل">
+                                                            <EyeIcon className="h-4 w-4" />
+                                                        </button>
                                                     )}
                                                     {canPrintReport && (
-                                                        <button onClick={() => setPatientToPrint(p)} className="flex items-center gap-1 text-xs px-2 py-1 bg-gray-100 dark:bg-gray-900/40 text-gray-800 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-900/60">
-                                                            {isPrinting === p.id ? <LoadingSpinner className="h-4 w-4" /> : <DocumentTextIcon className="h-4 w-4" />}<span>طباعة</span>
+                                                        <button onClick={() => setPatientToPrint(p)} className="p-2 text-gray-500 hover:text-primary hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors" title="طباعة">
+                                                            {isPrinting === p.id ? <LoadingSpinner className="h-4 w-4" /> : <DocumentTextIcon className="h-4 w-4" />}
                                                         </button>
                                                     )}
                                                 </div>

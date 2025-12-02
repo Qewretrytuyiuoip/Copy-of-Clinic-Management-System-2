@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { User, Payment, Patient } from '../types';
 import { api, ApiError } from '../services/api';
-import { PlusIcon, PencilIcon, TrashIcon, XIcon, SearchIcon } from '../components/Icons';
+import { PlusIcon, PencilIcon, TrashIcon, XIcon, SearchIcon, UserCircleIcon, CalendarIcon } from '../components/Icons';
 import { CenteredLoadingSpinner } from '../components/LoadingSpinner';
 
 interface PaymentsPageProps {
@@ -405,7 +405,7 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user, refreshTrigger }) => 
                 </button>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md min-h-[400px]">
+            <div className="min-h-[400px]">
                 {loading ? <CenteredLoadingSpinner /> : fetchError ? (
                      <div className="text-center py-16 text-red-500 dark:text-red-400"><p>{fetchError}</p></div>
                 ) : (
@@ -413,21 +413,61 @@ const PaymentsPage: React.FC<PaymentsPageProps> = ({ user, refreshTrigger }) => 
                         <>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 {payments.map(pay => (
-                                    <div key={pay.id} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col justify-between transition-shadow hover:shadow-lg">
-                                        <div>
-                                            <div className="flex justify-between items-start">
-                                                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">{getPatientName(pay.patientId)}</h3>
-                                                <p className="text-xl font-bold text-green-600 dark:text-green-400">SYP {pay.amount.toLocaleString('en-US')}</p>
+                                    <div key={pay.id} className="relative group overflow-hidden rounded-3xl bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+                                        {/* Decorative Gradients */}
+                                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-teal-500 opacity-80" />
+                                        <div className="absolute -top-10 -right-10 w-32 h-32 bg-green-500/10 rounded-full blur-3xl group-hover:bg-green-500/20 transition-colors pointer-events-none" />
+                                        <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-teal-500/10 rounded-full blur-3xl group-hover:bg-teal-500/20 transition-colors pointer-events-none" />
+
+                                        {/* Card Content */}
+                                        <div className="relative z-10 p-5 flex flex-col h-full">
+                                            
+                                            {/* Header */}
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 rounded-xl bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-300 shadow-inner">
+                                                        <UserCircleIcon className="h-8 w-8" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-1" title={getPatientName(pay.patientId)}>
+                                                            {getPatientName(pay.patientId)}
+                                                        </h3>
+                                                        <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                            <CalendarIcon className="h-3 w-3 ml-1" />
+                                                            <span>{new Date(pay.date).toLocaleDateString()}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{new Date(pay.date).toLocaleDateString()}</p>
-                                        </div>
-                                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex items-center justify-end space-x-2">
-                                            <button onClick={() => setEditingPayment(pay)} className="p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400" title="تعديل">
-                                                <PencilIcon className="h-5 w-5" />
-                                            </button>
-                                            <button onClick={() => setPaymentToDelete(pay)} className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400" title="حذف">
-                                                <TrashIcon className="h-5 w-5" />
-                                            </button>
+
+                                            {/* Amount Display */}
+                                            <div className="flex-grow flex items-center justify-center py-2 mb-2">
+                                                <div className="text-center p-3 rounded-2xl bg-white/50 dark:bg-black/20 border border-white/50 dark:border-white/5 w-full">
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium">المبلغ المدفوع</p>
+                                                    <p className="text-2xl font-black text-green-600 dark:text-green-400 tracking-tight">
+                                                        {pay.amount.toLocaleString('en-US')} <span className="text-sm font-medium text-gray-400">SYP</span>
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* Footer Actions */}
+                                            <div className="pt-4 border-t border-gray-100 dark:border-white/10 flex justify-end gap-2">
+                                                <button 
+                                                    onClick={() => setEditingPayment(pay)} 
+                                                    className="flex-1 flex items-center justify-center gap-2 p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/30 transition-colors font-medium text-sm" 
+                                                    title="تعديل"
+                                                >
+                                                    <PencilIcon className="h-4 w-4" />
+                                                    <span>تعديل</span>
+                                                </button>
+                                                <button 
+                                                    onClick={() => setPaymentToDelete(pay)} 
+                                                    className="p-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/30 transition-colors" 
+                                                    title="حذف"
+                                                >
+                                                    <TrashIcon className="h-5 w-5" />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}

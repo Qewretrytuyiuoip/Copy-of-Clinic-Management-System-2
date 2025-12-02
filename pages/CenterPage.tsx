@@ -32,27 +32,31 @@ const CLINIC_TYPES = [
     "علاج طبيعي"
 ];
 
+// Liquid Glass Card Component
 const InfoCard: React.FC<{ label: string; value: string | number | null; icon?: React.ElementType }> = ({ label, value, icon: Icon }) => (
-    <div className="group relative w-full p-5 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/60 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md h-full flex flex-col justify-center">
-        <div className="absolute top-1/2 -translate-y-1/2 right-0 h-10 w-1 bg-gradient-to-b from-transparent via-primary-300 to-transparent rounded-l-full opacity-50 group-hover:opacity-100 group-hover:h-12 transition-all duration-500"></div>
-        <div className="relative z-10 flex items-start gap-4">
+    <div className="group relative w-full p-6 rounded-3xl bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:bg-white/60 dark:hover:bg-slate-800/60">
+        
+        {/* Liquid Decoration */}
+        <div className="absolute -top-10 -right-10 w-24 h-24 bg-gradient-to-br from-primary-400/20 to-secondary-400/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
+        
+        <div className="relative z-10 flex items-start gap-5">
             {Icon && (
-                <div className="flex-shrink-0 p-3 rounded-2xl bg-gray-50 dark:bg-slate-900/50 text-primary-600 dark:text-primary-400 shadow-inner">
+                <div className="flex-shrink-0 p-3.5 rounded-2xl bg-gradient-to-br from-white/80 to-white/40 dark:from-slate-700/80 dark:to-slate-700/40 shadow-inner text-primary-600 dark:text-primary-400 ring-1 ring-white/50">
                     <Icon className="h-6 w-6" />
                 </div>
             )}
             <div className="flex-grow">
-                <h3 className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">{label}</h3>
-                <p className="mt-1 text-lg font-bold text-gray-900 dark:text-gray-100 break-words">{value || 'غير متوفر'}</p>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">{label}</h3>
+                <p className="text-xl font-bold text-gray-900 dark:text-white break-words drop-shadow-sm">{value || 'غير متوفر'}</p>
             </div>
         </div>
     </div>
 );
 
 const EditCard: React.FC<{ label: string; children: React.ReactNode; icon?: React.ElementType; className?: string }> = ({ label, children, icon: Icon, className }) => (
-    <div className={`bg-white dark:bg-slate-800 p-4 rounded-xl shadow-md ${className}`}>
-        <label className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-            {Icon && <Icon className="h-5 w-5" />}
+    <div className={`bg-white/40 dark:bg-slate-800/40 backdrop-blur-lg border border-white/40 dark:border-white/5 p-5 rounded-3xl shadow-sm ${className}`}>
+        <label className="flex items-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-300 mb-3">
+            {Icon && <Icon className="h-5 w-5 text-primary-500" />}
             <span>{label}</span>
         </label>
         {children}
@@ -141,23 +145,18 @@ const CenterPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
             }
         });
 
-        // أولاً تعديل البيانات العادية إذا في تغييرات
         if (dataHasChanged) {
             await api.centers.update(changedData);
         }
 
-        // ثانياً رفع الصورة إذا موجودة
         if (newLogoFile) {
             await api.centers.uploadPhoto(newLogoFile);
-            // نجاح رفع الصورة
             setNewLogoFile(null);
             setNewLogoPreview(null);
         }
 
-        // تحديث البيانات بعد أي تعديل
         await queryClient.invalidateQueries({ queryKey: ['center', user?.center_id] });
-
-        setIsEditing(false); // Exit edit mode unconditionally on success
+        setIsEditing(false); 
 
     } catch (err) {
         alert(`فشل حفظ التعديلات: ${err instanceof Error ? err.message : 'خطأ غير متوقع'}`);
@@ -166,23 +165,17 @@ const CenterPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
     }
 };
 
-
-    
     const handleDeletePhoto = async () => {
         setIsDeletingPhoto(true);
         try {
             await api.centers.deletePhoto();
-            
-            // Update UI context logic
             await queryClient.invalidateQueries({ queryKey: ['center', user?.center_id] });
             
-            // Fetch latest data to update app context logo if needed
             const updatedCenter = await api.centers.getOne();
             if (updatedCenter) setAppLogo(updatedCenter.logo_url);
 
             setNewLogoFile(null);
             setNewLogoPreview(null);
-            
             setShowDeleteConfirm(false);
         } catch (err) {
              alert(`فشل حذف الصورة: ${err instanceof Error ? err.message : 'خطأ غير متوقع'}`);
@@ -196,56 +189,78 @@ const CenterPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
     }, [typeSearch]);
 
     if (isLoading) return <CenteredLoadingSpinner />;
-    if (error) return <div className="text-center p-8 text-red-500">حدث خطأ أثناء جلب بيانات المركز.</div>;
-    if (!center) return <div className="text-center p-8">لم يتم العثور على بيانات المركز.</div>;
+    if (error) return <div className="text-center p-8 text-red-500 bg-white/50 backdrop-blur-md rounded-2xl">حدث خطأ أثناء جلب بيانات المركز.</div>;
+    if (!center) return <div className="text-center p-8 bg-white/50 backdrop-blur-md rounded-2xl">لم يتم العثور على بيانات المركز.</div>;
 
-    const inputStyle = "w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-black dark:text-white";
+    const inputStyle = "w-full px-4 py-3 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border border-gray-200 dark:border-gray-600 rounded-xl shadow-inner focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent text-gray-900 dark:text-white transition-all";
 
     return (
-       <div className="max-w-5xl mx-auto pb-20">
-            <div className="flex flex-col items-center md:flex-row md:justify-between md:items-start mb-8">
-                 <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-right">
-                    <div className="flex-shrink-0 relative group">
-                        <img src={newLogoPreview || center.logo_url} alt="شعار المركز" className="h-24 w-24 rounded-full object-cover border-4 border-primary-200 dark:border-primary-700 shadow-lg" />
-                        {isEditing && (
-                            <div className="absolute inset-0 rounded-full bg-black bg-opacity-50 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => fileInputRef.current?.click()} className="p-2 bg-white/80 rounded-full text-blue-600 hover:bg-white" title="تغيير الصورة">
-                                    <CameraIcon className="h-6 w-6" />
+       <div className="relative min-h-[80vh] max-w-5xl mx-auto pb-20">
+            {/* Background Blobs for Liquid Effect */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-primary-300/20 dark:bg-primary-900/20 rounded-full blur-[100px] transform translate-x-1/3 -translate-y-1/3"></div>
+                <div className="absolute bottom-0 left-0 w-80 h-80 bg-secondary-300/20 dark:bg-secondary-900/20 rounded-full blur-[100px] transform -translate-x-1/3 translate-y-1/3"></div>
+            </div>
+
+            {/* Header Section */}
+            <div className="relative bg-white/30 dark:bg-slate-800/30 backdrop-blur-2xl border border-white/40 dark:border-white/5 shadow-2xl rounded-[2.5rem] p-8 mb-10 overflow-hidden">
+                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/50 to-transparent opacity-70"></div>
+                 
+                 <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-6 relative z-10">
+                     <div className="flex flex-col md:flex-row items-center gap-8 text-center md:text-right">
+                        <div className="relative group">
+                            <div className="absolute inset-0 bg-gradient-to-tr from-primary-400 to-secondary-400 rounded-full blur-lg opacity-60 group-hover:opacity-100 transition-opacity duration-500"></div>
+                            <img src={newLogoPreview || center.logo_url} alt="شعار المركز" className="relative h-32 w-32 rounded-full object-cover border-4 border-white/50 dark:border-white/10 shadow-lg" />
+                            
+                            {isEditing && (
+                                <div className="absolute inset-0 rounded-full bg-black/60 backdrop-blur-[2px] flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-95 group-hover:scale-100">
+                                    <button onClick={() => fileInputRef.current?.click()} className="p-2.5 bg-white rounded-full text-blue-600 hover:scale-110 transition-transform shadow-lg" title="تغيير الصورة">
+                                        <CameraIcon className="h-5 w-5" />
+                                    </button>
+                                     <button onClick={() => setShowDeleteConfirm(true)} className="p-2.5 bg-white rounded-full text-red-600 hover:scale-110 transition-transform shadow-lg" title="حذف الصورة">
+                                        <TrashIcon className="h-5 w-5" />
+                                    </button>
+                                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex flex-col justify-center">
+                            <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 drop-shadow-sm mb-2">
+                                {isEditing ? 'تعديل المركز' : center.name}
+                            </h1>
+                            {!isEditing && (
+                                <span className="inline-flex self-center md:self-start items-center px-4 py-1.5 rounded-full text-sm font-bold bg-primary-100/50 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200 border border-primary-200/50 dark:border-primary-800/50 shadow-sm backdrop-blur-sm">
+                                    {center.type || 'مركز طبي'}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                     <div className="flex gap-3 mt-2">
+                        {isEditing ? (
+                            <>
+                                <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2 px-6 py-2.5 font-bold text-white bg-gradient-to-r from-green-500 to-green-600 rounded-2xl shadow-lg hover:shadow-green-500/30 hover:-translate-y-0.5 transition-all disabled:opacity-50">
+                                    {isSaving ? <LoadingSpinner className="h-5 w-5" /> : <CheckIcon className="h-5 w-5" />}
+                                    <span>حفظ</span>
                                 </button>
-                                 <button onClick={() => setShowDeleteConfirm(true)} className="p-2 bg-white/80 rounded-full text-red-600 hover:bg-white" title="حذف الصورة">
-                                    <TrashIcon className="h-6 w-6" />
+                                 <button onClick={handleEditToggle} disabled={isSaving} className="flex items-center gap-2 px-6 py-2.5 font-bold text-gray-700 dark:text-gray-200 bg-white/50 dark:bg-slate-700/50 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm hover:bg-white dark:hover:bg-slate-600 transition-all">
+                                    <XIcon className="h-5 w-5" />
+                                    <span>إلغاء</span>
                                 </button>
-                                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
-                            </div>
+                            </>
+                        ) : (
+                            <button onClick={handleEditToggle} className="flex items-center gap-2 px-6 py-2.5 font-bold text-primary-700 dark:text-primary-300 bg-white/60 dark:bg-slate-800/60 border border-white/60 dark:border-white/10 rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all">
+                                <PencilIcon className="h-5 w-5" />
+                                <span>تعديل</span>
+                            </button>
                         )}
                     </div>
-                    <div className="flex-grow">
-                        <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100">{isEditing ? 'تعديل بيانات المركز' : center.name}</h1>
-                    </div>
-                </div>
-                 <div className="flex gap-2 mt-4 md:mt-0">
-                    {isEditing ? (
-                        <>
-                            <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2 px-4 py-2 font-semibold text-white bg-green-600 rounded-lg shadow-sm hover:bg-green-700 transition-colors disabled:bg-green-300">
-                                {isSaving ? <LoadingSpinner className="h-5 w-5" /> : <CheckIcon className="h-5 w-5" />}
-                                <span>حفظ</span>
-                            </button>
-                             <button onClick={handleEditToggle} disabled={isSaving} className="flex items-center gap-2 px-4 py-2 font-semibold text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-slate-600 rounded-lg shadow-sm hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors">
-                                <XIcon className="h-5 w-5" />
-                                <span>إلغاء</span>
-                            </button>
-                        </>
-                    ) : (
-                        <button onClick={handleEditToggle} className="flex items-center gap-2 px-4 py-2 font-semibold text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/40 rounded-lg shadow-sm hover:bg-green-200 dark:hover:bg-green-900/60 transition-colors">
-                            <PencilIcon className="h-5 w-5" />
-                            <span>تعديل</span>
-                        </button>
-                    )}
                 </div>
             </div>
 
+            {/* Content Section */}
             {isEditing ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in-up">
                     <EditCard label="اسم المركز" icon={DocumentTextIcon} className="md:col-span-2">
                         <input type="text" name="name" value={formData.name || ''} onChange={handleChange} className={inputStyle} />
                     </EditCard>
@@ -283,12 +298,12 @@ const CenterPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
                             </div>
                             
                             {isTypeDropdownOpen && (
-                                <ul className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                <ul className="absolute z-50 w-full mt-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border border-gray-200 dark:border-gray-600 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar">
                                     {filteredClinicTypes.length > 0 ? (
                                         filteredClinicTypes.map((type) => (
                                             <li
                                                 key={type}
-                                                className="px-4 py-2 hover:bg-primary-50 dark:hover:bg-primary-900/30 cursor-pointer text-gray-800 dark:text-gray-200 transition-colors border-b border-gray-100 dark:border-gray-600 last:border-none"
+                                                className="px-4 py-3 hover:bg-primary-50 dark:hover:bg-primary-900/30 cursor-pointer text-gray-800 dark:text-gray-200 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-none font-medium"
                                                 onClick={() => {
                                                     setFormData(prev => ({ ...prev, type: type }));
                                                     setTypeSearch(type);
@@ -299,7 +314,7 @@ const CenterPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
                                             </li>
                                         ))
                                     ) : (
-                                        <li className="px-4 py-2 text-gray-500 dark:text-gray-400 text-sm">لا توجد نتائج مطابقة</li>
+                                        <li className="px-4 py-3 text-gray-500 dark:text-gray-400 text-sm text-center">لا توجد نتائج</li>
                                     )}
                                 </ul>
                             )}
@@ -310,7 +325,7 @@ const CenterPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
                     <InfoCard label="نهاية الاشتراك" value={new Date(center.subscription_end).toLocaleDateString('ar-EG')} icon={CalendarIcon} />
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in-up">
                     <div className="md:col-span-2">
                         <InfoCard label="الوصف" value={center.description} icon={DocumentTextIcon} />
                     </div>
@@ -325,29 +340,30 @@ const CenterPage: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) =>
             )}
             
             {showDeleteConfirm && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 transition-opacity" onClick={() => setShowDeleteConfirm(false)}>
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm transform transition-all" role="dialog" onClick={e => e.stopPropagation()}>
-                        <div className="p-6 text-center">
-                            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30">
-                                <TrashIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex justify-center items-center p-4 transition-opacity" onClick={() => setShowDeleteConfirm(false)}>
+                    <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-2xl rounded-3xl shadow-2xl w-full max-w-sm border border-white/20 dark:border-white/10 transform transition-all scale-100" role="dialog" onClick={e => e.stopPropagation()}>
+                        <div className="p-8 text-center">
+                            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 dark:bg-red-900/30 mb-6 shadow-inner">
+                                <TrashIcon className="h-8 w-8 text-red-600 dark:text-red-400" />
                             </div>
-                            <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-4">حذف الصورة</h3>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">هل أنت متأكد من حذف صورة شعار المركز؟</p>
-                        </div>
-                        <div className="bg-gray-50 dark:bg-slate-700/50 px-6 py-4 rounded-b-2xl flex justify-center gap-4">
-                            <button onClick={handleDeletePhoto} disabled={isDeletingPhoto} className="w-full flex items-center justify-center gap-2 rounded-md px-4 py-2 bg-red-600 text-white hover:bg-red-700 disabled:bg-red-400">
-                                {isDeletingPhoto ? (
-                                    <>
-                                        <LoadingSpinner className="h-5 w-5" />
-                                        <span>جاري الحذف...</span>
-                                    </>
-                                ) : (
-                                    'نعم، حذف'
-                                )}
-                            </button>
-                            <button onClick={() => setShowDeleteConfirm(false)} disabled={isDeletingPhoto} className="w-full rounded-md px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500">
-                                إلغاء
-                            </button>
+                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">حذف الصورة</h3>
+                            <p className="text-gray-500 dark:text-gray-300 mb-6">هل أنت متأكد من حذف صورة شعار المركز؟</p>
+                            
+                            <div className="flex gap-3">
+                                <button onClick={handleDeletePhoto} disabled={isDeletingPhoto} className="flex-1 flex items-center justify-center gap-2 rounded-xl px-4 py-3 bg-red-600 text-white font-bold shadow-lg shadow-red-500/30 hover:bg-red-700 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:translate-y-0">
+                                    {isDeletingPhoto ? (
+                                        <>
+                                            <LoadingSpinner className="h-5 w-5" />
+                                            <span>جاري الحذف...</span>
+                                        </>
+                                    ) : (
+                                        'نعم، حذف'
+                                    )}
+                                </button>
+                                <button onClick={() => setShowDeleteConfirm(false)} disabled={isDeletingPhoto} className="flex-1 rounded-xl px-4 py-3 bg-transparent border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-bold hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                    إلغاء
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
